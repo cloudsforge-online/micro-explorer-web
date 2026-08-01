@@ -142,6 +142,29 @@ jobs:
           sparse-checkout: |
             src
 
+      # Two citations, both about `Idempotency-Key`: micro-trade requires one on every mutating
+      # route (`trade/src/server.ts:840-848`) and micro-indexer reads no such header anywhere, so
+      # the two clients look alike and are not interchangeable. Checked out so that claim is
+      # verified rather than remembered.
+      - uses: actions/checkout@v4
+        with:
+          repository: cloudsforge-online/micro-trade
+          path: trade
+          token: ${{ secrets.ESTATE_READ_TOKEN }}
+          sparse-checkout: |
+            src
+
+      # One citation — `org/tools/registry.ts:8-11`, the `micro-<name>` / `<name>` substitution the
+      # citation sweep itself relies on to resolve a sibling. Cheap to verify, and the sweep would
+      # be reasoning from an unverified rule about itself otherwise.
+      - uses: actions/checkout@v4
+        with:
+          repository: cloudsforge-online/micro-org
+          path: org
+          token: ${{ secrets.ESTATE_READ_TOKEN }}
+          sparse-checkout: |
+            tools
+
       # The estate's own position on this repository's central finding —
       # `docs/ecosystem/15-monetisation-model.md:50`, quoted in src/lib/indexer.ts. Checked out so
       # the citation sweep verifies it rather than leaving it as a remembered sentence.

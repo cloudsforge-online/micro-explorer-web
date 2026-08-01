@@ -38,24 +38,36 @@ const here = fileURLToPath(new URL('..', import.meta.url))
  * `org/tools/registry.ts:8-11`, which applies that substitution once for the whole programme.
  */
 const SIBLINGS: readonly string[] = [
+  // The service this bundle is a client of. 268 citations, and `test/indexer.test.ts` checks the
+  // route ones exactly rather than merely for existence.
   'indexer',
-  'identity',
   'ui',
-  'web-template',
-  'brand',
+  // The corrected shape guard `test/indexer.test.ts` copies its `matches` from, and the
+  // measurement of the collapsed-scope defect.
   'market',
+  'brand',
+  'identity',
+  // `docs/ecosystem/15-monetisation-model.md:50` — "A public chain whose explorer is paywalled is
+  // not a public chain", the estate's own position on the finding this repository is built around.
+  // Worth checking rather than quoting from memory.
+  'docs',
+  'web-template',
+  // Two citations, both about `Idempotency-Key`: micro-trade requires one on every mutation and
+  // micro-indexer reads none, so the two clients look alike and are not interchangeable. That is
+  // the kind of claim worth verifying rather than remembering.
   'trade',
-  'trade-web',
-  'mint-web',
   'org',
-  // Cited by the template's api.ts, for the shape of the estate's error envelope.
+  // Cited by the template's api.ts, for the shape of the estate's error envelope. Not checked out
+  // in CI, so these two are the ones the run reports as UNCHECKED — which is the honest answer
+  // rather than a silent pass.
   'hub-api',
   'service-template',
-  // `docs/ecosystem/15-monetisation-model.md:50` — "A public chain whose explorer is paywalled is
-  // not a public chain", which is the estate's own position on the authority finding this
-  // repository is built around. Worth checking rather than quoting from memory.
-  'docs',
 ]
+
+// NOTE: `trade-web` and `mint-web` are named in prose throughout this repository and are
+// deliberately NOT listed above, because nothing here cites a LINE in either. Listing a repository
+// that carries no citation would put it in the UNCHECKED notice for ever, which trains a reader to
+// skim that notice — and the whole point of printing it is that somebody reads it.
 
 /** Where a sibling is checked out. `micro-trade` and `trade` are the same directory. */
 function siblingRoot(name: string): string | undefined {
