@@ -231,7 +231,7 @@ registry, and the copy is the one that goes stale. `test/hosts.test.ts` pins **b
 whichever moves first fails and names the other. To run the two together locally:
 
 ```bash
-PORT=8080 pnpm --dir ../indexer dev      # the indexer, on the port the registry names
+PORT=4008 pnpm --dir ../indexer dev      # the indexer, on the port the registry names
 pnpm dev                                  # this bundle, on 5189
 ```
 

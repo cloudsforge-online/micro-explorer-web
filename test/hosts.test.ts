@@ -116,8 +116,11 @@ describe('the dev port disagreement, recorded rather than papered over', () => {
    * to start the indexer on it. BOTH halves are pinned so the day either moves, this fails and
    * names the other.
    */
-  it('the registry gives explorer devPort 8080', () => {
-    assert.equal(SURFACES.find((s) => s.key === 'explorer')?.devPort, 8080)
+  it('the registry now gives explorer the port the indexer binds', () => {
+    // This said 8080 and was pinned as a DISAGREEMENT: 8080 is this bundle's own nginx container
+    // port, so the registry told a frontend to ask itself for chain data. It has been corrected in
+    // micro-ui to 4008, which is what indexer/src/env.ts:295 binds, and the pin flipped with it.
+    assert.equal(SURFACES.find((s) => s.key === 'explorer')?.devPort, 4008)
   })
 
   it('and micro-indexer binds 4008, which is a different number', () => {
@@ -140,9 +143,9 @@ describe('the dev port disagreement, recorded rather than papered over', () => {
     )
   })
 
-  it('and this app therefore calls 8080 on localhost, which is what the README explains', () => {
+  it('and this app therefore calls the indexer, not itself', () => {
     installWindow('http://localhost:5189/')
-    assert.equal(apiBase(), 'http://localhost:8080')
+    assert.equal(apiBase(), 'http://localhost:4008')
   })
 
   it('the vite dev port is neither of them, and must not be confused with either', () => {
@@ -151,7 +154,6 @@ describe('the dev port disagreement, recorded rather than papered over', () => {
     // read as the latter, and mint-web and trade-web after it.
     const vite = /server:\s*\{\s*port:\s*(\d+)/.exec(read('vite.config.ts'))
     assert.ok(vite, 'vite.config.ts declares no dev server port')
-    assert.notEqual(Number(vite[1]), 8080)
     assert.notEqual(Number(vite[1]), 4008)
   })
 
@@ -197,14 +199,16 @@ describe('the dev port disagreement, recorded rather than papered over', () => {
     const trade = bound('trade/src/env.ts', 0)
     if (trade !== null) assert.equal(trade, 4000, 'trade moved; the README table needs rewriting')
 
-    assert.equal(devPort('explorer'), 8080)
-    // The indexer's 4008 is pinned in test/indexer.test.ts against the same file.
+    assert.equal(devPort('explorer'), 4008)
+    const indexer = bound('indexer/src/env.ts', 0)
+    if (indexer !== null) assert.equal(indexer, 4008, 'the registry and the indexer disagree again')
   })
 
-  it('the README says how to start the service on the port this app calls', () => {
-    // The disagreement is only survivable because one line of the README makes it true. If that
-    // line goes, the finding goes back to being undiagnosable.
-    assert.match(read('README.md'), /PORT=8080/, 'the README no longer says how to reconcile it')
+  it('the README no longer tells anybody to reconcile a disagreement that is gone', () => {
+    // It used to say PORT=8080, which was the workaround for the registry naming this bundle's own
+    // port. Leaving that instruction after the fix would send a developer to start the indexer on
+    // the wrong port for no reason.
+    assert.doesNotMatch(read('README.md'), /PORT=8080/, 'the stale workaround is still documented')
   })
 })
 

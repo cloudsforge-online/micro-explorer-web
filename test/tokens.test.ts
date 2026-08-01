@@ -164,20 +164,24 @@ describe('the stylesheet names only tokens that exist', () => {
       )
     })
 
-    it('the three form classes this surface reached for do NOT exist, which is why it declares its own', () => {
-      // Asserted as an absence in both directions. If micro-ui grows them, this test fails and the
-      // local `.ex-input` / `.ex-select` should be deleted in favour of the shared ones — which is
-      // the right prompt to get, rather than carrying a private copy for ever.
+    it('the shared form controls exist and the local copies are gone', () => {
+      // This asserted the OPPOSITE until micro-ui grew them, on purpose: an absence pinned in both
+      // directions so the arrival of the real thing would fail the build and prompt this deletion,
+      // rather than leaving a private copy to age. That is what happened.
       const declared = new Set([...ui.matchAll(/\.(cf-[a-z0-9_-]+)/g)].map((m) => m[1] ?? ''))
-      for (const absent of ['cf-input', 'cf-select', 'cf-btn--primary']) {
-        assert.ok(
-          !declared.has(absent),
-          `.${absent} now exists in ui.css; use it instead of this repository's local class`,
-        )
+      for (const present of ['cf-input', 'cf-select', 'cf-input--mono', 'cf-select--mono']) {
+        assert.ok(declared.has(present), `.${present} is missing from ui.css`)
       }
       assert.ok(declared.has('cf-btn'), '.cf-btn is gone; the buttons on this surface are unstyled')
       assert.ok(declared.has('cf-btn--ember'), '.cf-btn--ember is gone')
-      assert.match(CSS, /\.ex-input,\s*\n\.ex-select \{/, 'the local form controls are gone')
+
+      // Still absent, and should stay so: `.cf-btn--ember` IS the one solid call to action, and a
+      // second name for one thing is how a design system starts to drift.
+      assert.ok(!declared.has('cf-btn--primary'), 'use .cf-btn--ember, not a second name for it')
+
+      // The local copies must not come back alongside the shared ones.
+      assert.doesNotMatch(CSS, /\.ex-input\b/, 'the local form control is back')
+      assert.doesNotMatch(CSS, /\.ex-select\b/, 'the local form control is back')
     })
   }
 })

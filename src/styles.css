@@ -29,12 +29,16 @@
  *
  * ── The same rule applies to CLASS names, and this surface added the check ────────────────────
  *
- * `.cf-btn` exists in `ui/packages/ui/src/ui.css`; `.cf-btn--primary`, `.cf-input` and
- * `.cf-select` do not. A class that does not exist fails exactly as quietly as a property that
- * does not: the element renders unstyled and nothing reports it. This file therefore declares its
- * own `.ex-input` and `.ex-select` rather than borrowing names that look like the design
- * system's, and `test/tokens.test.ts` asserts that every `cf-` class this bundle names is declared
- * upstream.
+ * A class that does not exist fails exactly as quietly as a property that does not: the element
+ * renders unstyled and nothing reports it. `test/tokens.test.ts` asserts that every `cf-` class
+ * this bundle names is declared upstream.
+ *
+ * `.cf-input` and `.cf-select` now exist and are used. They did not when this surface was built,
+ * which is why it carried local `.ex-input` / `.ex-select` and asserted their absence upstream —
+ * so that the day they arrived, this file would be told to delete its copy. It was.
+ *
+ * `.cf-btn--primary` still does not exist and should not: `.cf-btn--ember` is the design system's
+ * one solid call to action, and adding a second name for it is how a token set starts to drift.
  * ══════════════════════════════════════════════════════════════════════════════════════════════
  */
 
@@ -575,30 +579,19 @@
 }
 
 /*
- * `.ex-input` and `.ex-select`, not `.cf-input` and `.cf-select`.
+ * `.cf-input` and `.cf-select`, from the design system.
  *
- * The design system declares neither (`ui/packages/ui/src/ui.css` has `.cf-btn` and no form
- * controls at all), and a class that does not exist fails as silently as an undefined custom
+ * This bundle used to declare its own `.ex-input` / `.ex-select`, because ui.css had no form
+ * controls at all and a class that does not exist fails as silently as an undefined custom
  * property: the control renders with the browser's own chrome, on a dark substrate, and nothing
- * reports it. Named locally so the failure cannot be silent, and `test/tokens.test.ts` refuses any
- * `cf-` class this bundle names that upstream does not declare.
+ * reports it. `test/tokens.test.ts` asserted that absence in both directions so that the day the
+ * design system grew them, this repository would be told to delete its copy.
+ *
+ * That day came. The shared rule was extracted from the four apps that had independently written
+ * the same thing; this surface's one genuine difference - mono, for hashes and addresses - is the
+ * `--mono` modifier rather than a whole second control.
  */
-.ex-input,
-.ex-select {
-  padding: var(--cf-space-sm) var(--cf-space-md);
-  border: 1px solid var(--cf-line-strong);
-  border-radius: var(--cf-radius-sm);
-  background: var(--cf-bg-sunken);
-  color: var(--cf-fg);
-  font-family: var(--cf-font-mono);
-  font-size: var(--cf-text-md);
-}
-
-.ex-input:focus-visible,
-.ex-select:focus-visible {
-  outline: 2px solid var(--cf-accent);
-  outline-offset: 1px;
-}
+/* The form controls are `.cf-input` and `.cf-select` from the design system now. */
 
 .ex-guess {
   margin: 0;

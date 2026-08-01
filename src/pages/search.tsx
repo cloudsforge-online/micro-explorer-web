@@ -63,7 +63,7 @@ export function SearchPage() {
           <label className="ex-field">
             <span className="ex-field__label">Chain</span>
             <select
-              className="ex-select"
+              className="cf-select cf-select--mono"
               value={chain}
               onChange={(e) => setChain(e.target.value as ChainId)}
             >
@@ -77,7 +77,7 @@ export function SearchPage() {
           <label className="ex-field">
             <span className="ex-field__label">Network</span>
             <select
-              className="ex-select"
+              className="cf-select cf-select--mono"
               value={network}
               onChange={(e) => setNetwork(e.target.value as Network)}
             >
@@ -92,7 +92,7 @@ export function SearchPage() {
         <label className="ex-field ex-field--grow">
           <span className="ex-field__label">Block height, transaction hash, or address</span>
           <input
-            className="ex-input"
+            className="cf-input cf-input--mono"
             value={term}
             onChange={(e) => setTerm(e.target.value)}
             placeholder="1234567 · 0x… (64 hex) · 0x… (40 hex)"

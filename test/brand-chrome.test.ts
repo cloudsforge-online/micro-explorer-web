@@ -200,7 +200,10 @@ test('the accent selector this page names really exists, and "explorer" would NO
   // And they really are the same colour, which is the whole reason network is the right stand-in.
   const surfaces = at('../ui/packages/ui/src/surfaces.ts')
   if (!existsSync(surfaces)) return
-  const entry = /key: 'explorer',[\s\S]{0,400}?accent: '(#[0-9a-fA-F]{6})'/.exec(
+  // 1600, not 400: the registry entry gained a long comment explaining why its devPort names the
+  // indexer's port rather than this bundle's own, and the accent fell outside the window. The
+  // window is how far the search looks, not what it asserts — the equality below is unchanged.
+  const entry = /key: 'explorer',[\s\S]{0,1600}?accent: '(#[0-9a-fA-F]{6})'/.exec(
     readFileSync(surfaces, 'utf8'),
   )
   assert.ok(entry, 'the explorer entry has gone from the surface registry')
