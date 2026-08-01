@@ -17,72 +17,65 @@
  * throughout: it is the estate convention, and the service's own comment at `:130-133` says the
  * bare form exists for the operator runbooks rather than for new callers.
  *
- * | Method | Path                                                | Authenticates                | Verified at             |
- * | ------ | --------------------------------------------------- | ---------------------------- | ----------------------- |
- * | GET    | /v1/chains/:chain/:network/status                     | authorise(READ_SCOPE) :385   | indexer/src/server.ts:154 |
- * | GET    | /v1/addresses/:chain/:network/:address/activity       | authorise(READ_SCOPE) :397   | indexer/src/server.ts:155 |
- * | GET    | /v1/addresses/:chain/:network/:address/token-balances | authorise(READ_SCOPE) :464   | indexer/src/server.ts:156 |
- * | GET    | /v1/transactions/:chain/:network/:hash                 | authorise(READ_SCOPE) :413   | indexer/src/server.ts:157 |
- * | GET    | /v1/transactions/:chain/:network/:hash/confirmations   | authorise(READ_SCOPE) :438   | indexer/src/server.ts:158 |
- * | GET    | /v1/tokens/:chain/:network/:address                    | authorise(READ_SCOPE) :494   | indexer/src/server.ts:159 |
- * | GET    | /v1/blocks/:chain/:network/:height                     | authorise(READ_SCOPE) :515   | indexer/src/server.ts:160 |
+ * | Method | Path                                                | Authenticates              | Verified at               |
+ * | ------ | --------------------------------------------------- | -------------------------- | ------------------------- |
+ * | GET    | /v1/chains/:chain/:network/status                     | authoriseRead :385         | indexer/src/server.ts:154 |
+ * | GET    | /v1/addresses/:chain/:network/:address/activity       | authoriseRead :397         | indexer/src/server.ts:155 |
+ * | GET    | /v1/addresses/:chain/:network/:address/token-balances | authoriseRead :464         | indexer/src/server.ts:156 |
+ * | GET    | /v1/transactions/:chain/:network/:hash                 | authoriseRead :413         | indexer/src/server.ts:157 |
+ * | GET    | /v1/transactions/:chain/:network/:hash/confirmations   | authoriseRead :438         | indexer/src/server.ts:158 |
+ * | GET    | /v1/tokens/:chain/:network/:address                    | authoriseRead :494         | indexer/src/server.ts:159 |
+ * | GET    | /v1/blocks/:chain/:network/:height                     | authoriseRead :515         | indexer/src/server.ts:160 |
  *
  * ══════════════════════════════════════════════════════════════════════════════════════════════
- * THE FINDING THIS REPOSITORY WAS BUILT ON TOP OF, AND WHICH IT DOES NOT PRETEND AWAY
+ * THE READS ARE ANONYMOUS, AND THIS CLIENT SENDS NO BEARER FOR ONE.
  *
- * **There is no anonymous read path on `micro-indexer`, so a block explorer that works with no
- * account cannot be built against it as it stands.**
+ * `authoriseRead` (`indexer/src/server.ts:708-717`) reads the `authorization` header and, when
+ * there is none, **returns `null` and lets the handler run** (`indexer/src/server.ts:710`). Every
+ * one of the seven routes above opens with `await authoriseRead(ctx, deps)`, so a browser holding
+ * no credential at all is served. The service's reasoning is in the doc comment above it
+ * (`indexer/src/server.ts:679-707`): every read answers with a chain fact anyone can obtain by
+ * running a Hearth node, this service stores nothing linking an address to a person, and the check
+ * that used to sit there was "a lock on a public library".
  *
- * Every one of the nine domain handlers opens with `await authorise(ctx, deps, SCOPE)` — the seven
- * reads above, plus `watchAddress` (`indexer/src/server.ts:532`) and `requestBackfill`
- * (`indexer/src/server.ts:554`). `authorise` (`indexer/src/server.ts:679-697`) accepts exactly two
- * principals:
+ * This surface used to be built the other way round. All nine handlers called
+ * `authorise(ctx, deps, READ_SCOPE)`, which accepts only a service principal carrying
+ * `indexer:read` or a user the token says is an admin — so an anonymous visitor got 401 and an
+ * ordinary customer got 403, and the public block explorer rendered nothing to the public.
+ * `docs/ecosystem/15-monetisation-model.md:50` states the rule that broke: "A public chain whose
+ * explorer is paywalled is not a public chain." That was reported, `micro-indexer` fixed it, and
+ * every apology this bundle used to render has been **deleted** rather than left standing — a
+ * surface that explains a restriction which no longer exists is worse than one that never had it.
  *
- *   * a SERVICE principal carrying the scope — `indexer:read` (`indexer/src/server.ts:89`) —
- *     checked by `requireScope` at `indexer/src/server.ts:691`;
- *   * a USER principal that `isAdmin` (`indexer/src/server.ts:695`); anything else is a
- *     `ForbiddenError`, which the frame maps to **403** (`indexer/src/server.ts:254-258`).
+ * ── So every read below passes `auth: false`, and that is load-bearing ─────────────────────────
  *
- * A missing token is a `TokenError` and therefore **401** (`indexer/src/server.ts:687`,
- * `:248-253`). So an anonymous visitor gets 401 on every route this file calls, and an ordinary
- * signed-in customer gets 403 — signing in is not the remedy, which is why nothing in this bundle
- * offers it as one.
+ * `src/lib/api.ts` attaches a bearer whenever it happens to hold an access token. On a public read
+ * that would be actively harmful, because **a token that IS presented is still verified**: a
+ * service principal without `indexer:read` is a 403 (`indexer/src/server.ts:712-715`) and a broken
+ * or expired one is a 401. An operator whose access token had expired would therefore get a 401 on
+ * a page that needs no session at all — the explorer would depend on a credential to show public
+ * data, which is the same defect arriving from the client's side. `auth: false` is how this bundle
+ * states that it needs nothing: it is not an optimisation, it is the contract.
  *
- * The service argues the case in its own header (`indexer/src/server.ts:14-20`): address ownership
- * is a fact `micro-wallet` holds, so the indexer refuses to be the place that guesses at it. That
- * reasoning is sound for `/addresses/...`. It is NOT an argument about blocks: a block, a
- * transaction and a chain's tip are public facts on a public chain, and
- * `docs/ecosystem/15-monetisation-model.md:50` states the estate's own position in one line — "A
- * public chain whose explorer is paywalled is not a public chain."
- *
- * Three ways to close it were considered and rejected here:
- *
- *   1. **Bake a service token into the bundle.** A credential in a browser artefact is a published
- *      credential. Refused outright.
- *   2. **Have this repository's nginx proxy `/v1` with an injected bearer.** Same credential, in an
- *      image instead of a script, plus a build-time environment this repository has none of by
- *      design (see vite.config.ts). Refused.
- *   3. **Relax `authorise` in `micro-indexer`.** Correct, and not this repository's to make. The
- *      gateway cannot do it either: `deploy/gateway/dynamic/policy.yml` has CORS, a request-id and
- *      a `/internal` refusal, and no token-injecting middleware.
- *
- * So this bundle does the only honest thing: it renders every address publicly, calls the real
- * routes, and when the service refuses it says WHICH refusal happened and why, rather than
- * showing an empty explorer or sending a visitor to a sign-in that would not help. `Refused` in
- * `src/components/states.tsx` is that state. `test/indexer.test.ts` pins the finding against the
- * real source, so the day `micro-indexer` opens a read path the suite goes RED and somebody has to
- * come back and delete all of this — which is the correct outcome and the reason it is a test
- * rather than a paragraph.
+ * `test/indexer.test.ts` pins BOTH halves against the real source — that the seven reads are
+ * anonymous, and that the three things still refused are still refused — so a re-gate upstream, or
+ * a bearer creeping back in here, turns the suite red.
  * ══════════════════════════════════════════════════════════════════════════════════════════════
  *
- * ── Two routes are declined, and both are writes ───────────────────────────────────────────────
+ * ── Two routes are declined, and both are writes that STILL require a scope ────────────────────
  *
- *   * `POST /v1/watch/:chain/:network/:address` (`indexer/src/server.ts:161`) takes
- *     `indexer:write` (`indexer/src/server.ts:532`, scope at `:90`). "Watch this address" is an
- *     operator or a service decision about what this deployment indexes; a browser does not get to
- *     enlarge a shared work queue.
+ *   * `POST /v1/watch/:chain/:network/:address` (`indexer/src/server.ts:161`) calls
+ *     `authorise(ctx, deps, WRITE_SCOPE)` (`indexer/src/server.ts:532`, scope at `:90`). "Watch
+ *     this address" is an operator or a service decision about what this deployment indexes; a
+ *     browser does not get to enlarge a shared work queue.
  *   * `POST /v1/backfills/:chain/:network` (`indexer/src/server.ts:162`) takes `indexer:write` too
- *     (`indexer/src/server.ts:554`) and enqueues a range walk. Same reason, with a cost attached.
+ *     (`indexer/src/server.ts:554`) and enqueues a range walk. Same reason, with a cost attached:
+ *     a backfill is provider calls, which is money.
+ *
+ * Neither was relaxed, and this app must not start depending on either. `authorise`
+ * (`indexer/src/server.ts:719-737`) is the write gate and is unchanged: no token is a 401
+ * (`:727`), a service without the scope is a 403 (`:730`), and a user is refused unless `isAdmin`
+ * (`:735`).
  *
  * `/livez`, `/readyz` and `/metrics` (`indexer/src/server.ts:340`, `:350`, `:357`) are the platform
  * probes and are not wrapped here either.
@@ -459,9 +452,32 @@ export type HeadKind = (typeof CONFIRMATIONS_AGAINST)[keyof typeof CONFIRMATIONS
 const seg = (value: string): string => encodeURIComponent(value)
 
 /**
+ * Every call in this file goes through here, and here is the ONLY place `auth` is decided.
+ *
+ * `auth: false` is written once rather than seven times, because seven copies of a flag is six
+ * chances to forget it and the failure is silent: `src/lib/api.ts` attaches a bearer whenever it
+ * holds one, the indexer verifies whatever it is handed, and an expired token turns a public page
+ * into a 401. One helper makes "this bundle presents no credential" a property of the module
+ * instead of a habit — `test/indexer.test.ts` asserts that nothing here reaches `api()` directly.
+ *
+ * It is not a convenience wrapper for anything else: no headers, no method, no body. The seven
+ * routes are GETs and `micro-indexer` reads exactly one request header on a domain route.
+ */
+function publicRead<T>(path: string, opts: { query?: RequestQuery; signal?: AbortSignal } = {}) {
+  return api<T>(path, {
+    auth: false,
+    ...(opts.query ? { query: opts.query } : {}),
+    ...(opts.signal ? { signal: opts.signal } : {}),
+  })
+}
+
+type RequestQuery = Record<string, string | number | boolean | undefined | null>
+
+/**
  * `GET /v1/chains/:chain/:network/status` — `indexer/src/server.ts:154`.
  *
- * Authenticates: `authorise(ctx, deps, READ_SCOPE)` at `indexer/src/server.ts:385`.
+ * Authenticates: `authoriseRead(ctx, deps)` at `indexer/src/server.ts:385`. Anonymous is served
+ * (`indexer/src/server.ts:710`), and this call presents nothing.
  *
  * A chain this estate does not run is a **404 `unknown_chain`** rather than a 400, and the service
  * says why (`indexer/src/server.ts:580-583`): the path names a resource that does not exist, and a
@@ -469,7 +485,7 @@ const seg = (value: string): string => encodeURIComponent(value)
  * for a chain this estate does not run".
  */
 export function getChainStatus(scope: Scope, signal?: AbortSignal): Promise<ChainStatus> {
-  return api<ChainStatus>(`/v1/chains/${seg(scope.chain)}/${seg(scope.network)}/status`, {
+  return publicRead<ChainStatus>(`/v1/chains/${seg(scope.chain)}/${seg(scope.network)}/status`, {
     ...(signal ? { signal } : {}),
   })
 }
@@ -477,7 +493,7 @@ export function getChainStatus(scope: Scope, signal?: AbortSignal): Promise<Chai
 /**
  * `GET /v1/blocks/:chain/:network/:height` — `indexer/src/server.ts:160`.
  *
- * Authenticates: `authorise(ctx, deps, READ_SCOPE)` at `indexer/src/server.ts:515`.
+ * Authenticates: `authoriseRead(ctx, deps)` at `indexer/src/server.ts:515`. Anonymous is served.
  *
  * The height is validated as `/^\d{1,15}$/` before any query runs, and anything else is a **400
  * `bad_height`** (`indexer/src/server.ts:518-519`). A height off the canonical chain — including
@@ -489,7 +505,7 @@ export function getBlock(
   height: string,
   signal?: AbortSignal,
 ): Promise<BlockView> {
-  return api<BlockView>(
+  return publicRead<BlockView>(
     `/v1/blocks/${seg(scope.chain)}/${seg(scope.network)}/${seg(height)}`,
     { ...(signal ? { signal } : {}) },
   )
@@ -498,7 +514,7 @@ export function getBlock(
 /**
  * `GET /v1/transactions/:chain/:network/:hash` — `indexer/src/server.ts:157`.
  *
- * Authenticates: `authorise(ctx, deps, READ_SCOPE)` at `indexer/src/server.ts:413`.
+ * Authenticates: `authoriseRead(ctx, deps)` at `indexer/src/server.ts:413`. Anonymous is served.
  *
  * A hash this indexer has never seen is a **404 `transaction_not_found`**
  * (`indexer/src/server.ts:419`). On an EVM or Ember chain the hash must match
@@ -512,7 +528,7 @@ export function getTransaction(
   hash: string,
   signal?: AbortSignal,
 ): Promise<TransactionView> {
-  return api<TransactionView>(
+  return publicRead<TransactionView>(
     `/v1/transactions/${seg(scope.chain)}/${seg(scope.network)}/${seg(hash)}`,
     { ...(signal ? { signal } : {}) },
   )
@@ -521,7 +537,7 @@ export function getTransaction(
 /**
  * `GET /v1/transactions/:chain/:network/:hash/confirmations` — `indexer/src/server.ts:158`.
  *
- * Authenticates: `authorise(ctx, deps, READ_SCOPE)` at `indexer/src/server.ts:438`.
+ * Authenticates: `authoriseRead(ctx, deps)` at `indexer/src/server.ts:438`. Anonymous is served.
  *
  * **THE 404 HERE IS A GENUINE ANSWER AND MUST NOT BE COLLAPSED INTO "not confirmed yet".** The
  * handler's own comment (`indexer/src/server.ts:426-436`) records what happened when it was: a
@@ -540,7 +556,7 @@ export function getConfirmations(
   hash: string,
   signal?: AbortSignal,
 ): Promise<ConfirmationView> {
-  return api<ConfirmationView>(
+  return publicRead<ConfirmationView>(
     `/v1/transactions/${seg(scope.chain)}/${seg(scope.network)}/${seg(hash)}/confirmations`,
     { ...(signal ? { signal } : {}) },
   )
@@ -549,7 +565,10 @@ export function getConfirmations(
 /**
  * `GET /v1/addresses/:chain/:network/:address/activity` — `indexer/src/server.ts:155`.
  *
- * Authenticates: `authorise(ctx, deps, READ_SCOPE)` at `indexer/src/server.ts:397`.
+ * Authenticates: `authoriseRead(ctx, deps)` at `indexer/src/server.ts:397`. Anonymous is served —
+ * which matters most here, because this is the route the old gate had the strongest argument for.
+ * The service's answer is that it stores nothing linking an address to a person: ownership is a
+ * fact `micro-wallet` holds, deliberately (`indexer/src/server.ts:684-687`).
  *
  * `limit` must be an integer in 1..200 or it is a **400 `bad_limit`**
  * (`indexer/src/server.ts:667-674`); the default is 50 (`indexer/src/server.ts:101`). `cursor` is
@@ -566,7 +585,7 @@ export function getAddressActivity(
   options: { limit?: number; cursor?: string | null } = {},
   signal?: AbortSignal,
 ): Promise<ActivityPage> {
-  return api<ActivityPage>(
+  return publicRead<ActivityPage>(
     `/v1/addresses/${seg(scope.chain)}/${seg(scope.network)}/${seg(address)}/activity`,
     {
       query: {
@@ -581,7 +600,7 @@ export function getAddressActivity(
 /**
  * `GET /v1/addresses/:chain/:network/:address/token-balances` — `indexer/src/server.ts:156`.
  *
- * Authenticates: `authorise(ctx, deps, READ_SCOPE)` at `indexer/src/server.ts:464`.
+ * Authenticates: `authoriseRead(ctx, deps)` at `indexer/src/server.ts:464`. Anonymous is served.
  *
  * Takes an optional `contract` filter, normalised exactly as an address is
  * (`indexer/src/server.ts:641-655`), and an optional `block` bound; absent means "as at the head
@@ -596,7 +615,7 @@ export function getTokenBalances(
   options: { contract?: string | null; block?: number | null } = {},
   signal?: AbortSignal,
 ): Promise<TokenBalancesView> {
-  return api<TokenBalancesView>(
+  return publicRead<TokenBalancesView>(
     `/v1/addresses/${seg(scope.chain)}/${seg(scope.network)}/${seg(address)}/token-balances`,
     {
       query: {
@@ -611,7 +630,7 @@ export function getTokenBalances(
 /**
  * `GET /v1/tokens/:chain/:network/:address` — `indexer/src/server.ts:159`.
  *
- * Authenticates: `authorise(ctx, deps, READ_SCOPE)` at `indexer/src/server.ts:494`.
+ * Authenticates: `authoriseRead(ctx, deps)` at `indexer/src/server.ts:494`. Anonymous is served.
  *
  * **Three different failures, three different meanings, and this app renders three different
  * screens.** The handler's comment (`indexer/src/server.ts:478-492`) is explicit:
@@ -633,7 +652,7 @@ export function getToken(
   address: string,
   signal?: AbortSignal,
 ): Promise<TokenObservation> {
-  return api<TokenObservation>(
+  return publicRead<TokenObservation>(
     `/v1/tokens/${seg(scope.chain)}/${seg(scope.network)}/${seg(address)}`,
     { ...(signal ? { signal } : {}) },
   )

@@ -164,19 +164,11 @@
 }
 
 /*
- * REFUSED is warn rather than danger, deliberately.
- *
- * Nothing is broken: the chain index answered exactly as it is configured to. Danger would say
- * "something has gone wrong", and the honest reading is "this is not open yet".
+ * There was a `.wt-state--refused` rule here, styling the panel this surface showed when the chain
+ * index would not answer an anonymous read. The reads are anonymous now
+ * (indexer/src/server.ts:708-717), the component is deleted, and a rule for a class nothing renders
+ * is the kind of dead weight that gets copied into the next repository.
  */
-.wt-state--refused {
-  border: 1px solid var(--cf-warn);
-  background: var(--cf-bg-sunken);
-}
-
-.wt-state--refused .wt-state__icon {
-  color: var(--cf-warn);
-}
 
 /*
  * The request id is the string a reader reads down a phone line or pastes into a support form, so
@@ -347,10 +339,6 @@
 
 .ex-note--depth strong {
   color: var(--cf-fg);
-}
-
-.ex-notice {
-  border-width: 2px;
 }
 
 /* ---- facts ------------------------------------------------------------ */
@@ -645,10 +633,24 @@
   font-weight: 600;
 }
 
-.ex-scope__nets {
+/*
+ * One (chain, network) row: the link, then the line of state under it.
+ *
+ * The state is BELOW the link rather than beside it because it wraps — "walked to 4 812 990 ·
+ * claimed tip 4 813 004 · behind by 14" does not fit next to a label on a narrow card, and a row
+ * that reflows mid-number is a row somebody misreads.
+ */
+.ex-scope__net {
   display: flex;
-  gap: var(--cf-space-sm);
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: var(--cf-space-2xs);
+  align-items: flex-start;
+}
+
+.ex-scope__state {
+  margin: 0;
+  font-size: var(--cf-text-sm);
+  line-height: 1.5;
 }
 
 .ex-scope__link {

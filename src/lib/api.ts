@@ -10,13 +10,16 @@
  *
  * ── One thing is different on THIS surface, and it is not a detail ─────────────────────────────
  *
- * A session does not make this app work. `micro-indexer` authorises a user principal only when it
- * is an ADMIN (`indexer/src/server.ts:695`), so an ordinary customer signing in gets 403 on every
- * read and is no better off than an anonymous visitor. The refresh machinery below is still
- * correct and still used — an operator holding an admin session is exactly who this bundle can
- * serve today — but nothing in this app may treat "sign in" as the remedy for a refusal. See the
- * header of `src/lib/indexer.ts` for the whole of that finding, and `src/components/states.tsx`
- * for the state it is rendered as.
+ * **A session has nothing to do with reading the chain here.** Every `micro-indexer` route this
+ * bundle calls is anonymous (`authoriseRead`, `indexer/src/server.ts:708-717`), and every one of
+ * them is issued with `auth: false` — see `publicRead` in `src/lib/indexer.ts`. The token
+ * machinery below exists for exactly one caller, `/auth/me` on Nimbus, which puts the reader's
+ * handle in the shared bar and nothing else.
+ *
+ * So the rule for this file is narrow and worth stating: **a bearer must never travel to the chain
+ * index.** Presenting one there would be verified rather than ignored, and an expired one would
+ * turn a page that needs no session into a 401 — a public explorer that has quietly made itself
+ * depend on a credential.
  */
 import { consumeAuthCallback, signInRedirect, signOutRedirect } from '@cloudsforge/ui'
 import { APP_NAME, apiBase, hosts, pageOrigin } from './hosts.ts'
@@ -166,16 +169,6 @@ export interface ErrorNotice {
   message: string
   requestId: string | undefined
   /**
-   * 401 or 403: the request was understood and the authority was not there.
-   *
-   * **Both, not just 403, and that is a change from the template.** Everywhere else in the estate
-   * a 401 means "your session expired, sign in again" and is handled by the refresh path above. On
-   * this surface an anonymous read is a 401 that no sign-in fixes (`indexer/src/server.ts:687`,
-   * `:679-697`), so the two statuses share one screen and the screen words them differently. See
-   * `Refused` in `src/components/states.tsx`.
-   */
-  refused: boolean
-  /**
    * The service's error CODE, carried through so a screen can branch on it.
    *
    * The template drops it, and dropping it is how `micro-market` and `micro-mint` each rendered a
@@ -200,7 +193,6 @@ export function noticeFor(err: unknown, fallback: string): ErrorNotice {
     return {
       message: err.message,
       requestId: err.requestId,
-      refused: err.status === 401 || err.status === 403,
       code: err.code,
       status: err.status,
     }
@@ -215,7 +207,6 @@ export function noticeFor(err: unknown, fallback: string): ErrorNotice {
   return {
     message: fallback,
     requestId: undefined,
-    refused: false,
     code: undefined,
     status: undefined,
   }
@@ -297,10 +288,11 @@ export interface RequestOptions {
    * Extra request headers. **Nothing on this surface sets one, and that is a fact about the API.**
    *
    * `micro-indexer` reads exactly one request header on a domain route — `authorization`, in
-   * `authorise` (`indexer/src/server.ts:684`) — plus `x-request-id` and `host` in the server
-   * frame (`indexer/src/server.ts:180`, `:187`). There is no `Idempotency-Key` anywhere in that
-   * repository, and this bundle sends no request that would need one: every route it calls is a
-   * GET, and the two POSTs the indexer serves are declined (see `src/lib/indexer.ts`).
+   * `authoriseRead` (`indexer/src/server.ts:709`) and `authorise` (`:724`) — plus `x-request-id`
+   * and `host` in the server frame (`indexer/src/server.ts:180`, `:187`). There is no
+   * `Idempotency-Key` anywhere in that repository, and this bundle sends no request that would
+   * need one: every route it calls is a GET, and the two POSTs the indexer serves are declined
+   * (see `src/lib/indexer.ts`).
    *
    * The parameter is kept rather than deleted because it is the template's and because deleting it
    * would make the next writer add it back without the note. Copying `trade-web`'s client here
@@ -395,18 +387,17 @@ async function request<T>(base: string, path: string, opts: RequestOptions = {})
         context: { method, contentType: res.headers.get('content-type') },
       })
     }
-    // ── `hasSession()` is this surface's addition to the template, and it is not cosmetic ──────
+    // `auth` means "attach a bearer IF we hold one", not "we hold one", so a 401 to a call made
+    // without a session is the route saying it needs authentication rather than a session ending —
+    // and expiring one that never existed dispatches `cf:auth-expired`, which signs a user out of
+    // a session they never had.
     //
-    // The template ends a session on any 401 to an authenticated call. That is right where a 401
-    // can only mean "your token expired". Here it cannot: `micro-indexer` answers 401 to a caller
-    // that presented NO token at all (`indexer/src/server.ts:687`), which is every request an
-    // anonymous visitor to this public explorer makes. Without the guard, loading the front page
-    // signed out dispatches `cf:auth-expired` on every request — an event the shared bar and the
-    // provider both listen for, describing a session that never existed.
-    //
-    // Reported to micro-web-template: any frontend cut from it that calls an authenticated route
-    // while signed out has the same false event. It is invisible on the others because they gate
-    // those calls behind a session; this one deliberately does not.
+    // This surface REPORTED that defect to micro-web-template, and the template has since fixed it
+    // (`web-template/src/lib/api.ts:344`, `if (res.status === 401 && auth && hasSession())`). This
+    // line is the template's, not a fork of it, and `test/api.test.ts` checks the two agree. Note
+    // the guard is no longer what keeps the explorer quiet — the chain reads pass `auth: false` and
+    // never reach this branch at all — but it is still right for `/auth/me`, and a client that is
+    // only correct because of where it happens to be called is a client waiting to be moved.
     if (res.status === 401 && auth && hasSession()) expireSession()
     throw new ApiError(res.status, message, code, requestId)
   }

@@ -80,10 +80,10 @@ jobs:
       #
       # `test/indexer.test.ts` reads `indexer/src/server.ts`, `reads.ts`, `chains.ts` and `env.ts`
       # and requires that every route this bundle calls is registered at the line its citation
-      # names, that every one of the nine domain routes still calls `authorise` with the scope this
-      # app believes, that `authorise` still accepts only a scoped service or an admin — the finding
-      # this whole repository is shaped by — and that each confirmation count is still measured
-      # against the head `CONFIRMATIONS_AGAINST` says it is.
+      # names, that each of the nine domain routes still opens with the gate this app believes —
+      # seven anonymous reads through `authoriseRead`, two writes still behind `indexer:write` — and
+      # that each confirmation count is still measured against the head `CONFIRMATIONS_AGAINST` says
+      # it is.
       #
       # Eight clients in this estate were built against a surface somebody imagined; one made every
       # on-chain escrow activation fail with a false diagnosis.
@@ -330,25 +330,81 @@ jobs:
           fi
           echo "ok: moving one citation from ${cited} to ${bent} turns the suite red, so a pass is evidence"
 
-      # ── The authority finding must be a CHECKED fact, not a paragraph ─────────────────────────
+      # ── The authority contract must be a CHECKED fact, not a paragraph ────────────────────────
       #
-      # This whole repository is shaped by there being no anonymous read path on micro-indexer.
-      # If that check ever stops running, the surface goes on apologising for a restriction nobody
-      # is measuring — which is how a stale claim survives in this estate.
-      - name: The authority finding was verified against the real service
+      # This step used to require the OPPOSITE assertion — "NOT ONE domain route is anonymous" —
+      # because every micro-indexer read demanded `indexer:read` or an admin, and the surface was
+      # built to explain that. micro-indexer opened the seven reads, the test went red exactly as it
+      # was written to, and the refusal machinery was deleted rather than left to apologise.
+      #
+      # The step survives inverted, because the risk did not go away, it changed direction: a read
+      # re-gated upstream now breaks a client that sends no bearer, and a bearer creeping back in
+      # here would make a public page fail for anybody holding an expired token. Both are checked,
+      # and this step exists so that neither check can quietly stop running.
+      - name: The authority contract was verified against the real service
         working-directory: explorer-web
         run: |
           set -euo pipefail
           out=$(node --import tsx --test test/indexer.test.ts 2>&1 || true)
-          printf '%s\n' "$out" | grep -q 'NOT ONE domain route is anonymous: all nine call authorise' || {
-            echo "::error::the authority check did not run"
+          for name in \
+            'all seven reads are ANONYMOUS: authoriseRead serves a caller with no token' \
+            'the nine handlers are exactly seven anonymous reads and two gated writes' \
+            'the three things still refused are still refused' \
+            'the client sends no bearer on any read'
+          do
+            printf '%s\n' "$out" | grep -qF "$name" || {
+              echo "::error::the authority check '$name' did not run"
+              exit 1
+            }
+          done
+          echo "ok: the seven reads are anonymous, the two writes are not, and this client presents nothing"
+
+      # …and the no-bearer half is measured ON THE WIRE as well as read off the source.
+      #
+      # `test/indexer.test.ts` proves the seven reads all go through `publicRead`. That is a check
+      # on the SHAPE of the module, and a shape check cannot see a header. `test/api.test.ts` drives
+      # each of the seven with an access token in storage and inspects what fetch was handed, which
+      # is the only form of this assertion a rewrite of the client cannot walk around.
+      - name: No bearer reaches the chain index, measured on the wire
+        working-directory: explorer-web
+        run: |
+          set -euo pipefail
+          out=$(node --import tsx --test test/api.test.ts 2>&1 || true)
+          count=$(printf '%s\n' "$out" \
+                  | grep -oE '[a-zA-Z]+ sends no authorization header' | sort -u | wc -l | tr -d ' ')
+          [ "$count" -eq 7 ] || {
+            echo "::error::only $count of the seven reads were checked for a bearer"
             exit 1
           }
-          printf '%s\n' "$out" | grep -q 'authorise accepts a scoped SERVICE or an ADMIN user' || {
-            echo "::error::the authorise shape check did not run"
+          printf '%s\n' "$out" | grep -qF 'the stub WOULD have seen one' || {
+            echo "::error::the not-vacuous control did not run; the seven checks prove nothing"
             exit 1
           }
-          echo "ok: micro-indexer still refuses an anonymous read, which is why this surface explains itself"
+          echo "ok: seven reads issued with a session in storage, none carrying an authorization header"
+
+      # …and it can fail. Put the bearer back and require the suite to go red.
+      - name: …and it would have noticed a bearer creeping back in
+        working-directory: explorer-web
+        run: |
+          set -euo pipefail
+          cp src/lib/indexer.ts "$RUNNER_TEMP/indexer.ts.orig"
+          restore() { cp "$RUNNER_TEMP/indexer.ts.orig" src/lib/indexer.ts; }
+          trap restore EXIT
+
+          # `auth: false` is written exactly once, in `publicRead`, and test/indexer.test.ts asserts
+          # that. Deleting the one copy is therefore the whole mutation — no line number named here,
+          # for the same reason the citation mutation above derives its own.
+          perl -0pi -e 's/    auth: false,\n//' src/lib/indexer.ts
+          if cmp -s src/lib/indexer.ts "$RUNNER_TEMP/indexer.ts.orig"; then
+            echo "::error::the mutation changed nothing, so this step proves nothing"
+            exit 1
+          fi
+
+          if node --import tsx --test test/api.test.ts test/indexer.test.ts >/dev/null 2>&1; then
+            echo "::error::the suite passed with the bearer restored — it is not measuring the header"
+            exit 1
+          fi
+          echo "ok: restoring the bearer turns the suite red, so a pass is evidence"
 
       # ── The design-system cross-check must also have RUN ──────────────────────────────────────
       #
@@ -548,9 +604,10 @@ jobs:
         run: test -f test/routes.test.ts && grep -q 'nginx.conf' test/routes.test.ts
 
       - name: Nothing is gated behind a session
-        # `micro-indexer` serves a scoped service or an admin user and nothing else
-        # (indexer/src/server.ts:679-697), so a gate would send a visitor through an SSO round trip
-        # to arrive at a 403. Asserted as an ABSENCE, because the reflex is to add one back.
+        # Every `micro-indexer` route this bundle calls is anonymous (`authoriseRead`,
+        # indexer/src/server.ts:708-717), so a gate would make a browser prove who it is before
+        # showing facts anyone can read off a public chain. Asserted as an ABSENCE, because the
+        # reflex is to add one back.
         #
         # COMMENTS STRIPPED FIRST. app.tsx and auth.tsx both NAME the thing they refuse in order to
         # explain the refusal, so a raw grep matches the explanation and fails a correct file.
@@ -559,11 +616,11 @@ jobs:
           strip() { perl -0pe 's{\{/\*.*?\*/\}}{}gs; s{/\*.*?\*/}{}gs; s{^\s*//.*$}{}gm' "$1"; }
           for f in $(find src -name '*.ts' -o -name '*.tsx'); do
             if strip "$f" | grep -n 'ProtectedRoute' | sed "s|^|$f:|" | grep .; then
-              echo "::error::signing in does not unlock this surface; see src/lib/auth.tsx"
+              echo "::error::nothing on this surface needs a session; see src/lib/auth.tsx"
               exit 1
             fi
           done
-          echo "ok: every route renders for everybody, and a refusal is shown as a refusal"
+          echo "ok: every route renders for everybody, with no session and no bearer"
 
       - name: Every route this client calls cites the line that serves it
         # The rule test/indexer.test.ts enforces, restated so that deleting the test does not delete

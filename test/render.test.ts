@@ -206,33 +206,73 @@ describe('a withheld answer is shown as withheld', () => {
   })
 })
 
-describe('a refusal is worded as a refusal, and never as a reason to sign in', () => {
-  it('the refusal component offers no sign-in', () => {
-    // Sending an anonymous visitor to sign in would take them through an SSO round trip to arrive
-    // at the 403 an ordinary account gets. The shared bar already carries a sign-in for the
-    // operator who needs one, which is the honest placement: available, not suggested as the fix.
-    const source = rendered('src/components/states.tsx')
-    assert.doesNotMatch(source, /onSignIn|signIn\(/, 'the refusal offers a sign-in')
-    assert.match(source, /Signing in here would not change that/)
+/* ══════════════════════════════════════════════════════════════════════════════════════════════
+ * THE REFUSAL MACHINERY IS GONE, AND THIS IS THE CHECK THAT KEEPS IT GONE.
+ *
+ * This block used to assert the opposite: that every page reading the chain index rendered a
+ * `<Refused>` panel, that it offered no sign-in, and that it printed the line where the refusal was
+ * decided. All of that was correct while `micro-indexer` served only a scoped service or an admin.
+ * It opened the seven reads (`authoriseRead`, `indexer/src/server.ts:708-717`), and a surface that
+ * goes on explaining a restriction nobody is under is worse than one that never had it — a reader
+ * believes it, and nothing on the page tells them it is stale.
+ *
+ * So the assertions are inverted rather than deleted. A refusal panel, a standing notice, or a
+ * sentence telling somebody to acquire `indexer:read` reappearing in this bundle is now a failure.
+ * ══════════════════════════════════════════════════════════════════════════════════════════════ */
+
+describe('nothing on this surface apologises for an authority it does not need', () => {
+  const ALL = [
+    ...PAGES.map((p) => `src/pages/${p}`),
+    ...readdirSync(at('src/components')).map((f) => `src/components/${f}`),
+    ...readdirSync(at('src/lib')).map((f) => `src/lib/${f}`),
+  ].filter((f) => f.endsWith('.ts') || f.endsWith('.tsx'))
+
+  it('found the files it thinks it did, so this cannot pass on an empty sweep', () => {
+    assert.ok(ALL.length >= 18, `swept only ${ALL.length} files`)
   })
 
-  it('it says WHERE the decision is made, so a reader can check it', () => {
-    assert.match(read('src/components/states.tsx'), /indexer\/src\/server\.ts:679-697/)
-    assert.match(read('src/components/shell.tsx'), /indexer\/src\/server\.ts:679-697/)
+  it('no file renders a refusal state', () => {
+    for (const file of ALL) {
+      const source = rendered(file)
+      assert.doesNotMatch(source, /<Refused\b/, `${file} renders a refusal panel`)
+      assert.doesNotMatch(source, /state === 'refused'/, `${file} branches on a refusal state`)
+      assert.doesNotMatch(source, /\brefused\b\s*:/, `${file} carries a refused flag`)
+    }
   })
 
-  it('every page that reads the index renders the refusal state', () => {
-    for (const page of ['chain', 'block', 'transaction', 'address', 'token']) {
+  it('no page tells a reader to hold a scope, or that signing in would not help', () => {
+    // The exact sentences this surface used to print, plus the shape of the argument they made.
+    // A page that says either has re-acquired a claim nobody is measuring.
+    for (const file of ALL.concat(['index.html'])) {
+      const source = rendered(file)
+      assert.doesNotMatch(source, /indexer:read/, `${file} tells a reader to acquire indexer:read`)
+      assert.doesNotMatch(source, /would not change that/i, `${file} argues about signing in`)
+      assert.doesNotMatch(source, /operator account/i, `${file} explains who the index serves`)
+    }
+  })
+
+  it('the states module exports the four that remain, and no fifth', () => {
+    const exported = [...read('src/components/states.tsx').matchAll(/^export function (\w+)/gm)].map(
+      (m) => m[1],
+    )
+    assert.deepEqual(exported.sort(), ['Empty', 'Failed', 'Loading', 'Missing'])
+  })
+
+  it('every page that reads the index renders its answer, and a plain failure when it cannot', () => {
+    // The positive half, so this block cannot be satisfied by a page that renders nothing at all.
+    for (const page of ['chain', 'block', 'transaction', 'address', 'token', 'chains']) {
       const source = read(`src/pages/${page}.tsx`)
-      assert.match(source, /<Refused\b/, `${page}.tsx has no refusal state`)
-      assert.match(source, /state === 'refused'/, `${page}.tsx never checks for one`)
+      assert.match(source, /<Failed\b/, `${page}.tsx has no failure state`)
+      assert.match(source, /useResource</, `${page}.tsx reads nothing`)
     }
   })
 
-  it('and the two pages that read nothing render no refusal, because there is nothing to refuse', () => {
-    for (const page of ['search', 'chains']) {
-      assert.doesNotMatch(read(`src/pages/${page}.tsx`), /<Refused\b/, `${page}.tsx refuses something`)
-    }
+  it('the shell renders no standing notice about the index', () => {
+    const source = rendered('src/components/shell.tsx')
+    assert.doesNotMatch(source, /ex-notice/, 'the standing notice is back')
+    assert.doesNotMatch(source, /chain index behind it/i, 'the standing notice is back, reworded')
+    // The one notice that remains is about a wrong hostname, which is a real and current fault.
+    assert.match(source, /surface registry does not/)
   })
 })
 

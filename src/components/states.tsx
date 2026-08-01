@@ -8,14 +8,14 @@
  *   MISSING   — the chain, or this indexer's record of it, does not contain the thing asked for.
  *               That is an ANSWER, and on this surface it is often the most useful one.
  *   FAILED    — the query did not answer. Retrying may work. The request id is what support needs.
- *   REFUSED   — the request was understood and the authority was not there. Retrying will never
- *               work, and on this surface neither will signing in.
  *
  * A spinner that never resolves, an empty list that was actually a timeout, and a "no results"
  * that was actually a missing scope are the three failures this file exists to prevent. This
  * surface adds a fourth: a 404 that means "no such transaction" rendered identically to a 404 that
  * means "this client asked for a path the service does not serve". `Missing` takes the code, so
  * the two cannot look alike.
+ *
+ * There were five of these. The fifth is gone, and the note where it stood says why.
  */
 import type { ReactNode } from 'react'
 import type { ErrorNotice } from '../lib/api.ts'
@@ -154,75 +154,22 @@ export function Failed({
   )
 }
 
-/**
- * THE STATE THIS SURFACE EXISTS UNDER TODAY.
+/* ────────────────────────────────────────────────────────────────────────────────────────────────
+ * THERE WAS A FIFTH STATE HERE, `Refused`, AND IT HAS BEEN DELETED.
  *
- * ══════════════════════════════════════════════════════════════════════════════════════════════
- * A public block explorer cannot read `micro-indexer` anonymously, and this component is where
- * that is said out loud rather than rendered as a broken page.
+ * It existed because every `micro-indexer` read demanded a service principal holding `indexer:read`
+ * or an admin user, so an anonymous visitor got 401 and an ordinary customer got 403, and a public
+ * block explorer could render nothing to the public. This surface said which refusal had happened
+ * and where it was decided, rather than showing an empty page or offering a sign-in that would not
+ * have helped.
  *
- * `authorise` (`indexer/src/server.ts:679-697`) takes a service principal holding `indexer:read`
- * (`indexer/src/server.ts:89`, checked at `:691`) or a user principal that `isAdmin` (`:695`).
- * A missing token is a `TokenError` and therefore **401** (`:687`, mapped at `:248-253`); a user
- * without the role is a `ForbiddenError` and therefore **403** (mapped at `:254-258`).
+ * `micro-indexer` opened the seven reads (`authoriseRead`, `indexer/src/server.ts:708-717`), and
+ * `test/indexer.test.ts` went red the same day — which is exactly what it was written to do. A
+ * component that explains a restriction nobody is subject to is worse than one that never existed,
+ * because a reader believes it. So it is gone, and so are the standing notice in the shell, the
+ * `refused` resource state, and the `served` predicate the wording branched on.
  *
- * The two get different sentences because the remedies differ, and neither sentence is
- * "sign in":
- *
- *   401, anonymous     — the surface is public, the index is not. Nothing you do in this browser
- *                        changes that; the change belongs in `micro-indexer`.
- *   403, signed in     — you are signed in and the index still refuses, because it serves an
- *                        operator or a service, not a customer.
- *
- * **There is no "Sign in" button on this component and there must not be one.** Offering it to the
- * anonymous case would send a visitor through an SSO round trip to arrive at the 403 above, which
- * is the same class of mistake as a client sending a bearer to a route that never wanted one. The
- * shared bar already has a sign-in for the operator who needs it, which is the honest placement:
- * available, not suggested as the fix.
- * ══════════════════════════════════════════════════════════════════════════════════════════════
- */
-export function Refused({
-  notice,
-  signedIn,
-  what,
-}: {
-  notice: ErrorNotice
-  /** Whether there is a session at all. It decides which of the two sentences is true. */
-  signedIn: boolean
-  /** What was being read — "this block", "this address's activity". Used in the first sentence. */
-  what: string
-}) {
-  return (
-    <div className="wt-state wt-state--refused" role="alert">
-      <span className="wt-state__icon" aria-hidden="true">
-        ⊘
-      </span>
-      <p className="wt-state__title">The chain index would not answer for {what}</p>
-      {signedIn ? (
-        <p className="wt-state__hint">
-          You are signed in, and the index still refused. It serves a CloudsForge service holding
-          the <code className="cf-num ex-code">indexer:read</code> scope, or an operator account —
-          not an ordinary account. Nothing about your session is wrong.
-        </p>
-      ) : (
-        <p className="wt-state__hint">
-          This explorer is public. The chain index behind it is not: it answers only a CloudsForge
-          service holding the <code className="cf-num ex-code">indexer:read</code> scope, or an
-          operator account. Signing in here would not change that answer, so this page does not ask
-          you to.
-        </p>
-      )}
-      <p className="wt-state__meta ex-refused__where">
-        Where it is decided:{' '}
-        <code className="cf-num ex-code">indexer/src/server.ts:679-697</code>. Until that route is
-        opened, blocks and transactions on a public chain are not publicly readable here.
-      </p>
-      <p className="wt-state__hint">{notice.message}</p>
-      {notice.requestId && (
-        <p className="wt-state__meta">
-          Reference: <code className="cf-num wt-reqid">{notice.requestId}</code>
-        </p>
-      )}
-    </div>
-  )
-}
+ * A 401 or a 403 from the chain index now lands in `Failed`, which is correct: this bundle presents
+ * no credential (`publicRead` in src/lib/indexer.ts), so nothing it sends can lack one, and an auth
+ * status arriving anyway is a fault in the service or in something in front of it.
+ * ──────────────────────────────────────────────────────────────────────────────────────────────── */

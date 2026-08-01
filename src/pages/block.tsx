@@ -26,21 +26,19 @@
  */
 import { useCallback } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { Failed, Loading, Missing, Refused } from '../components/states.tsx'
+import { Failed, Loading, Missing } from '../components/states.tsx'
 import { Depth, DepthNote, Fact, Note } from '../components/tone.tsx'
-import { useSession } from '../lib/auth.tsx'
 import { count, timestamp } from '../lib/format.ts'
 import { CONFIRMATIONS_AGAINST, getBlock, type BlockView } from '../lib/indexer.ts'
 import { useResource } from '../lib/resource.ts'
 import { linkTo } from '../lib/routes.ts'
-import { parseScope, scopeLabel } from '../lib/scope.ts'
+import { parseScope } from '../lib/scope.ts'
 import { UnknownScope } from './unknown-scope.tsx'
 
 export function BlockPage() {
   const params = useParams()
   const scope = parseScope(params['chain'], params['network'])
   const height = params['height'] ?? ''
-  const { status: sessionStatus } = useSession()
 
   const load = useCallback(
     (signal: AbortSignal) => {
@@ -59,15 +57,6 @@ export function BlockPage() {
   if (!scope) return <UnknownScope chain={params['chain']} network={params['network']} />
 
   if (resource.state === 'loading') return <Loading label={`Reading block ${height}`} />
-  if (resource.state === 'refused' && resource.error) {
-    return (
-      <Refused
-        notice={resource.error}
-        signedIn={sessionStatus === 'signedIn'}
-        what={`block ${height} on ${scopeLabel(scope)}`}
-      />
-    )
-  }
   if (resource.error) {
     if (resource.error.code === 'unknown_chain' || resource.error.code === 'unknown_network') {
       return <UnknownScope chain={params['chain']} network={params['network']} />

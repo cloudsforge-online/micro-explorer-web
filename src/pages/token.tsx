@@ -34,14 +34,13 @@
  */
 import { useCallback } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { Failed, Loading, Missing, Refused } from '../components/states.tsx'
+import { Failed, Loading, Missing } from '../components/states.tsx'
 import { Fact, Note } from '../components/tone.tsx'
-import { useSession } from '../lib/auth.tsx'
 import { count, tokenFaultReason, units } from '../lib/format.ts'
 import { getToken, type TokenObservation } from '../lib/indexer.ts'
 import { useResource } from '../lib/resource.ts'
 import { linkTo } from '../lib/routes.ts'
-import { parseScope, scopeLabel } from '../lib/scope.ts'
+import { parseScope } from '../lib/scope.ts'
 import { UnknownScope } from './unknown-scope.tsx'
 
 /** The five faults `observe` can raise (`indexer/src/tokenstate.ts:136-141`). */
@@ -57,7 +56,6 @@ export function TokenPage() {
   const params = useParams()
   const scope = parseScope(params['chain'], params['network'])
   const address = params['address'] ?? ''
-  const { status: sessionStatus } = useSession()
 
   const load = useCallback(
     (signal: AbortSignal) => {
@@ -76,15 +74,6 @@ export function TokenPage() {
   if (!scope) return <UnknownScope chain={params['chain']} network={params['network']} />
 
   if (resource.state === 'loading') return <Loading label="Asking the chain about this contract" />
-  if (resource.state === 'refused' && resource.error) {
-    return (
-      <Refused
-        notice={resource.error}
-        signedIn={sessionStatus === 'signedIn'}
-        what={`the token at this address on ${scopeLabel(scope)}`}
-      />
-    )
-  }
   if (resource.error) {
     const code = resource.error.code ?? ''
 

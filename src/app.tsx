@@ -7,16 +7,16 @@
  *
  * ── Nothing here is gated, and that is read off the SERVICE rather than chosen ─────────────────
  *
- * There is no `ProtectedRoute` in this repository. `micro-indexer` authorises a service principal
- * holding `indexer:read` or a user the token says is an admin, and nothing else
- * (`indexer/src/server.ts:679-697`), so an ordinary customer who signs in is refused by exactly the
- * same request that refused them signed out. A gate would send a visitor through an SSO round trip
- * to arrive at a 403 — the same class of mistake as a client sending a bearer to a route that never
- * wanted one, which this estate has already shipped.
+ * There is no `ProtectedRoute` in this repository, and there must not be one. Every
+ * `micro-indexer` route this app calls is anonymous: `authoriseRead` returns `null` for a caller
+ * with no token and lets the handler run (`indexer/src/server.ts:708-717`). A gate here would
+ * demand a session for facts anyone can read off a public chain —
+ * `docs/ecosystem/15-monetisation-model.md:50`: "A public chain whose explorer is paywalled is not
+ * a public chain."
  *
- * So every route renders for everybody, every panel calls the real route, and a refusal is
- * displayed as a refusal with its reason. `test/routes.test.ts` asserts the absence of a gate, so
- * restoring the estate's usual shape is a decision somebody has to argue for.
+ * So every route renders for everybody, every panel calls the real route with no bearer attached,
+ * and every panel gets an answer. `test/routes.test.ts` asserts the absence of a gate, so restoring
+ * the estate's usual shape is a decision somebody has to argue for.
  *
  * ── The scope is two path segments, everywhere ────────────────────────────────────────────────
  *
@@ -46,7 +46,8 @@ export function App() {
       <AuthProvider>
         <Routes>
           <Route element={<AppShell unregistered={unregistered} />}>
-            {/* The search, which calls nothing and therefore works for everybody. */}
+            {/* The search, which calls nothing because there is nothing to ask until somebody
+                types — not because it would be refused. */}
             <Route index element={<SearchPage />} />
             <Route path="chains" element={<ChainsPage />} />
             <Route path="chains/:chain/:network" element={<ChainPage />} />

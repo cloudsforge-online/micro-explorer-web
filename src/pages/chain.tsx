@@ -19,9 +19,8 @@
  */
 import { useCallback } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { Failed, Loading, Missing, Refused } from '../components/states.tsx'
+import { Failed, Loading, Missing } from '../components/states.tsx'
 import { Fact, Note, StateBadge } from '../components/tone.tsx'
-import { useSession } from '../lib/auth.tsx'
 import { chainTone, count, providerTone, since, timestamp } from '../lib/format.ts'
 import { getChainStatus, type ChainStatus } from '../lib/indexer.ts'
 import { useResource } from '../lib/resource.ts'
@@ -32,7 +31,6 @@ import { UnknownScope } from './unknown-scope.tsx'
 export function ChainPage() {
   const params = useParams()
   const scope = parseScope(params['chain'], params['network'])
-  const { status: sessionStatus } = useSession()
 
   const load = useCallback(
     (signal: AbortSignal) => {
@@ -54,15 +52,6 @@ export function ChainPage() {
   if (!scope) return <UnknownScope chain={params['chain']} network={params['network']} />
 
   if (resource.state === 'loading') return <Loading label={`Reading ${scopeLabel(scope)}`} />
-  if (resource.state === 'refused' && resource.error) {
-    return (
-      <Refused
-        notice={resource.error}
-        signedIn={sessionStatus === 'signedIn'}
-        what={`the state of ${scopeLabel(scope)}`}
-      />
-    )
-  }
   if (resource.error) {
     // `unknown_chain` and `unknown_network` are 404s that mean "this estate does not run that",
     // which is a fact rather than a fault (`indexer/src/server.ts:583-586`).

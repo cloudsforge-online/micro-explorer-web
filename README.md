@@ -5,58 +5,70 @@ each chain, read from `micro-indexer`. It is a static SPA served by nginx — no
 and no environment in the image — and it **states the head every confirmation depth was measured
 against, and never says that anything is final**.
 
-> **It holds no credential and it proxies nothing.** `micro-indexer` refuses an anonymous read
-> (`indexer/src/server.ts:679-697`), and the tempting fix is a service token in this image behind an
-> nginx `proxy_pass`. An image is built once and promoted, pushed to a registry and pulled by
-> anything with read access; a credential inside one is a published credential. So this surface is
-> honestly refused instead, on screen, with the line that decides it — and the fix belongs in
-> `micro-indexer`. `.github/workflows/ci.yml` greps `nginx.conf` and the `Dockerfile` for both, and
-> `test/routes.test.ts` asserts the absence of a proxy.
+> **It holds no credential, it proxies nothing, and it sends no bearer.** Every `micro-indexer`
+> route it calls is anonymous (`authoriseRead`, `indexer/src/server.ts:708-717`), and every call is
+> issued with `auth: false` — see `publicRead` in `src/lib/indexer.ts`. That is not tidiness: a
+> token that IS presented is still verified, so an expired one would turn a page that needs no
+> session into a 401 and the explorer would have made itself depend on a credential it never
+> needed. `.github/workflows/ci.yml` greps `nginx.conf` and the `Dockerfile` for a baked-in
+> credential and a `proxy_pass`, `test/routes.test.ts` asserts the absence of a proxy, and
+> `test/api.test.ts` drives all seven reads with a session in storage and inspects the headers that
+> reached `fetch`.
 
 ---
 
-## ⚠ The finding this repository is built on top of
+## The finding this repository was built on top of, and what happened to it
 
-**A public block explorer cannot read `micro-indexer` today, and no amount of work in this
-repository changes that.**
+**It was fixed, and every line of machinery that explained it has been deleted.**
 
-Every one of the nine domain routes opens with `await authorise(ctx, deps, SCOPE)`, and `authorise`
-(`indexer/src/server.ts:679-697`) accepts exactly two principals:
+This surface used to render nothing to the public. All nine `micro-indexer` domain routes opened
+with `await authorise(ctx, deps, SCOPE)`, which accepts a service principal carrying `indexer:read`
+or a user the token says is an `admin` — so an anonymous visitor got 401 and an ordinary signed-in
+customer got 403. Signing in was not the remedy, so nothing here offered it as one; instead every
+panel said *which* refusal had happened, why, and the line where it was decided.
 
-| Caller | What happens | Where |
-| --- | --- | --- |
-| No token at all | `TokenError` → **401** | `indexer/src/server.ts:687`, mapped `:248-253` |
-| A **service** token carrying `indexer:read` | served | `requireScope`, `indexer/src/server.ts:691`; scope at `:89` |
-| A **user** token with the `admin` role | served | `isAdmin`, `indexer/src/server.ts:695` |
-| Any other user token | `ForbiddenError` → **403** | `indexer/src/server.ts:695`, mapped `:254-258` |
+`test/indexer.test.ts` pinned that against the real source with a note saying it would go red the
+day it was fixed, "which is the correct outcome: somebody then has to come back and delete the
+refusal machinery instead of leaving a surface that apologises for a restriction that no longer
+exists". `micro-indexer` commit `d013dd4` made the seven reads anonymous. It went red. This is the
+rewrite.
 
-So an anonymous visitor gets 401 on every route, and an ordinary signed-in customer gets 403.
-**Signing in is not the remedy**, which is why nothing in this bundle offers it as one and why there
-is no `ProtectedRoute` anywhere in it.
+### What the contract is now
 
-The service argues its case in its own header (`indexer/src/server.ts:14-20`): address ownership is
-a fact `micro-wallet` holds, so the indexer refuses to be the place that guesses at it. That is
-sound for `/addresses/...`. It is **not** an argument about blocks — a block, a transaction and a
-chain's tip are public facts on a public chain — and the estate's own position is one line:
-"A public chain whose explorer is paywalled is not a public chain"
+| Caller | On a READ | On a WRITE | Where |
+| --- | --- | --- | --- |
+| No token at all | **served** | `TokenError` → 401 | `authoriseRead`, `indexer/src/server.ts:710`; `authorise`, `:727` |
+| A **service** token carrying the scope | served | served | `requireScope`, `indexer/src/server.ts:713`, `:730` |
+| A **service** token without it | `ForbiddenError` → 403 | 403 | same lines |
+| A broken or expired token | 401 | 401 | `deps.verifier.principal`, `indexer/src/server.ts:711`, `:728` |
+| A **user** token | served | served only if `isAdmin` | `indexer/src/server.ts:735` |
+
+The service's reasoning is in the doc comment above `authoriseRead`
+(`indexer/src/server.ts:679-707`): every read answers with a chain fact anyone can obtain by running
+a Hearth node, and this service stores nothing linking an address to a person, so there was no
+privacy for the check to protect — "it was a lock on a public library". The estate's own position is
+one line: "A public chain whose explorer is paywalled is not a public chain"
 (`docs/ecosystem/15-monetisation-model.md:50`).
 
-**What this repository does instead.** It renders every address publicly, calls the real routes, and
-when the service refuses it says *which* refusal happened, why, and where the decision is made — see
-`Refused` in `src/components/states.tsx`. The two screens that call nothing (`/` and `/chains`) work
-for everybody. An operator holding an admin session gets the whole surface today.
+**Three things are still refused, and this app must not start depending on any of them.** `/watch`
+and `/backfills` still require `indexer:write`, because they spend provider calls and change what
+the service does rather than reporting what it knows. A token that IS presented is still verified,
+so a broken one is a 401 rather than a silent downgrade to anonymous. A service without
+`indexer:read` is still a 403. All three are asserted in `test/indexer.test.ts` against the real
+source, alongside the seven anonymous reads — a client that quietly stops understanding what it
+talks to is one edit from depending on the difference.
 
-**What would close it**, in the order of preference this repository reached:
+### What was deleted
 
-1. `micro-indexer` serves `/blocks`, `/transactions` and `/chains/.../status` unauthenticated, and
-   keeps `/addresses` and `/tokens` behind `indexer:read`. Blocks are public; an activity feed keyed
-   by address is the thing the header's argument is actually about.
-2. A public read gateway holds the service token server-side. There is no such surface today and no
-   token-injecting middleware in `deploy/gateway/dynamic/policy.yml`.
+`Refused` in `src/components/states.tsx`; the standing notice in `src/components/shell.tsx`; the
+`refused` state in `src/lib/resource.ts` and the `refused` flag on `ErrorNotice`; `servedByIndexer`
+and the `served` field on the session; the `.wt-state--refused` and `.ex-notice` rules. Not commented
+out, not kept behind a flag. A 401 or a 403 from the chain index now lands in `Failed` — a message
+and a request id — which is the honest screen for a fault this bundle cannot have caused.
 
-`test/indexer.test.ts` **pins the finding against the real source**, so the day it is fixed the suite
-goes red and somebody has to come back and delete the refusal machinery. A finding recorded only in
-prose is a finding that outlives its truth.
+`src/pages/chains.tsx` gained the thing it was missing: it fetches all ten scopes' status and shows
+which of them this deployment has actually walked. Its previous reason for fetching nothing was that
+"ten status calls that all refuse would be ten identical panels".
 
 ---
 
@@ -68,8 +80,8 @@ Three files describe them and all three must agree: `src/lib/routes.ts` (the dec
 
 | Path | Calls the index? | What it shows |
 | --- | --- | --- |
-| `/` | **no** | Search. Sorts a paste into a height, a hash or an address using the service's own rules, and says which it thinks it is before you commit. |
-| `/chains` | **no** | The ten `(chain, network)` scopes as links. |
+| `/` | **no** | Search. Sorts a paste into a height, a hash or an address using the service's own rules, and says which it thinks it is before you commit. Nothing to ask until somebody types. |
+| `/chains` | yes ×10 | The ten `(chain, network)` scopes, each with how far this deployment has walked it and how far behind the claimed tip that leaves it. |
 | `/chains/:chain/:network` | yes | Walked head vs claimed tip, lag, required depth, alarm depth, providers, recorded reorgs. |
 | `/blocks/:chain/:network/:height` | yes | One block, its depth **against the claimed tip**, and its transactions. |
 | `/tx/:chain/:network/:hash` | yes ×2 | The record, and separately the confirmations verdict. |
@@ -88,20 +100,24 @@ from a real one by a machine as well as by a reader.
 `indexer/src/server.ts` one at a time; `test/indexer.test.ts` reads that file from a sibling checkout
 and fails if any line is off by one, and CI bends one citation and requires the suite to go red.
 
-| Method | Path | Authorises with | Registered at | Handler |
+| Method | Path | Gate | Registered at | Handler |
 | --- | --- | --- | --- | --- |
-| `GET` | `/v1/chains/:chain/:network/status` | `READ_SCOPE` | `indexer/src/server.ts:154` | `:384` |
-| `GET` | `/v1/addresses/:chain/:network/:address/activity` | `READ_SCOPE` | `indexer/src/server.ts:155` | `:396` |
-| `GET` | `/v1/addresses/:chain/:network/:address/token-balances` | `READ_SCOPE` | `indexer/src/server.ts:156` | `:463` |
-| `GET` | `/v1/transactions/:chain/:network/:hash` | `READ_SCOPE` | `indexer/src/server.ts:157` | `:412` |
-| `GET` | `/v1/transactions/:chain/:network/:hash/confirmations` | `READ_SCOPE` | `indexer/src/server.ts:158` | `:437` |
-| `GET` | `/v1/tokens/:chain/:network/:address` | `READ_SCOPE` | `indexer/src/server.ts:159` | `:493` |
-| `GET` | `/v1/blocks/:chain/:network/:height` | `READ_SCOPE` | `indexer/src/server.ts:160` | `:514` |
+| `GET` | `/v1/chains/:chain/:network/status` | `authoriseRead` | `indexer/src/server.ts:154` | `:384` |
+| `GET` | `/v1/addresses/:chain/:network/:address/activity` | `authoriseRead` | `indexer/src/server.ts:155` | `:396` |
+| `GET` | `/v1/addresses/:chain/:network/:address/token-balances` | `authoriseRead` | `indexer/src/server.ts:156` | `:463` |
+| `GET` | `/v1/transactions/:chain/:network/:hash` | `authoriseRead` | `indexer/src/server.ts:157` | `:412` |
+| `GET` | `/v1/transactions/:chain/:network/:hash/confirmations` | `authoriseRead` | `indexer/src/server.ts:158` | `:437` |
+| `GET` | `/v1/tokens/:chain/:network/:address` | `authoriseRead` | `indexer/src/server.ts:159` | `:493` |
+| `GET` | `/v1/blocks/:chain/:network/:height` | `authoriseRead` | `indexer/src/server.ts:160` | `:514` |
 
-**There is no unauthenticated route** — that is the finding above, and it is the answer to the
-question this table would normally answer. Every handler calls `authorise` directly; there is no
-helper spelling of it on this service, unlike `micro-trade`, where four routes authenticate through
-`ownedBot` and a handler-body grep for `authenticate(` declares them public.
+**Every one of them is unauthenticated, and the column records HOW rather than whether.** That
+distinction is the whole reason this table has a gate column instead of a tick: `micro-indexer` has
+two helpers now, and a handler calling `authorise(ctx, deps, READ_SCOPE)` looks almost identical to
+one calling `authoriseRead(ctx, deps)` while behaving oppositely. `micro-trade-web` found the
+mirror-image failure — four `micro-trade` routes authenticate through `ownedBot`, so a handler-body
+grep for `authenticate(` declares them public — and this table exists so that neither mistake can be
+made here by reading quickly. `test/indexer.test.ts` asserts the gate per route against the real
+source, in both directions.
 
 **Declined, both writes:**
 

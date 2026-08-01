@@ -5,21 +5,25 @@
  * WHY THIS FILE HAS NO `ProtectedRoute`, WHEN EVERY OTHER FRONTEND IN THE ESTATE HAS ONE
  *
  * A gate exists to spare a customer a screen made entirely of 401s by sending them somewhere that
- * fixes it. On this surface there is nowhere to send them: `micro-indexer` authorises a **service**
- * principal holding `indexer:read`, or a user the token says is an **admin**, and nothing else
- * (`authorise`, `indexer/src/server.ts:679-697`; the admin branch is `:695`). An ordinary customer
- * who signs in gets 403 on the very same request that gave them 401 signed out.
+ * fixes it. **Nothing on this surface can produce one.** Every `micro-indexer` route this app
+ * calls is anonymous — `authoriseRead` returns `null` for a caller with no token and lets the
+ * handler run (`indexer/src/server.ts:708-717`, the branch at `:710`) — and every call is issued
+ * with `auth: false` (`publicRead` in `src/lib/indexer.ts`). A gate here would demand a session
+ * for public chain facts and would be the defect this repository was built around, arriving from
+ * the client's side: `docs/ecosystem/15-monetisation-model.md:50` — "A public chain whose explorer
+ * is paywalled is not a public chain."
  *
- * So a gate here would redirect a visitor to a sign-in that cannot unlock the page, and would
- * replace the one useful sentence this app can show — which refusal happened, and why — with a
- * spinner and a round trip. `test/auth.test.ts` and `test/routes.test.ts` both assert the absence,
- * so restoring the estate's usual shape is a decision somebody has to argue for rather than a
- * reflex.
+ * There was a second argument for the absence, and it is now history worth keeping: the reads used
+ * to require `indexer:read` or an admin, so a gate would have sent a customer through an SSO round
+ * trip to arrive at a 403. That is fixed upstream, the machinery that explained it has been
+ * deleted, and the gate stays absent for the stronger reason. `test/auth.test.ts` and
+ * `test/routes.test.ts` both assert it, so restoring the estate's usual shape is a decision
+ * somebody has to argue for rather than a reflex.
  *
- * The session is still read, and it is still used: it puts the customer's handle in the shared
- * bar, it lets the switcher show `adminOnly` entries to an operator, and — the part that actually
- * matters — an operator holding an admin session IS a principal this indexer serves, so the bearer
- * `src/lib/api.ts` attaches makes every page on this surface work for them today.
+ * The session is still read, and it is used for exactly one thing: the shared company bar — the
+ * reader's handle, and the `adminOnly` entries the switcher shows an operator. **It is never
+ * consulted before a request and never changes what a page renders.** A client that predicts an
+ * authorisation decision is a client that will eventually disagree with the service making it.
  * ══════════════════════════════════════════════════════════════════════════════════════════════
  *
  * ── The `/auth/me` shape, re-read for this repository ─────────────────────────────────────────
@@ -33,7 +37,7 @@
  * declared `interface Me { handle?, roles? }` and read both fields off the TOP level, where they
  * are not. Four frontends inherited it, `roles` was then always null, `isAdmin` in the shared
  * company bar was always false, and the switcher hid every `adminOnly` entry from every signed-in
- * operator.
+ * operator — which is still the consequence here, and the only one.
  *
  * **It is fixed upstream**, and this file follows the template. `micro-web-template/src/lib/auth.tsx:26`
  * declares the nested shape and `:98-99` read `me?.user?.handle` / `me?.user?.roles`. The template
@@ -42,9 +46,10 @@
  * tell which is real." There is no flat fallback here, and `test/auth.test.ts` pins its absence, so
  * the choice is a decision rather than an omission.
  *
- * On this surface the roles are not cosmetic. `isAdmin` is the difference between a page that shows
- * blocks and a page that explains why it cannot, so a bug that made `roles` always empty would make
- * the explorer look permanently broken to the only people it currently works for.
+ * On this surface the roles are now cosmetic, and that is a change worth writing down. They used to
+ * be the difference between a page that shows blocks and a page that explains why it cannot, back
+ * when the index served only an admin. It serves everybody, so `roles` reaches the shared bar and
+ * stops there — no panel, no route and no request consults it.
  */
 import {
   createContext,
@@ -91,18 +96,18 @@ export function readReader(body: unknown): Reader {
   }
 }
 
-/**
- * Whether this reader is one `micro-indexer` will serve.
+/* ────────────────────────────────────────────────────────────────────────────────────────────────
+ * `servedByIndexer(reader)` USED TO LIVE HERE, AND IT HAS BEEN DELETED.
  *
- * The predicate is the SERVICE's: `authorise` accepts a user principal only when `isAdmin`
- * (`indexer/src/server.ts:695`), and `isAdmin` in `@cloudsforge/auth` is the `admin` role on the
- * token. This is used to word a refusal, never to decide whether to send a request — the request
- * is always sent and the service is always the one that answers, because a client that pre-empts
- * an authorisation decision is a client that will eventually disagree with it.
- */
-export function servedByIndexer(reader: Reader): boolean {
-  return reader.roles.includes('admin')
-}
+ * It answered "would the chain index serve this reader" by asking whether they held the `admin`
+ * role, because `authorise` accepted a user principal only when `isAdmin`. Its one caller was the
+ * standing notice in the shell, which used it to choose between two wordings of the same apology.
+ *
+ * The reads are anonymous now (`indexer/src/server.ts:708-717`), so the predicate has no true
+ * answer other than "yes", the notice is gone, and a helper that can only return one value is a
+ * helper somebody eventually reads as meaningful. Nothing in this bundle asks who a reader is
+ * before making a request.
+ * ──────────────────────────────────────────────────────────────────────────────────────────────── */
 
 export type SessionStatus = 'loading' | 'anonymous' | 'signedIn'
 
@@ -110,8 +115,6 @@ export interface Session {
   status: SessionStatus
   account: AccountState
   reader: Reader
-  /** True when the signed-in reader holds the role the indexer requires. False when anonymous. */
-  served: boolean
   signIn: (returnTo?: string) => void
   signOut: () => void
 }
@@ -177,7 +180,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         roles: reader.roles,
       },
       reader,
-      served: status === 'signedIn' && servedByIndexer(reader),
       signIn,
       signOut: doSignOut,
     }),

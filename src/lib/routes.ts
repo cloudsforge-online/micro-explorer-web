@@ -36,25 +36,25 @@ export interface AppRoute {
   /**
    * True when the route renders without a session.
    *
-   * **Every route on this surface is public, and that is not the same as saying every route
-   * WORKS.** `micro-indexer` authorises a service principal holding `indexer:read` or an admin
-   * user, and nothing else (`indexer/src/server.ts:679-697`) — so an anonymous visitor gets 401
-   * and an ordinary signed-in customer gets 403. Signing in is not the remedy.
+   * **Every route on this surface is public, and every one of them works that way.** The seven
+   * `micro-indexer` reads behind these pages are anonymous — `authoriseRead` returns `null` for a
+   * caller with no token and lets the handler run (`indexer/src/server.ts:708-717`) — and this
+   * bundle attaches no bearer to any of them.
    *
-   * Gating these routes behind a session would therefore be a lie twice over: it would send a
-   * visitor to sign in for a page the sign-in cannot unlock, and it would hide the one thing this
-   * surface can honestly tell them, which is exactly why the index they asked for is not shown.
-   * There is no `ProtectedRoute` in this repository at all, and `test/routes.test.ts` asserts its
-   * absence so that adding one is a decision somebody has to argue for.
+   * This column read differently until recently, and the history is worth one sentence: every read
+   * used to require `indexer:read` or an admin, so a route could be public and still show nothing.
+   * Gating them would have been a lie twice over. It would be a worse one now, because the pages
+   * answer: a gate would make a browser prove who it is before showing facts anyone can read off a
+   * public chain. There is no `ProtectedRoute` in this repository, and `test/routes.test.ts`
+   * asserts its absence so that adding one is a decision somebody has to argue for.
    */
   readonly public: boolean
 }
 
 export const ROUTES: readonly AppRoute[] = [
-  // The index is a search box and nothing else, and it makes NO API call. Someone arriving with a
-  // hash in their clipboard should get somewhere useful before the question of authority arises —
-  // and a front page that renders identically for everybody is the only page on this surface that
-  // can promise that.
+  // The index is a search box and nothing else, and it makes NO API call — not because a call
+  // would be refused, but because there is no question to ask until somebody types one. Sorting a
+  // paste into a height, a hash or an address is work this bundle can do on its own.
   { path: '', label: 'Search', wildcard: false, public: true },
   // `/chains` is the ten scopes as links (five chains from `indexer/src/chains.ts:41`, two
   // networks from `:43`), and `/chains/:chain/:network` is the status page for one of them.

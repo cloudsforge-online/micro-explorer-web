@@ -7,9 +7,9 @@
  * a malformed request, it has asked for a chain this estate does not run".
  *
  * This module makes the same judgement in the browser, one round trip earlier, so a mistyped chain
- * renders a page that names the five real ones rather than a refusal panel that talks about
- * authority. It is NOT a second copy of an authorisation decision — the request is always sent when
- * the scope is valid, and the service is always the one that answers.
+ * renders a page that names the five real ones rather than a generic failure. It is NOT a second
+ * copy of any decision the service makes about the ANSWER — the request is always sent when the
+ * scope is valid, and the service is always the one that answers.
  *
  * The service lower-cases both segments before validating (`indexer/src/server.ts:578-579`), so
  * `/chains/EMBER/Testnet/status` is a real address there; this does the same, so a link somebody

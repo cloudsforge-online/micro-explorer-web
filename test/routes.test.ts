@@ -102,11 +102,15 @@ describe('every route is public, and NOTHING is gated', () => {
   /**
    * THE ASSERTION THIS FILE EXISTS FOR, ALONGSIDE THE nginx ONE.
    *
-   * `micro-indexer` authorises a service principal holding `indexer:read` or an admin user, and
-   * nothing else (`indexer/src/server.ts:679-697`). A customer who signs in is refused by exactly
-   * the request that refused them signed out, so a gate would send them through an SSO round trip
-   * to arrive at a 403 — the same class of mistake as a client sending a bearer to a route that
-   * never wanted one, which this estate has already shipped.
+   * The seven `micro-indexer` reads behind these pages are anonymous — `authoriseRead` returns
+   * `null` for a caller with no token and lets the handler run (`indexer/src/server.ts:708-717`) —
+   * and this bundle attaches no bearer to any of them. A gate would make a browser prove who it is
+   * before showing facts anyone can read off a public chain, which is the defect this repository
+   * was built around arriving from the client's side.
+   *
+   * It read differently until recently: every read required `indexer:read` or an admin, so a gate
+   * would have sent a customer through an SSO round trip to arrive at a 403. Fixed upstream, and
+   * the rule stands for the stronger reason.
    */
   it('marks every route public', () => {
     const gated = ROUTES.filter((r) => !r.public).map((r) => r.path)
@@ -124,9 +128,19 @@ describe('every route is public, and NOTHING is gated', () => {
   })
 
   it('and the reason is written down where somebody will read it', () => {
-    // A rule with no reason beside it is a rule the next writer deletes. Both files carry it.
-    assert.match(appSource, /indexer\/src\/server\.ts:679-697/)
-    assert.match(read('src/lib/auth.tsx'), /indexer\/src\/server\.ts:679-697/)
+    // A rule with no reason beside it is a rule the next writer deletes. Both files carry the
+    // citation, and it is the CURRENT one: `:708-717` is `authoriseRead`, pinned against the real
+    // source in test/indexer.test.ts. The old range is banned in both, because a stale citation
+    // that still resolves to a real function is the worst kind — it reads as verified.
+    assert.match(appSource, /indexer\/src\/server\.ts:708-717/)
+    assert.match(read('src/lib/auth.tsx'), /indexer\/src\/server\.ts:708-717/)
+    for (const file of ['src/app.tsx', 'src/lib/auth.tsx', 'src/lib/routes.ts']) {
+      assert.doesNotMatch(
+        read(file),
+        /indexer\/src\/server\.ts:679-697/,
+        `${file} still cites the old authorise range as the reason there is no gate`,
+      )
+    }
   })
 })
 

@@ -21,16 +21,18 @@
  * **2. HOW each route authenticates, not merely whether.** `micro-trade-web` found that four
  * `micro-trade` routes authenticate through a helper (`ownedBot`) with no literal
  * `authenticate(ctx, deps)` in the handler, so a body grep declared them public and would have
- * produced a client sending no bearer. `micro-indexer` is the mirror image: every handler calls
- * `authorise(ctx, deps, SCOPE)` and the SCOPE is the thing that differs. This file records the
- * scope per route and pins the helper itself, so "it authenticates" cannot decay into "something
- * called authorise once".
+ * produced a client sending no bearer. `micro-indexer` now has TWO helpers, `authoriseRead` and
+ * `authorise`, and which one a handler calls is the whole difference between a public read and a
+ * gated write. This file records the helper per route and pins both of them, so "it is public"
+ * cannot decay into "nobody re-read the handler".
  *
- * **3. THE AUTHORITY FINDING, PINNED SO IT GOES RED WHEN IT IS FIXED.** There is no anonymous read
- * path on this service, which is why this repository looks the way it does. That is asserted
- * against the real source: if `authorise` ever grows an anonymous branch, or a domain route stops
- * calling it, this suite fails and somebody has to come back and delete the refusal machinery.
- * A finding recorded only in prose is a finding that outlives its truth.
+ * **3. THE AUTHORITY CONTRACT, PINNED IN BOTH DIRECTIONS.** The seven reads are ANONYMOUS and this
+ * app sends no bearer for one; the two writes, a presented-but-broken token, and an unscoped
+ * service are all still refused. Both halves are asserted against the real source, because a
+ * client that quietly starts depending on either is a client that breaks the day it is deployed
+ * somewhere the assumption does not hold. A finding recorded only in prose is a finding that
+ * outlives its truth — which is exactly what happened to the previous version of this block, and
+ * why it was written as a test that would go red the day the service was fixed. It did.
  *
  * **4. WHICH HEAD EACH CONFIRMATION COUNT IS AGAINST.** `CONFIRMATIONS_AGAINST` in
  * `src/lib/indexer.ts` claims that `confirmation` counts against the walked head and that `block`,
@@ -67,26 +69,31 @@ const indexerRoot = INDEXER_CANDIDATES.find((p) => existsSync(`${p}/src/server.t
 const client = readFileSync(here('src/lib/indexer.ts'), 'utf8')
 
 /**
- * The surface this bundle uses, with the line each was read from and the scope it takes.
+ * The surface this bundle uses, with the line each was read from and the GATE it opens with.
  *
  * `line` is the line in `DOMAIN` that REGISTERS the route; `handler` is the line the handler
  * function is declared at. Both are cited in the client, and both are checked, because a route can
  * be moved in the table without its handler moving and vice versa.
+ *
+ * `gate` was `READ_SCOPE | WRITE_SCOPE` until `micro-indexer` opened the reads. It is now the
+ * NAME OF THE HELPER, because that is where the difference lives: `authoriseRead` serves a caller
+ * with no token, `authorise` refuses one. A column recording a scope could not have expressed
+ * "there is no scope", which is the point.
  */
 const SURFACE: ReadonlyArray<{
   method: string
   path: string
   line: number
   handler: number
-  scope: 'READ_SCOPE' | 'WRITE_SCOPE'
+  gate: 'authoriseRead' | 'authorise'
 }> = [
-  { method: 'GET', path: '/chains/:chain/:network/status', line: 154, handler: 384, scope: 'READ_SCOPE' },
-  { method: 'GET', path: '/addresses/:chain/:network/:address/activity', line: 155, handler: 396, scope: 'READ_SCOPE' },
-  { method: 'GET', path: '/addresses/:chain/:network/:address/token-balances', line: 156, handler: 463, scope: 'READ_SCOPE' },
-  { method: 'GET', path: '/transactions/:chain/:network/:hash', line: 157, handler: 412, scope: 'READ_SCOPE' },
-  { method: 'GET', path: '/transactions/:chain/:network/:hash/confirmations', line: 158, handler: 437, scope: 'READ_SCOPE' },
-  { method: 'GET', path: '/tokens/:chain/:network/:address', line: 159, handler: 493, scope: 'READ_SCOPE' },
-  { method: 'GET', path: '/blocks/:chain/:network/:height', line: 160, handler: 514, scope: 'READ_SCOPE' },
+  { method: 'GET', path: '/chains/:chain/:network/status', line: 154, handler: 384, gate: 'authoriseRead' },
+  { method: 'GET', path: '/addresses/:chain/:network/:address/activity', line: 155, handler: 396, gate: 'authoriseRead' },
+  { method: 'GET', path: '/addresses/:chain/:network/:address/token-balances', line: 156, handler: 463, gate: 'authoriseRead' },
+  { method: 'GET', path: '/transactions/:chain/:network/:hash', line: 157, handler: 412, gate: 'authoriseRead' },
+  { method: 'GET', path: '/transactions/:chain/:network/:hash/confirmations', line: 158, handler: 437, gate: 'authoriseRead' },
+  { method: 'GET', path: '/tokens/:chain/:network/:address', line: 159, handler: 493, gate: 'authoriseRead' },
+  { method: 'GET', path: '/blocks/:chain/:network/:height', line: 160, handler: 514, gate: 'authoriseRead' },
 ]
 
 /**
@@ -101,7 +108,7 @@ const DECLINED: ReadonlyArray<{
   path: string
   line: number
   handler: number
-  scope: 'READ_SCOPE' | 'WRITE_SCOPE'
+  gate: 'authoriseRead' | 'authorise'
   why: string
 }> = [
   {
@@ -109,7 +116,7 @@ const DECLINED: ReadonlyArray<{
     path: '/watch/:chain/:network/:address',
     line: 161,
     handler: 531,
-    scope: 'WRITE_SCOPE',
+    gate: 'authorise',
     why: 'indexer:write — enlarging what a shared deployment indexes is not a browser decision',
   },
   {
@@ -117,7 +124,7 @@ const DECLINED: ReadonlyArray<{
     path: '/backfills/:chain/:network',
     line: 162,
     handler: 553,
-    scope: 'WRITE_SCOPE',
+    gate: 'authorise',
     why: 'indexer:write — enqueues a range walk, with a cost attached',
   },
 ]
@@ -349,7 +356,7 @@ describe('the cited lines are the lines that register the routes', () => {
     return lines.slice(start, end).join('\n')
   }
 
-  it('every route this app calls authenticates, and with the scope this app believes', () => {
+  it('every route this app calls opens with the gate this app believes, and no other', () => {
     for (const route of [...SURFACE, ...DECLINED]) {
       const body = bodyOf(route.handler)
       assert.match(
@@ -357,65 +364,190 @@ describe('the cited lines are the lines that register the routes', () => {
         /^async function \w+\(ctx: RequestContext, deps: ServerDeps\)/,
         `indexer/src/server.ts:${route.handler} is not a handler declaration: ${lines[route.handler - 1]}`,
       )
-      assert.match(
-        body,
-        new RegExp(`authorise\\(ctx, deps, ${route.scope}\\)`),
-        `${route.method} ${route.path}: this app believes it takes ${route.scope}, and the handler does not ask for it`,
-      )
+      if (route.gate === 'authoriseRead') {
+        assert.match(
+          body,
+          /await authoriseRead\(ctx, deps\)/,
+          `${route.method} ${route.path}: this app believes it is an anonymous read, and the handler does not call authoriseRead`,
+        )
+        // …and NOT the write gate. `authoriseRead` is a substring-free name here on purpose: a
+        // handler calling `authorise(ctx, deps, READ_SCOPE)` would satisfy a sloppier check by
+        // containing the word, and would 401 every visitor to this explorer.
+        assert.doesNotMatch(
+          body,
+          /await authorise\(ctx, deps,/,
+          `${route.method} ${route.path} has been RE-GATED — this app calls it with no bearer and would now get a 401`,
+        )
+      } else {
+        assert.match(
+          body,
+          /await authorise\(ctx, deps, WRITE_SCOPE\)/,
+          `${route.method} ${route.path}: this app declines it because it takes indexer:write, and the handler no longer asks for it`,
+        )
+      }
     }
   })
 
   /* ────────────────────────────────────────────────────────────────────────────────────────────
-   * THE AUTHORITY FINDING.
+   * THE AUTHORITY CONTRACT.
    *
-   * This whole repository is shaped by there being no anonymous read path. These four tests are
-   * what make that a checked fact rather than a paragraph — and they go RED the day it is fixed,
-   * which is the correct outcome: somebody then has to come back and delete the refusal machinery
-   * instead of leaving a surface that apologises for a restriction that no longer exists.
+   * The previous version of this block asserted the opposite — that NOT ONE domain route was
+   * anonymous — and carried a note saying it would go red the day that was fixed, "which is the
+   * correct outcome: somebody then has to come back and delete the refusal machinery instead of
+   * leaving a surface that apologises for a restriction that no longer exists". `micro-indexer`
+   * commit d013dd4 made the seven reads anonymous, this went red, and the machinery is deleted.
+   *
+   * These tests are the replacement, written to the same standard rather than deleted, and they
+   * are load-bearing in BOTH directions:
+   *
+   *   * if a read is re-gated, this app is sending no bearer and every panel 401s. RED.
+   *   * if this app starts sending one, an expired token turns a public page into a refusal. RED.
+   *   * if the WRITE gate is relaxed, or a broken token is silently downgraded to anonymous, this
+   *     app has not changed but its picture of the service has. RED — because a client that has
+   *     stopped understanding what it talks to is one edit away from depending on the difference.
    * ──────────────────────────────────────────────────────────────────────────────────────────── */
 
-  it('NOT ONE domain route is anonymous: all nine call authorise', () => {
-    const handlers = [...SURFACE, ...DECLINED]
-    assert.equal(handlers.length, 9, 'the surface table no longer covers all nine domain routes')
-    for (const route of handlers) {
+  it('all seven reads are ANONYMOUS: authoriseRead serves a caller with no token', () => {
+    const reads = SURFACE
+    assert.equal(reads.length, 7, 'the surface table no longer covers all seven read routes')
+    for (const route of reads) {
       assert.match(
         bodyOf(route.handler),
-        /await authorise\(ctx, deps,/,
-        `${route.method} ${route.path} no longer authorises — the explorer may now be public, and this repository needs rewriting`,
+        /await authoriseRead\(ctx, deps\)/,
+        `${route.method} ${route.path} no longer reaches authoriseRead — a public explorer cannot read it`,
       )
     }
+
+    // The helper itself, and the branch that is the whole contract: no token, no principal, and
+    // the handler runs anyway. Asserted on the SOURCE of the function rather than on its name,
+    // because a function called `authoriseRead` that threw would pass every check above.
+    const at = server.indexOf('async function authoriseRead(')
+    assert.ok(at > 0, 'authoriseRead is gone from indexer/src/server.ts')
+    const fn = server.slice(at, server.indexOf('\nasync function authorise(', at))
+    assert.match(
+      fn,
+      /const token = bearerFrom\(headerOf\(ctx\.req, 'authorization'\)\)\n\s*if \(!token\) return null/,
+      'authoriseRead no longer returns null for a caller with no token — the reads have been re-gated',
+    )
+    assert.doesNotMatch(fn, /throw new TokenError/, 'authoriseRead has grown a missing-token throw')
   })
 
-  it('authorise accepts a scoped SERVICE or an ADMIN user, and nothing else', () => {
+  it('…and the nine handlers are exactly seven anonymous reads and two gated writes', () => {
+    // Counted off the SERVICE rather than off the table above, so a route that changed gate
+    // without anybody updating this file is a failure rather than an agreement with ourselves.
+    const handlers = [...SURFACE, ...DECLINED]
+    assert.equal(handlers.length, 9, 'the tables no longer cover all nine domain routes')
+    const anonymous = handlers.filter((r) => /await authoriseRead\(ctx, deps\)/.test(bodyOf(r.handler)))
+    const gated = handlers.filter((r) => /await authorise\(ctx, deps, WRITE_SCOPE\)/.test(bodyOf(r.handler)))
+    assert.deepEqual(
+      anonymous.map((r) => `${r.method} ${r.path}`).sort(),
+      SURFACE.map((r) => `${r.method} ${r.path}`).sort(),
+      'the set of anonymous routes upstream is not the set this app calls without a bearer',
+    )
+    assert.deepEqual(
+      gated.map((r) => `${r.method} ${r.path}`).sort(),
+      DECLINED.map((r) => `${r.method} ${r.path}`).sort(),
+      'the set of write-gated routes upstream is not the set this app declines',
+    )
+    assert.equal(anonymous.length + gated.length, 9, 'a handler is neither, so somebody must read it')
+  })
+
+  it('the three things still refused are still refused, and this app depends on none of them', () => {
+    // Named individually because each is a different promise, and because this app must not start
+    // relying on any of them by accident — `test/api.test.ts` asserts the client side.
     const at = server.indexOf('async function authorise(')
-    assert.ok(at > 0, 'authorise is gone from indexer/src/server.ts')
+    assert.ok(at > 0, 'authorise is gone from indexer/src/server.ts — the WRITES are now open')
     const fn = server.slice(at, at + 1200)
-    assert.match(fn, /if \(!token\) throw new TokenError\(/, 'a missing token is no longer a 401')
-    assert.match(fn, /requireScope\(principal, scope\)/, 'a service principal is no longer scoped')
-    assert.match(fn, /if \(!isAdmin\(principal\)\) throw new ForbiddenError\(scope\)/, 'the admin gate moved')
-    // The absence that matters: no branch returns before a principal has been established.
-    assert.doesNotMatch(
-      fn,
-      /anonymous|allowPublic|skipAuth/i,
-      'authorise has grown something that looks like an anonymous path — read it, then rewrite this repository',
+
+    // 1. A missing token on a WRITE is a 401.
+    assert.match(fn, /if \(!token\) throw new TokenError\(/, 'a missing token on a write is no longer a 401')
+    // 2. A SERVICE without the scope is a 403 — on writes here, and on reads in authoriseRead.
+    assert.match(fn, /requireScope\(principal, scope\)/, 'a service principal is no longer scoped on writes')
+    const readFn = server.slice(
+      server.indexOf('async function authoriseRead('),
+      server.indexOf('\nasync function authorise('),
+    )
+    assert.match(
+      readFn,
+      /if \(principal\.kind === 'service'\) \{\n\s*requireScope\(principal, READ_SCOPE\)/,
+      'a service that presents a credential without indexer:read is no longer refused on a read',
+    )
+    // 3. A token that IS presented is still verified rather than ignored.
+    assert.match(
+      readFn,
+      /const principal = await deps\.verifier\.principal\(token\)/,
+      'a presented token is no longer verified on a read — a broken one would now get a silent 200',
+    )
+    assert.match(fn, /if \(!isAdmin\(principal\)\) throw new ForbiddenError\(scope\)/, 'the admin gate on writes moved')
+  })
+
+  it('the two scope strings are still the strings this repository names', () => {
+    // Nothing prints `indexer:read` on screen any more — that went with the refusal panel — but
+    // `src/lib/indexer.ts` explains the write refusal in terms of both, and a scope renamed
+    // upstream would make that explanation describe an authority nobody can be granted.
+    assert.match(server, /export const READ_SCOPE = 'indexer:read'/)
+    assert.match(server, /export const WRITE_SCOPE = 'indexer:write'/)
+    assert.match(client, /indexer:write/, 'the client no longer names the scope the writes take')
+  })
+
+  it('the three cited line ranges are the functions this repository says they are', () => {
+    // `:708-717`, `:719-737` and `:679-707` appear verbatim across src/lib/indexer.ts,
+    // src/lib/auth.tsx, src/app.tsx and four more files, where a reader is invited to go and check
+    // them. A range that has drifted onto the wrong function is a citation that reads as verified.
+    assert.match(lines[707] ?? '', /^async function authoriseRead\(/, `:708 is: ${lines[707]}`)
+    assert.match(lines[716] ?? '', /^\}/, `:717 is: ${lines[716]}`)
+    assert.match(lines[718] ?? '', /^async function authorise\(/, `:719 is: ${lines[718]}`)
+    assert.match(lines[736] ?? '', /^\}/, `:737 is: ${lines[736]}`)
+    // …and the doc comment the reasoning lives in.
+    assert.match(lines[678] ?? '', /^\/\*\*/, `:679 is: ${lines[678]}`)
+    assert.match(lines[706] ?? '', /^\s+\*\//, `:707 is: ${lines[706]}`)
+    assert.match(
+      lines.slice(678, 707).join('\n'),
+      /Reads are ANONYMOUS, because what they return is already public/,
+      'the doc comment at :679-707 is no longer the one explaining the anonymous reads',
     )
   })
 
-  it('the read scope is the string this repository shows people', () => {
-    // `Refused` and the shell notice both print `indexer:read` on screen. A scope renamed upstream
-    // would make this surface tell an operator to ask for something that does not exist.
-    assert.match(server, /export const READ_SCOPE = 'indexer:read'/)
-    assert.match(server, /export const WRITE_SCOPE = 'indexer:write'/)
-  })
-
-  it('the citation this surface prints in its refusal panel is the right range', () => {
-    // `indexer/src/server.ts:679-697` appears verbatim in src/components/states.tsx and in the
-    // shell, where a reader is invited to go and check it. It has to be authorise.
-    assert.match(lines[678] ?? '', /^async function authorise\(/, `:679 is: ${lines[678]}`)
-    assert.match(lines[696] ?? '', /^\}/, `:697 is: ${lines[696]}`)
-    const cited = lines.slice(678, 697).join('\n')
-    assert.match(cited, /isAdmin\(principal\)/)
-    assert.match(cited, /requireScope\(principal, scope\)/)
+  it('the client sends no bearer on any read, and says so where a reader will look', () => {
+    // The client side of the same contract. `publicRead` is the single place `auth` is decided,
+    // and nothing in the module may reach `api()` around it — six copies of a flag is six chances
+    // to forget one, and the failure is a 401 on a page that needs no session.
+    const code = client
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .split('\n')
+      .filter((line) => !/^\s*(\/\/|\*)/.test(line))
+      .join('\n')
+    assert.match(code, /function publicRead<T>/, 'the single-decision read helper is gone')
+    assert.match(code, /auth: false/, 'publicRead no longer suppresses the bearer')
+    assert.equal(
+      [...code.matchAll(/\bauth: false\b/g)].length,
+      1,
+      'auth: false is written more than once, so one of them can be forgotten',
+    )
+    // Exactly ONE reference to the generic client in the whole module, and it is the one inside
+    // `publicRead`. Anything else — an exported call that reached for `api()` directly — would
+    // carry a bearer, so it is counted rather than trusted to a reviewer's eye.
+    const calls = [...code.matchAll(/\bapi</g)]
+    assert.equal(
+      calls.length,
+      1,
+      `this module reaches the generic client ${calls.length} times; only publicRead may`,
+    )
+    const helper = code.indexOf('function publicRead<T>')
+    assert.ok(helper > 0)
+    // The helper's body: from its declaration to the next top-level closing brace.
+    const helperEnd = code.indexOf('\n}\n', helper)
+    assert.ok(helperEnd > helper, 'publicRead has no closing brace, so this bound means nothing')
+    const where = calls[0]?.index ?? -1
+    assert.ok(
+      where > helper && where < helperEnd,
+      'the one api() call is outside publicRead, so a read is issued with a bearer attached',
+    )
+    assert.equal(
+      [...code.matchAll(/\breturn publicRead</g)].length,
+      7,
+      'the seven reads no longer all go through publicRead',
+    )
   })
 
   /* ────────────────────────────────────────────────────────────────────────────────────────────

@@ -25,7 +25,7 @@ import { NAV } from '../lib/routes.ts'
 import { useSession } from '../lib/auth.tsx'
 
 export function AppShell({ unregistered = false }: { unregistered?: boolean }) {
-  const { account, signIn, signOut, status, served } = useSession()
+  const { account, signIn, signOut } = useSession()
 
   return (
     <>
@@ -79,42 +79,16 @@ export function AppShell({ unregistered = false }: { unregistered?: boolean }) {
           </p>
         )}
         {/*
-          ══════════════════════════════════════════════════════════════════════════════════════
-          THE STANDING NOTICE, SHOWN ONCE PER PAGE LOAD RATHER THAN ONCE PER PANEL.
+          A STANDING NOTICE USED TO SIT HERE, ON EVERY PAGE, AND IT HAS BEEN DELETED.
 
-          A visitor who is not going to be served by the chain index should learn that from the
-          top of the page rather than from four identical refusal panels further down. It is
-          rendered for everybody who is NOT an operator — anonymous or signed in — because the
-          answer is the same for both and only the wording differs (see `Refused` in
-          components/states.tsx, which is what each panel then shows).
+          It told every reader who was not an operator that the chain index would refuse them,
+          because every `micro-indexer` read required `indexer:read` or an admin. That is no longer
+          true: the seven reads are anonymous (`indexer/src/server.ts:708-717`), this bundle sends
+          no bearer for one, and the panels below render. A banner apologising for a restriction
+          nobody is under would be read as a live fact, which is exactly how a stale claim survives.
 
-          It is deliberately NOT a call to sign in. `micro-indexer` authorises a service principal
-          holding `indexer:read` or an admin user (`indexer/src/server.ts:679-697`), so an ordinary
-          account gains nothing, and telling somebody otherwise is the estate's recurring defect —
-          a confident wrong diagnosis — in the place a reader is most likely to believe it.
-
-          `status === 'loading'` is excluded so the notice does not flash for an operator whose
-          session is still being read.
-          ══════════════════════════════════════════════════════════════════════════════════════
+          Nothing replaces it. A surface that works needs no notice saying so.
         */}
-        {status !== 'loading' && !served && (
-          <p className="ex-note ex-note--warn ex-notice" role="status">
-            <span className="ex-note__icon" aria-hidden="true">
-              ⊘
-            </span>
-            <span>
-              <strong>This explorer is public; the chain index behind it is not yet.</strong>{' '}
-              <code className="cf-num ex-code">micro-indexer</code> answers only a CloudsForge
-              service holding the <code className="cf-num ex-code">indexer:read</code> scope, or an
-              operator account — every read route requires it
-              (<code className="cf-num ex-code">indexer/src/server.ts:679-697</code>). Blocks,
-              transactions and addresses on this page will say so rather than appear empty.{' '}
-              {status === 'signedIn'
-                ? 'Signing in has not changed that, because it is not about your session.'
-                : 'Signing in would not change that, so this page does not ask you to.'}
-            </span>
-          </p>
-        )}
         <Outlet />
       </main>
     </>

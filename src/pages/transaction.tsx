@@ -39,9 +39,8 @@
  */
 import { useCallback } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { Failed, Loading, Missing, Refused } from '../components/states.tsx'
+import { Failed, Loading, Missing } from '../components/states.tsx'
 import { Depth, DepthNote, Fact, Note, StateBadge } from '../components/tone.tsx'
-import { useSession } from '../lib/auth.tsx'
 import { count, timestamp, transactionTone, units } from '../lib/format.ts'
 import {
   CONFIRMATIONS_AGAINST,
@@ -52,14 +51,13 @@ import {
 } from '../lib/indexer.ts'
 import { useResource } from '../lib/resource.ts'
 import { linkTo } from '../lib/routes.ts'
-import { parseScope, scopeLabel } from '../lib/scope.ts'
+import { parseScope } from '../lib/scope.ts'
 import { UnknownScope } from './unknown-scope.tsx'
 
 export function TransactionPage() {
   const params = useParams()
   const scope = parseScope(params['chain'], params['network'])
   const hash = params['hash'] ?? ''
-  const { status: sessionStatus } = useSession()
 
   const loadRecord = useCallback(
     (signal: AbortSignal) => {
@@ -92,15 +90,6 @@ export function TransactionPage() {
   if (!scope) return <UnknownScope chain={params['chain']} network={params['network']} />
 
   if (record.state === 'loading') return <Loading label="Reading the transaction" />
-  if (record.state === 'refused' && record.error) {
-    return (
-      <Refused
-        notice={record.error}
-        signedIn={sessionStatus === 'signedIn'}
-        what={`transaction ${hash.slice(0, 12)}… on ${scopeLabel(scope)}`}
-      />
-    )
-  }
   if (record.error) {
     if (record.error.code === 'unknown_chain' || record.error.code === 'unknown_network') {
       return <UnknownScope chain={params['chain']} network={params['network']} />
@@ -152,7 +141,7 @@ export function TransactionPage() {
       {/* The verdict comes FIRST, because it is the only answer on this page anybody should act
           on, and because a reader who scrolls no further has still been told the honest thing. */}
       <h2 className="ex-section__title">Has it reached its depth?</h2>
-      <Verdict verdict={verdict} chain={tx.chain} network={tx.network} sessionStatus={sessionStatus} />
+      <Verdict verdict={verdict} chain={tx.chain} network={tx.network} />
 
       <DepthNote>
         The depth above is counted against the highest block this index has walked
@@ -313,24 +302,12 @@ function Verdict({
   verdict,
   chain,
   network,
-  sessionStatus,
 }: {
   verdict: ReturnType<typeof useResource<ConfirmationView>>
   chain: string
   network: string
-  sessionStatus: string
 }) {
   if (verdict.state === 'loading') return <Loading label="Asking whether it has reached its depth" />
-
-  if (verdict.state === 'refused' && verdict.error) {
-    return (
-      <Refused
-        notice={verdict.error}
-        signedIn={sessionStatus === 'signedIn'}
-        what="the confirmation depth of this transaction"
-      />
-    )
-  }
 
   if (verdict.error) {
     // THE SPLIT. `transaction_not_found` is a fact about the chain index; a bare `not_found` is the

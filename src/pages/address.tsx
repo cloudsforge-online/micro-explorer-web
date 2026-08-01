@@ -34,9 +34,8 @@
  */
 import { useCallback, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { Empty, Failed, Loading, Missing, Refused } from '../components/states.tsx'
+import { Empty, Failed, Loading, Missing } from '../components/states.tsx'
 import { Depth, DepthNote, Fact, Note, StateBadge } from '../components/tone.tsx'
-import { useSession } from '../lib/auth.tsx'
 import { activityTone, count, timestamp, units, unavailableReason } from '../lib/format.ts'
 import {
   CONFIRMATIONS_AGAINST,
@@ -47,14 +46,13 @@ import {
 } from '../lib/indexer.ts'
 import { useResource } from '../lib/resource.ts'
 import { linkTo } from '../lib/routes.ts'
-import { parseScope, scopeLabel } from '../lib/scope.ts'
+import { parseScope } from '../lib/scope.ts'
 import { UnknownScope } from './unknown-scope.tsx'
 
 export function AddressPage() {
   const params = useParams()
   const scope = parseScope(params['chain'], params['network'])
   const address = params['address'] ?? ''
-  const { status: sessionStatus } = useSession()
   // The cursor is state rather than a URL parameter on purpose: it is an opaque token this app
   // must not construct, and putting it in an address would invite somebody to edit one.
   const [cursor, setCursor] = useState<string | null>(null)
@@ -111,7 +109,7 @@ export function AddressPage() {
       </p>
 
       <h2 className="ex-section__title">Token holdings</h2>
-      <Holdings holdings={holdings} sessionStatus={sessionStatus} scopeName={scopeLabel(scope)} />
+      <Holdings holdings={holdings} />
 
       <h2 className="ex-section__title">Movements</h2>
       <DepthNote>
@@ -123,8 +121,6 @@ export function AddressPage() {
       </DepthNote>
       <Activity
         activity={activity}
-        sessionStatus={sessionStatus}
-        scopeName={scopeLabel(scope)}
         onCursor={setCursor}
         cursor={cursor}
       />
@@ -132,25 +128,8 @@ export function AddressPage() {
   )
 }
 
-function Holdings({
-  holdings,
-  sessionStatus,
-  scopeName,
-}: {
-  holdings: ReturnType<typeof useResource<TokenBalancesView>>
-  sessionStatus: string
-  scopeName: string
-}) {
+function Holdings({ holdings }: { holdings: ReturnType<typeof useResource<TokenBalancesView>> }) {
   if (holdings.state === 'loading') return <Loading label="Reading holdings" />
-  if (holdings.state === 'refused' && holdings.error) {
-    return (
-      <Refused
-        notice={holdings.error}
-        signedIn={sessionStatus === 'signedIn'}
-        what={`this address's holdings on ${scopeName}`}
-      />
-    )
-  }
   if (holdings.error) {
     if (holdings.error.code === 'bad_address') {
       return (
@@ -265,27 +244,14 @@ function Holdings({
 
 function Activity({
   activity,
-  sessionStatus,
-  scopeName,
   onCursor,
   cursor,
 }: {
   activity: ReturnType<typeof useResource<ActivityPage>>
-  sessionStatus: string
-  scopeName: string
   onCursor: (cursor: string | null) => void
   cursor: string | null
 }) {
   if (activity.state === 'loading') return <Loading label="Reading movements" />
-  if (activity.state === 'refused' && activity.error) {
-    return (
-      <Refused
-        notice={activity.error}
-        signedIn={sessionStatus === 'signedIn'}
-        what={`this address's activity on ${scopeName}`}
-      />
-    )
-  }
   if (activity.error) {
     if (activity.error.code === 'bad_address') {
       return (

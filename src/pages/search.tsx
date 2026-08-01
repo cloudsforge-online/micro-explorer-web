@@ -3,12 +3,15 @@
  *
  * ── Why the front page asks the chain index nothing ───────────────────────────────────────────
  *
- * Every route `micro-indexer` serves requires an authority this bundle does not have
- * (`indexer/src/server.ts:679-697`), so a front page that fetched anything would greet every
- * visitor with a refusal panel before they had asked a question. Sorting a paste into a height, a
- * hash or an address is something this app can do correctly and entirely on its own, so it is what
- * the front page does. It is the one screen here that behaves identically for an operator and for
- * a stranger.
+ * Because there is no question yet. Sorting a paste into a height, a hash or an address is work
+ * this app can do correctly and entirely on its own, and a page that fetched something in order to
+ * look busy would be spending a round trip to show a reader what they already typed.
+ *
+ * It used to say something else, and the difference is worth recording: every `micro-indexer` route
+ * required an authority this bundle could not hold, so a front page that fetched anything would
+ * have greeted every visitor with a refusal before they asked a question. That is fixed
+ * (`authoriseRead`, `indexer/src/server.ts:708-717`) and the refusal machinery is deleted — the
+ * front page still fetches nothing, now for the plain reason rather than the defensive one.
  *
  * ── The classification is the SERVICE's rules, not this app's ─────────────────────────────────
  *

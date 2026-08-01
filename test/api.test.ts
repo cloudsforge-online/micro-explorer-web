@@ -29,6 +29,16 @@ import {
   refreshSession,
   setTokens,
 } from '../src/lib/api.ts'
+import * as indexerClient from '../src/lib/indexer.ts'
+import {
+  getAddressActivity,
+  getBlock,
+  getChainStatus,
+  getConfirmations,
+  getToken,
+  getTokenBalances,
+  getTransaction,
+} from '../src/lib/indexer.ts'
 import { __resetObs } from '../src/lib/obs.ts'
 import {
   installFetch,
@@ -187,46 +197,41 @@ describe('failures', () => {
     // is the only thing a user can quote that finds their request across every service at once.
     const notice = noticeFor(err, 'Could not load.')
     assert.equal(notice.requestId, 'req-7f3a')
-    assert.equal(notice.refused, false)
-  })
-
-  it('marks a 403 as refused, which is a different screen from a failure', async () => {
-    setTokens({ accessToken: 'a1', refreshToken: 'r1' })
-    stub = installFetch(() =>
-      json(403, { error: { code: 'forbidden', message: 'missing required authority: indexer:read' } }, 'req-403'),
-    )
-    const err = await api('/v1/thing').catch((e: unknown) => e)
-    const notice = noticeFor(err, 'Could not load.')
-    assert.equal(notice.refused, true)
-    assert.equal(notice.code, 'forbidden')
-    assert.equal(notice.status, 403)
+    assert.equal(notice.status, 500)
   })
 
   /* ════════════════════════════════════════════════════════════════════════════════════════════
-   * THE TWO ADDITIONS THIS SURFACE MAKES TO THE TEMPLATE'S CLIENT.
+   * THERE WAS A `refused` FLAG ON `ErrorNotice`, AND IT HAS BEEN DELETED.
+   *
+   * It was set on 401 OR 403 and drove a screen that explained why `micro-indexer` would not serve
+   * an anonymous read. The reads are anonymous now (`indexer/src/server.ts:708-717`) and this app
+   * presents no credential, so nothing it sends can be refused for lacking one: an auth status
+   * arriving anyway is a fault in the service or in something in front of it, and `failed` — a
+   * message and a request id — is the honest screen for that.
+   *
+   * The tests below are the two that survive, and they are the ones that would catch this app
+   * quietly re-acquiring a dependency on a session.
    * ════════════════════════════════════════════════════════════════════════════════════════════ */
 
-  it('marks a 401 with NO SESSION as refused rather than as an expiry', async () => {
-    // Everywhere else in the estate a 401 to an authenticated call means "your token expired".
-    // Here it cannot: `micro-indexer` answers 401 to a caller that presented no token at all
-    // (`indexer/src/server.ts:687`), which is every request an anonymous visitor makes to this
-    // public explorer. Rendering "your session expired" to somebody who has never signed in is a
-    // confident wrong diagnosis, which is this estate's recurring defect.
-    clearTokens()
+  it('a 403 is a plain failure now, carrying its code and status and no special state', async () => {
+    setTokens({ accessToken: 'a1', refreshToken: 'r1' })
     stub = installFetch(() =>
-      json(401, { error: { code: 'unauthenticated', message: 'a valid bearer token is required' } }, 'req-401'),
+      json(403, { error: { code: 'forbidden', message: 'missing required authority: indexer:write' } }, 'req-403'),
     )
     const err = await api('/v1/thing').catch((e: unknown) => e)
     const notice = noticeFor(err, 'Could not load.')
-    assert.equal(notice.refused, true, '401 shares the refusal screen with 403')
-    assert.equal(notice.code, 'unauthenticated')
-    assert.equal(notice.requestId, 'req-401')
+    assert.equal(notice.code, 'forbidden')
+    assert.equal(notice.status, 403)
+    assert.equal(notice.requestId, 'req-403')
+    assert.ok(!('refused' in notice), 'the refusal flag is back; the screen it drove is deleted')
   })
 
   it('does NOT fire cf:auth-expired when there was no session to expire', async () => {
-    // The template ends a session on any 401. Loading this app's front page signed out would then
-    // dispatch `cf:auth-expired` on every request — an event the shared bar and the provider both
-    // listen for, describing a session that never existed. Reported to micro-web-template.
+    // The template ended a session on ANY 401 to an authenticated call. This surface reported that
+    // and the template has since fixed it (`web-template/src/lib/api.ts:344`). The guard matters
+    // less here than it did — the chain reads pass `auth: false` and never reach the branch — but a
+    // client that is only correct because of where it happens to be called is one refactor from
+    // signing a user out of a session they never had.
     clearTokens()
     const browser = installWindow('https://explorer.cloudsforge.online/')
     stub = installFetch(() => json(401, { error: { code: 'unauthenticated', message: 'no' } }, 'r'))
@@ -259,7 +264,6 @@ describe('failures', () => {
     const notice = noticeFor(err, 'Could not load.')
     assert.equal(notice.code, 'transaction_not_found')
     assert.equal(notice.status, 404)
-    assert.equal(notice.refused, false, 'a 404 is an answer, not a refusal')
   })
 
   it('turns an unreachable server into a status 0 ApiError rather than a raw TypeError', async () => {
@@ -323,6 +327,71 @@ describe('auth callback', () => {
     setTokens({ accessToken: 'a1', refreshToken: 'r1' })
     stub = installFetch(() => json(200, {}))
     assert.equal(await bootstrapSession(), true)
+  })
+})
+
+/* ══════════════════════════════════════════════════════════════════════════════════════════════
+ * NO BEARER REACHES THE CHAIN INDEX. MEASURED ON THE WIRE, NOT READ OFF THE SOURCE.
+ *
+ * `test/indexer.test.ts` proves the seven reads all go through `publicRead` and that `publicRead`
+ * is the only place `auth` is decided. That is a check on the SHAPE of the module. This is the
+ * check on its behaviour: with an access token sitting in storage — the state an operator who
+ * signed in for the shared bar is actually in — every one of the seven requests must still go out
+ * with no `authorization` header.
+ *
+ * It matters because a token that IS presented is verified rather than ignored
+ * (`indexer/src/server.ts:711`). An expired one would come back 401 on a page that needs no
+ * session, and the explorer would have made itself depend on a credential it never needed — the
+ * defect this repository was built around, arriving from the client's side.
+ * ══════════════════════════════════════════════════════════════════════════════════════════════ */
+
+describe('the chain index is read anonymously, with a session in storage', () => {
+  const SCOPE = { chain: 'ember', network: 'testnet' } as const
+
+  /** Every read this bundle can issue, called exactly as a page calls it. */
+  const READS: ReadonlyArray<{ name: string; call: () => Promise<unknown> }> = [
+    { name: 'getChainStatus', call: () => getChainStatus(SCOPE) },
+    { name: 'getBlock', call: () => getBlock(SCOPE, '42') },
+    { name: 'getTransaction', call: () => getTransaction(SCOPE, '0xabc') },
+    { name: 'getConfirmations', call: () => getConfirmations(SCOPE, '0xabc') },
+    { name: 'getAddressActivity', call: () => getAddressActivity(SCOPE, '0xdef', { limit: 50 }) },
+    { name: 'getTokenBalances', call: () => getTokenBalances(SCOPE, '0xdef') },
+    { name: 'getToken', call: () => getToken(SCOPE, '0xfeed') },
+  ]
+
+  it('covers every call this client exports, so a new one cannot slip past', () => {
+    // Counted against the module rather than against this list, which would only agree with
+    // itself. A read added without a line here is a read nobody checked for a bearer.
+    const exported = Object.keys(indexerClient).filter((k) => k.startsWith('get'))
+    assert.deepEqual(READS.map((r) => r.name).sort(), exported.sort())
+  })
+
+  for (const read of READS) {
+    it(`${read.name} sends no authorization header`, async () => {
+      setTokens({ accessToken: 'operator-token', refreshToken: 'r1' })
+      assert.equal(hasSession(), true, 'the test is vacuous without a session in storage')
+      stub = installFetch(() => json(200, {}))
+      await read.call()
+      const call = stub.calls[0]
+      assert.ok(call, `${read.name} sent no request at all`)
+      const names = Object.keys(call.headers).map((h) => h.toLowerCase())
+      assert.ok(
+        !names.includes('authorization'),
+        `${read.name} presented a bearer to a route that needs none: ${names.join(', ')}`,
+      )
+    })
+  }
+
+  it('and the stub WOULD have seen one, so the assertion above is not vacuous', () => {
+    // The other direction. `api()` with its default `auth` attaches the token, and if it did not
+    // then every check above would pass against a client that had simply stopped working.
+    setTokens({ accessToken: 'operator-token', refreshToken: 'r1' })
+    stub = installFetch(() => json(200, {}))
+    return api('/v1/thing').then(() => {
+      const names = Object.keys(stub?.calls[0]?.headers ?? {}).map((h) => h.toLowerCase())
+      assert.ok(names.includes('authorization'), 'the client no longer attaches a bearer at all')
+      assert.equal(stub?.calls[0]?.headers['authorization'], 'Bearer operator-token')
+    })
   })
 })
 

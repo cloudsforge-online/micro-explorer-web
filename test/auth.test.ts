@@ -13,10 +13,11 @@
  * `isAdmin` in the shared bar was always false, and the switcher hid every `adminOnly` entry from
  * every signed-in operator.
  *
- * On THIS surface the consequence is larger than a missing switcher entry. `roles` is what decides
- * whether the standing notice is shown, because the chain index serves an admin and refuses
- * everybody else (`indexer/src/server.ts:695`). A flat read would make `roles` always empty, so an
- * operator who CAN read the index would be told, on every page, that they cannot.
+ * On this surface the consequence is now a missing switcher entry and nothing more, which is a
+ * change worth writing down. `roles` used to decide whether a standing notice told the reader the
+ * chain index would refuse them, because it served an admin and nobody else. It serves everybody
+ * (`authoriseRead`, `indexer/src/server.ts:708-717`), the notice is deleted, and `roles` now
+ * reaches the shared company bar and stops there.
  *
  * This file follows `micro-web-template/src/lib/auth.tsx:26` (the nested declaration) and `:98-99`
  * (the nested reads). It accepts ONLY the nested shape, and the template's own comment gives the
@@ -30,7 +31,7 @@ import assert from 'node:assert/strict'
 import { existsSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, it } from 'node:test'
-import { readReader, servedByIndexer } from '../src/lib/auth.tsx'
+import { readReader } from '../src/lib/auth.tsx'
 
 const at = (p: string) => fileURLToPath(new URL(`../${p}`, import.meta.url))
 const read = (p: string): string => readFileSync(at(p), 'utf8')
@@ -78,26 +79,47 @@ describe('reading the profile out of /auth/me', () => {
   })
 })
 
-describe('whether the chain index will serve this reader', () => {
-  it('is the admin role, which is the predicate the SERVICE uses', () => {
-    assert.equal(servedByIndexer({ handle: 'ada', roles: ['admin'] }), true)
-    assert.equal(servedByIndexer({ handle: 'ada', roles: ['support', 'billing'] }), false)
-    assert.equal(servedByIndexer({ handle: null, roles: [] }), false)
+/* ══════════════════════════════════════════════════════════════════════════════════════════════
+ * THE SESSION DECIDES NOTHING ON THIS SURFACE, AND THAT IS THE ASSERTION.
+ *
+ * There used to be a `servedByIndexer(reader)` predicate here — "would the chain index serve this
+ * reader" — answered by the `admin` role, because `authorise` accepted a user principal only when
+ * `isAdmin`. Its one caller was a standing notice that used it to choose between two wordings of
+ * the same apology. The reads are anonymous now (`indexer/src/server.ts:708-717`), the notice is
+ * deleted, and the predicate went with it.
+ *
+ * What replaces it is stronger than a test on a helper: NOTHING in this bundle consults the
+ * session before, during or after a request to the chain index. A client that predicts an
+ * authorisation decision is a client that will eventually disagree with the service making it, and
+ * on a public surface it is also how a page quietly starts requiring an account.
+ * ══════════════════════════════════════════════════════════════════════════════════════════════ */
+
+describe('nothing consults the session to decide what to render or send', () => {
+  it('exports no predicate about who the index would serve', () => {
+    const source = read('src/lib/auth.tsx').replace(/\/\*[\s\S]*?\*\//g, '')
+    assert.doesNotMatch(source, /export function servedByIndexer/, 'the predicate is back')
+    assert.doesNotMatch(source, /served:/, 'the Session shape carries a served flag again')
   })
 
-  it('is used to WORD a refusal and never to withhold a request', () => {
-    // A client that pre-empts an authorisation decision is a client that will eventually disagree
-    // with it. Every panel sends its request and lets the service answer; this predicate only
-    // decides which sentence the standing notice uses.
-    const source = read('src/lib/auth.tsx')
-    assert.match(source, /never to decide whether to send a request/)
-    for (const page of ['chain', 'block', 'transaction', 'address', 'token']) {
+  it('no page reads the session at all', () => {
+    // Stronger than the old assertion, which only banned two spellings. A page that imports
+    // `useSession` has a branch that can depend on it, and every one of these pages renders chain
+    // facts that are public.
+    for (const page of ['chain', 'block', 'transaction', 'address', 'token', 'chains', 'search']) {
       assert.doesNotMatch(
         read(`src/pages/${page}.tsx`),
-        /servedByIndexer|if \(!served\)/,
-        `${page}.tsx decides for itself whether the service would answer`,
+        /useSession|servedByIndexer|if \(!served\)/,
+        `${page}.tsx consults the session; nothing it renders may depend on one`,
       )
     }
+  })
+
+  it('the shell reads it for the company bar and for nothing else', () => {
+    // The one legitimate consumer, and it is narrowed to exactly the three fields the bar takes.
+    const source = read('src/components/shell.tsx').replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
+    assert.match(source, /const \{ account, signIn, signOut \} = useSession\(\)/)
+    assert.doesNotMatch(source, /!served|servedByIndexer/, 'the shell branches on who the index serves')
+    assert.doesNotMatch(source, /indexer:read/, 'the shell tells a reader to acquire a scope again')
   })
 })
 
@@ -108,8 +130,15 @@ describe('there is no gate, and the reason is read off the service', () => {
     assert.doesNotMatch(source, /ProtectedRoute/)
   })
 
-  it('states the finding with a citation somebody can go and check', () => {
-    assert.match(read('src/lib/auth.tsx'), /indexer\/src\/server\.ts:679-697/)
+  it('states the reason with a citation somebody can go and check', () => {
+    // The citation moved when the finding did. `:708-717` is `authoriseRead`, and the range is
+    // pinned against the real source in test/indexer.test.ts rather than only spelled here.
+    assert.match(read('src/lib/auth.tsx'), /indexer\/src\/server\.ts:708-717/)
+    assert.doesNotMatch(
+      read('src/lib/auth.tsx'),
+      /indexer\/src\/server\.ts:679-697/,
+      'the old authorise range is back; it is now the doc comment, not the function',
+    )
   })
 })
 

@@ -9,11 +9,12 @@
 # the page was served on. There is deliberately no build arg for an API URL, and adding one would
 # undo the property this template exists to keep.
 #
-# THERE IS ALSO NO SERVICE TOKEN IN THIS IMAGE, AND THAT IS THE HARDER RULE. `micro-indexer`
-# refuses an anonymous read (`indexer/src/server.ts:679-697`), and the tempting fix is a bearer
-# baked in here with an nginx `proxy_pass`. An image is built once and promoted, pushed to a
-# registry and pulled by anything with read access — a credential inside one is a published
-# credential. The explorer stays honestly refused instead; see the header of src/lib/indexer.ts.
+# THERE IS ALSO NO SERVICE TOKEN IN THIS IMAGE, AND THAT IS THE HARDER RULE. It is not needed:
+# every `micro-indexer` route this bundle calls is anonymous (`authoriseRead`,
+# `indexer/src/server.ts:708-717`) and the client presents nothing. The rule survives the reason,
+# because the reflex it guards against does not depend on it — an image is built once and promoted,
+# pushed to a registry and pulled by anything with read access, so a credential inside one is a
+# published credential whatever it was for. `nginx.conf` proxies nothing and CI greps both files.
 
 # The named context is the unpublished @cloudsforge/ui workspace, mirroring the `link:` specifier
 # in package.json. It disappears when the package is published; see "The one temporary thing" in

@@ -26,13 +26,17 @@ import { resourceState } from '../src/lib/resource.ts'
 
 const read = (file: string): string => readFileSync(new URL(`../${file}`, import.meta.url), 'utf8')
 
-const notice = { message: 'boom', requestId: 'req-1', refused: false, code: undefined, status: 500 }
+const notice = { message: 'boom', requestId: 'req-1', code: undefined, status: 500 }
 /**
- * A refusal. On this surface it is entered on 401 as well as 403, because `micro-indexer`
- * answers 401 to a caller with no token (`indexer/src/server.ts:687`) and 403 to a non-admin one
- * (`:695`) — two statuses, one remedy, and the remedy is not in this browser.
+ * A 401 — which on this surface is now an ordinary failure and nothing more.
+ *
+ * There used to be a fifth state, `refused`, entered on 401 OR 403, because every `micro-indexer`
+ * read demanded `indexer:read` or an admin. The reads are anonymous (`indexer/src/server.ts:708-717`)
+ * and this bundle presents no credential, so an auth status can only mean the service was re-gated
+ * or something in front of it injected one. Neither is a thing a reader can act on, and both are
+ * exactly what `failed` says: a message, and a request id to quote.
  */
-const refusal = { message: 'nope', requestId: 'req-1', refused: true, code: 'forbidden', status: 403 }
+const authStatus = { message: 'nope', requestId: 'req-1', code: 'unauthenticated', status: 401 }
 
 describe('the four states are four, and never collapse into each other', () => {
   it('is loading before anything has arrived', () => {
@@ -51,8 +55,12 @@ describe('the four states are four, and never collapse into each other', () => {
     assert.equal(resourceState({ loading: false, error: notice, count: null }), 'failed')
   })
 
-  it('is refused when it was understood and the authority was not there', () => {
-    assert.equal(resourceState({ loading: false, error: refusal, count: null }), 'refused')
+  it('an auth status is a failure like any other, with no state of its own', () => {
+    assert.equal(resourceState({ loading: false, error: authStatus, count: null }), 'failed')
+    assert.equal(
+      resourceState({ loading: false, error: { ...authStatus, status: 403 }, count: null }),
+      'failed',
+    )
   })
 
   it('reports FAILURE rather than EMPTY when both could apply', () => {
@@ -65,9 +73,9 @@ describe('the four states are four, and never collapse into each other', () => {
     assert.equal(resourceState({ loading: true, error: notice, count: null }), 'failed')
   })
 
-  it('reports FORBIDDEN rather than a generic failure', () => {
-    // The two have different remedies: one is retryable and one is never.
-    assert.equal(resourceState({ loading: true, error: refusal, count: 0 }), 'refused')
+  it('a failure outranks both loading and empty, whatever its status', () => {
+    // A request that threw has told us nothing, so neither a spinner nor "no results" may hide it.
+    assert.equal(resourceState({ loading: true, error: authStatus, count: 0 }), 'failed')
   })
 
   it('stays loading on a null count even when loading is false', () => {
@@ -105,8 +113,9 @@ describe('a screen whose question can change re-asks it', () => {
    * block 1's hash and depth under a heading that says block 2 — which on a block explorer is not
    * a stale panel, it is a wrong answer about the chain, rendered confidently.
    *
-   * `search` and `chains` are absent because they call nothing at all, which is the property that
-   * makes them the two screens that work without an authority.
+   * `search` is absent because it calls nothing at all — there is no question to ask until somebody
+   * types one — and `chains` is absent because its question never changes: it asks for the same ten
+   * scopes every time, so it takes no dependencies and is checked separately below.
    */
   const PARAMETERISED = ['chain', 'block', 'transaction', 'address', 'token']
 
@@ -124,13 +133,22 @@ describe('a screen whose question can change re-asks it', () => {
     })
   }
 
-  it('the two pages that call nothing really call nothing', () => {
-    // They are what a stranger sees working, so an API call sneaking into either would make the
-    // whole surface refuse for a visitor who had not yet asked a question.
-    for (const page of ['search', 'chains']) {
-      assert.deepEqual(calls(page), [], `${page}.tsx now fetches something`)
-      assert.doesNotMatch(read(`src/pages/${page}.tsx`), /from '\.\.\/lib\/api\.ts'/)
-    }
+  it('the one page that calls nothing really calls nothing', () => {
+    // The front page classifies a paste and navigates. A fetch here would spend a round trip to
+    // tell a reader what they had just typed.
+    assert.deepEqual(calls('search'), [], 'search.tsx now fetches something')
+    assert.doesNotMatch(read('src/pages/search.tsx'), /from '\.\.\/lib\/api\.ts'/)
+  })
+
+  it('chains.tsx asks the same fixed question every time, so it takes NO dependencies', () => {
+    // The other half of the rule, asserted rather than assumed. Its subject is the ten scopes, not
+    // an address parameter, so a dependency array would be a value that never changes — and a
+    // reader would have to work out which. `useResource` re-runs it on `reload` alone.
+    const found = calls('chains')
+    assert.equal(found.length, 1, 'chains.tsx no longer makes exactly one read')
+    assert.doesNotMatch(found[0] ?? '', /scope\?\.chain/, 'chains.tsx has grown an address parameter')
+    // …and it really does read the index, so this is not passing on a page that fetches nothing.
+    assert.match(read('src/pages/chains.tsx'), /getChainStatus\(scope, signal\)/)
   })
 
   it('no page passes `load` itself as a dependency', () => {
