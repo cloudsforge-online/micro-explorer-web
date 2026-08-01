@@ -219,9 +219,23 @@ PORT=8080 pnpm --dir ../indexer dev      # the indexer, on the port the registry
 pnpm dev                                  # this bundle, on 5189
 ```
 
-This is the seventh instance of a devPort that is an allocation pretending to be a fact — after
-`admin` (registry 3002, `admin-api` binds 4014), `emberkin` (3014 → 4100), `create` (4004 → 4000)
-and `trade` (4006 → 4000). Reported to micro-ui.
+### How many of these there really are
+
+`micro-trade-web/src/lib/hosts.ts:16-17` lists three earlier instances in the present tense. **Two
+of the three have since been corrected upstream**, so that sentence was re-read rather than copied
+forward — carrying a fixed defect into a new repository as a live one is the same failure this
+estate keeps finding in its own documents.
+
+| Surface | Registry devPort | The service binds | |
+| --- | --- | --- | --- |
+| `admin` | 4014 (`ui/packages/ui/src/surfaces.ts:276`) | 4014 (`admin-api/src/env.ts:167`) | **agrees** — it said 3002 |
+| `emberkin` | 4100 (`ui/packages/ui/src/surfaces.ts:412`) | 4100 (`emberkin/src/env.ts:121`) | **agrees** — it said 3014 |
+| `create` | 4004 (`ui/packages/ui/src/surfaces.ts:219`) | 4000 (`mint/src/env.ts:251`) | still disagrees |
+| `trade` | 4006 (`ui/packages/ui/src/surfaces.ts:206`) | 4000 (`trade/src/env.ts:166`) | still disagrees |
+| `explorer` | 8080 (`ui/packages/ui/src/surfaces.ts:443`) | 4008 (`indexer/src/env.ts:295`) | still disagrees |
+
+Three live, not seven. `test/hosts.test.ts` pins every number in that table, so the day another is
+fixed this README fails rather than becoming the next stale inherited claim. Reported to micro-ui.
 
 ## Brand
 

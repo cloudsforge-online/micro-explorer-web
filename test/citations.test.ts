@@ -57,6 +57,21 @@ const SIBLINGS: readonly string[] = [
   // the kind of claim worth verifying rather than remembering.
   'trade',
   'org',
+  // ── The devPort table, and the reason it is cited across five repositories ──────────────────
+  //
+  // `micro-trade-web/src/lib/hosts.ts:16-17` names `admin` and `emberkin` as disagreeing with the
+  // registry, in the present tense. Both were corrected in micro-ui afterwards. Copying that
+  // sentence into a new repository would have carried a FIXED defect forward as a live one —
+  // which is the exact failure this whole sweep exists to catch, arriving by the route it always
+  // arrives by: a claim inherited rather than re-read.
+  //
+  // So the corrected version cites the service each number was read from, and each of those
+  // repositories is listed here and checked out in CI. A table of five numbers that nothing
+  // verifies is how the sentence it replaces went wrong in the first place.
+  'trade-web',
+  'admin-api',
+  'emberkin',
+  'mint',
   // Cited by the template's api.ts, for the shape of the estate's error envelope. Not checked out
   // in CI, so these two are the ones the run reports as UNCHECKED — which is the honest answer
   // rather than a silent pass.
@@ -64,10 +79,11 @@ const SIBLINGS: readonly string[] = [
   'service-template',
 ]
 
-// NOTE: `trade-web` and `mint-web` are named in prose throughout this repository and are
-// deliberately NOT listed above, because nothing here cites a LINE in either. Listing a repository
-// that carries no citation would put it in the UNCHECKED notice for ever, which trains a reader to
-// skim that notice — and the whole point of printing it is that somebody reads it.
+// NOTE: `mint-web` is named in prose throughout this repository — the ten invented tokens, the
+// flat `/auth/me` fallback — and is deliberately NOT listed above, because nothing here cites a
+// LINE in it. Listing a repository that carries no citation would put it in the UNCHECKED notice
+// for ever, which trains a reader to skim that notice — and the whole point of printing it is that
+// somebody reads it.
 
 /** Where a sibling is checked out. `micro-trade` and `trade` are the same directory. */
 function siblingRoot(name: string): string | undefined {

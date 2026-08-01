@@ -27,10 +27,31 @@
  * `indexer/Dockerfile:91` exposes it.
  *
  * So under `pnpm dev` this bundle resolves `http://localhost:8080` and an indexer started from its
- * own example environment is not there. This is the same shape as `admin` (registry 3002,
- * `admin-api` binds 4014), `emberkin` (registry 3014, service binds 4100), `create` (registry
- * 4004, `mint` binds 4000) and `trade` (registry 4006, `trade` binds 4000) — the fifth, sixth and
- * now seventh instance of a devPort that is an allocation pretending to be a fact.
+ * own example environment is not there.
+ *
+ * ── The list of prior instances, RE-READ rather than inherited ────────────────────────────────
+ *
+ * `micro-trade-web/src/lib/hosts.ts:16-17` names three earlier instances in the present tense —
+ * "`admin` (registry 3002, `admin-api` binds 4014), `emberkin` (registry 3014, service binds
+ * 4100)". **Two of those three have since been fixed upstream**, and copying that sentence forward
+ * would have carried a corrected defect into a new repository as a live one. Read on the day this
+ * was written:
+ *
+ *   * `admin`     — registry **4014** (`ui/packages/ui/src/surfaces.ts:276`), `admin-api` binds
+ *                   4014 (`admin-api/src/env.ts:167`). **Agrees.** It said 3002, "which nothing
+ *                   anywhere listens on" (`ui/packages/ui/src/surfaces.ts:265-268`).
+ *   * `emberkin`  — registry **4100** (`ui/packages/ui/src/surfaces.ts:412`), service binds 4100
+ *                   (`emberkin/src/env.ts:121`). **Agrees.** It was briefly 3014.
+ *   * `create`    — registry **4004** (`ui/packages/ui/src/surfaces.ts:219`), `mint` binds 4000
+ *                   (`mint/src/env.ts:251`). **Still disagrees.**
+ *   * `trade`     — registry **4006** (`ui/packages/ui/src/surfaces.ts:206`), `trade` binds 4000
+ *                   (`trade/src/env.ts:166`). **Still disagrees.**
+ *   * `explorer`  — this one.
+ *
+ * So the honest count is THREE live disagreements, not seven, and two entries the registry has
+ * already corrected. `test/hosts.test.ts` pins every number above, so the day another is fixed
+ * this comment fails rather than quietly becoming another stale inherited claim — which is the
+ * defect it is describing.
  *
  * It is NOT fixed with a literal port here: a hard-coded host is a second, unversioned copy of the
  * registry, and the copy is the one that goes stale. What is missing is anything that MAKES the

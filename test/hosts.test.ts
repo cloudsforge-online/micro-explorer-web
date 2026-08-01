@@ -155,6 +155,52 @@ describe('the dev port disagreement, recorded rather than papered over', () => {
     assert.notEqual(Number(vite[1]), 4008)
   })
 
+  /**
+   * EVERY NUMBER IN THE README'S TABLE, PINNED — including the two that are FIXED.
+   *
+   * `micro-trade-web/src/lib/hosts.ts:16-17` names `admin` as "registry 3002" and `emberkin` as
+   * "registry 3014" in the present tense. Both were corrected in micro-ui after that was written,
+   * so copying the sentence forward would have carried a fixed defect into a new repository as a
+   * live one — which is precisely the class of failure the estate keeps finding in its own
+   * documents, arriving by the route it always arrives by: a claim inherited rather than re-read.
+   *
+   * So the fixed entries are pinned in the AGREEING direction. If `admin` or `emberkin` ever drifts
+   * apart again this fails; if `create`, `trade` or `explorer` is ever reconciled, the assertion
+   * below it fails and the README's "three live, not seven" has to be rewritten. Either way the
+   * count in the prose cannot quietly stop being true.
+   */
+  const bound = (dir: string, fallback: number): number | null => {
+    const file = at(`../${dir}`)
+    if (!existsSync(file)) return null
+    const m = /port: (?:integer|port)\(source, 'PORT', (\d+)/.exec(readFileSync(file, 'utf8'))
+    return m ? Number(m[1]) : fallback
+  }
+  const devPort = (key: string): number | undefined =>
+    SURFACES.find((s) => s.key === (key as never))?.devPort
+
+  it('the two the registry has already corrected still agree', () => {
+    assert.equal(devPort('admin'), 4014)
+    const adminApi = bound('admin-api/src/env.ts', 0)
+    if (adminApi !== null) assert.equal(adminApi, 4014, 'admin-api no longer binds what the registry says')
+
+    assert.equal(devPort('emberkin'), 4100)
+    const emberkin = bound('emberkin/src/env.ts', 0)
+    if (emberkin !== null) assert.equal(emberkin, 4100, 'emberkin no longer binds what the registry says')
+  })
+
+  it('and the three that do not agree still do not, so "three live" is a measured number', () => {
+    assert.equal(devPort('create'), 4004)
+    const mint = bound('mint/src/env.ts', 0)
+    if (mint !== null) assert.equal(mint, 4000, 'mint moved; the README table needs rewriting')
+
+    assert.equal(devPort('trade'), 4006)
+    const trade = bound('trade/src/env.ts', 0)
+    if (trade !== null) assert.equal(trade, 4000, 'trade moved; the README table needs rewriting')
+
+    assert.equal(devPort('explorer'), 8080)
+    // The indexer's 4008 is pinned in test/indexer.test.ts against the same file.
+  })
+
   it('the README says how to start the service on the port this app calls', () => {
     // The disagreement is only survivable because one line of the README makes it true. If that
     // line goes, the finding goes back to being undiagnosable.

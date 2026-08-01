@@ -154,6 +154,45 @@ jobs:
           sparse-checkout: |
             src
 
+      # ══════════════════════════════════════════════════════════════════════════════════════════
+      # THE devPort TABLE, WHOSE FIVE NUMBERS ARE THE REASON THESE FOUR ARE HERE.
+      #
+      # micro-trade-web's hosts.ts names `admin` (registry 3002) and `emberkin` (registry 3014) as
+      # live disagreements. Both were corrected in micro-ui afterwards, so copying that sentence
+      # into this repository would have carried a fixed defect forward as a current one. The
+      # corrected table in README.md and src/lib/hosts.ts cites the service each number was read
+      # from; these checkouts are what keep it true rather than merely careful once.
+      # ══════════════════════════════════════════════════════════════════════════════════════════
+      - uses: actions/checkout@v4
+        with:
+          repository: cloudsforge-online/micro-admin-api
+          path: admin-api
+          token: ${{ secrets.ESTATE_READ_TOKEN }}
+          sparse-checkout: |
+            src
+      - uses: actions/checkout@v4
+        with:
+          repository: cloudsforge-online/micro-emberkin
+          path: emberkin
+          token: ${{ secrets.ESTATE_READ_TOKEN }}
+          sparse-checkout: |
+            src
+      - uses: actions/checkout@v4
+        with:
+          repository: cloudsforge-online/micro-mint
+          path: mint
+          token: ${{ secrets.ESTATE_READ_TOKEN }}
+          sparse-checkout: |
+            src
+      # The repository whose inherited sentence is being corrected. Cited by line, so checked.
+      - uses: actions/checkout@v4
+        with:
+          repository: cloudsforge-online/micro-trade-web
+          path: trade-web
+          token: ${{ secrets.ESTATE_READ_TOKEN }}
+          sparse-checkout: |
+            src
+
       # One citation — `org/tools/registry.ts:8-11`, the `micro-<name>` / `<name>` substitution the
       # citation sweep itself relies on to resolve a sibling. Cheap to verify, and the sweep would
       # be reasoning from an unverified rule about itself otherwise.
