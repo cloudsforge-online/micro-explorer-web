@@ -1,0 +1,732 @@
+/*
+ * The Network Explorer's own styles, on top of @cloudsforge/ui.
+ *
+ * ══════════════════════════════════════════════════════════════════════════════════════════════
+ * EVERY CUSTOM PROPERTY REFERENCED HERE IS DEFINED IN `ui/packages/ui/src/tokens.css`, AND A TEST
+ * PROVES IT.
+ *
+ * `test/tokens.test.ts` reads the sibling design system, collects every `--cf-*` this file names,
+ * and fails on one that tokens.css does not declare. That is not a style preference. An undefined
+ * custom property makes the whole declaration invalid at computed-value time, so
+ * `border: 1px solid var(--cf-undefined)` does not fall back to a sensible border — it drops the
+ * border entirely, silently, in a file that looks correct.
+ *
+ * The estate has already shipped this. `micro-mint-web/src/styles.css` references TEN properties
+ * that do not exist — `--cf-border`, `--cf-radius-md`, `--cf-space-1` through `--cf-space-5`, and
+ * `--cf-status-good`/`-warn`/`-crit` — across 72 declarations, while every other frontend in the
+ * estate is clean. Reported, not fixed from here.
+ *
+ * The names that DO exist and are used below:
+ *   borders   --cf-line, --cf-line-strong          (never --cf-border)
+ *   states    --cf-success, --cf-warn, --cf-danger (never --cf-status-*, never --cf-critical)
+ *   radii     --cf-radius-sm, --cf-radius, --cf-radius-lg (never --cf-radius-md)
+ *   spacing   --cf-space-3xs … --cf-space-3xl      (never --cf-space-1..5)
+ *   type      --cf-font-sans, --cf-font-mono, --cf-font-display (never --cf-font)
+ *
+ * A `var(--undefined, #hex)` is not a repair either: it is a hard-coded colour wearing a token's
+ * clothes, and it stops following the substrate the moment somebody switches the ash ramp. There
+ * is one literal colour in this file and it is `transparent`.
+ *
+ * ── The same rule applies to CLASS names, and this surface added the check ────────────────────
+ *
+ * `.cf-btn` exists in `ui/packages/ui/src/ui.css`; `.cf-btn--primary`, `.cf-input` and
+ * `.cf-select` do not. A class that does not exist fails exactly as quietly as a property that
+ * does not: the element renders unstyled and nothing reports it. This file therefore declares its
+ * own `.ex-input` and `.ex-select` rather than borrowing names that look like the design
+ * system's, and `test/tokens.test.ts` asserts that every `cf-` class this bundle names is declared
+ * upstream.
+ * ══════════════════════════════════════════════════════════════════════════════════════════════
+ */
+
+/* ---- the frame -------------------------------------------------------- */
+
+.ex-skip {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 100;
+  padding: var(--cf-space-sm) var(--cf-space-lg);
+  background: var(--cf-accent);
+  color: var(--cf-accent-ink);
+  border-radius: 0 0 var(--cf-radius) 0;
+}
+
+.ex-skip:focus {
+  left: 0;
+}
+
+.ex-subnav {
+  position: sticky;
+  /* The bar's OWN height token, not a number copied out of it. */
+  top: var(--cf-bar-h);
+  z-index: 20;
+  background: var(--cf-bg);
+  border-bottom: 1px solid var(--cf-line);
+}
+
+.ex-subnav__inner {
+  max-width: var(--cf-max-w);
+  margin: 0 auto;
+  display: flex;
+  gap: var(--cf-space-xs);
+  padding: 0 var(--cf-space-xl);
+  overflow-x: auto;
+}
+
+.ex-subnav__link {
+  padding: var(--cf-space-md) var(--cf-space-sm);
+  color: var(--cf-fg-dim);
+  text-decoration: none;
+  font-size: var(--cf-text-md);
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+}
+
+.ex-subnav__link:hover {
+  color: var(--cf-fg);
+}
+
+.ex-subnav__link.is-active {
+  color: var(--cf-fg);
+  border-bottom-color: var(--cf-accent);
+}
+
+.ex-main {
+  max-width: var(--cf-max-w);
+  margin: 0 auto;
+  padding: var(--cf-space-2xl) var(--cf-space-xl) var(--cf-space-3xl);
+  font-family: var(--cf-font-sans);
+  color: var(--cf-fg);
+}
+
+/* ---- the states, from the template ------------------------------------ */
+
+.wt-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--cf-space-sm);
+  padding: var(--cf-space-3xl) var(--cf-space-xl);
+  border-radius: var(--cf-radius-lg);
+  text-align: center;
+}
+
+.wt-state__icon {
+  font-size: var(--cf-text-3xl);
+  line-height: 1;
+}
+
+.wt-state__title {
+  margin: 0;
+  font-weight: 600;
+}
+
+.wt-state__hint,
+.wt-state__meta {
+  margin: 0;
+  color: var(--cf-fg-dim);
+  font-size: var(--cf-text-md);
+  max-width: 40rem;
+}
+
+.wt-state__action {
+  display: flex;
+  gap: var(--cf-space-sm);
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: var(--cf-space-sm);
+}
+
+.wt-state--empty {
+  border: 1px dashed var(--cf-line);
+  color: var(--cf-fg-dim);
+}
+
+/*
+ * MISSING is not FAILED, and it does not look like it.
+ *
+ * "This index has never seen that transaction" is an answer, and the most common one an explorer
+ * gives. Painting it in the danger colour would teach a reader that a correct answer is a fault,
+ * which is how somebody learns to distrust the one screen that is telling them the truth.
+ */
+.wt-state--missing {
+  border: 1px solid var(--cf-line-strong);
+  background: var(--cf-bg-sunken);
+  color: var(--cf-fg-dim);
+}
+
+.wt-state--failed {
+  border: 1px solid var(--cf-danger);
+}
+
+.wt-state--failed .wt-state__icon {
+  color: var(--cf-danger);
+}
+
+/*
+ * REFUSED is warn rather than danger, deliberately.
+ *
+ * Nothing is broken: the chain index answered exactly as it is configured to. Danger would say
+ * "something has gone wrong", and the honest reading is "this is not open yet".
+ */
+.wt-state--refused {
+  border: 1px solid var(--cf-warn);
+  background: var(--cf-bg-sunken);
+}
+
+.wt-state--refused .wt-state__icon {
+  color: var(--cf-warn);
+}
+
+/*
+ * The request id is the string a reader reads down a phone line or pastes into a support form, so
+ * it is monospace, selectable and set apart.
+ */
+.wt-reqid {
+  user-select: all;
+  padding: 0.1rem 0.35rem;
+  border-radius: var(--cf-radius-sm);
+  background: var(--cf-bg-sunken);
+  font-family: var(--cf-font-mono);
+}
+
+.ex-code {
+  padding: 0.1rem 0.35rem;
+  border-radius: var(--cf-radius-sm);
+  background: var(--cf-bg-sunken);
+  font-family: var(--cf-font-mono);
+  font-size: var(--cf-text-sm);
+}
+
+.wt-spinner {
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 50%;
+  border: 2px solid var(--cf-line-strong);
+  border-top-color: var(--cf-accent);
+  animation: ex-spin 700ms linear infinite;
+}
+
+@keyframes ex-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Respecting a stated preference is not optional; a spinner is the classic trigger. */
+@media (prefers-reduced-motion: reduce) {
+  .wt-spinner {
+    animation-duration: 3s;
+  }
+}
+
+/* ---- page furniture --------------------------------------------------- */
+
+.ex-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cf-space-lg);
+}
+
+.ex-page__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--cf-space-lg);
+}
+
+.ex-page__title {
+  margin: 0;
+  font-family: var(--cf-font-display);
+  font-size: var(--cf-text-3xl);
+  font-weight: 600;
+}
+
+.ex-page__id {
+  margin: 0;
+  font-size: var(--cf-text-sm);
+  color: var(--cf-fg-mute);
+}
+
+.ex-page__lede {
+  margin: 0;
+  color: var(--cf-fg-dim);
+  max-width: 52rem;
+}
+
+/*
+ * A hash gets its own line and wraps rather than being truncated.
+ *
+ * Truncation in the DOM is the enemy on this surface: the whole reason somebody is here is to
+ * compare a string against one they hold, and `0x1234…abcd` cannot be compared. Table cells
+ * abbreviate; the subject of the page never does.
+ */
+.ex-page__hash {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.ex-section__title {
+  margin: var(--cf-space-xl) 0 0;
+  font-size: var(--cf-text-xl);
+  font-weight: 600;
+}
+
+.ex-dim {
+  color: var(--cf-fg-mute);
+  font-size: var(--cf-text-sm);
+}
+
+.ex-absent {
+  color: var(--cf-fg-mute);
+  font-style: italic;
+}
+
+.ex-hex {
+  font-family: var(--cf-font-mono);
+  font-size: var(--cf-text-sm);
+  overflow-wrap: anywhere;
+}
+
+.ex-hex--wrap {
+  display: block;
+  max-width: 28rem;
+  overflow-wrap: anywhere;
+}
+
+.ex-plainlist {
+  margin: 0;
+  padding-left: var(--cf-space-xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--cf-space-sm);
+  color: var(--cf-fg-dim);
+  max-width: 52rem;
+}
+
+/* ---- notes ------------------------------------------------------------ */
+
+.ex-note {
+  display: flex;
+  align-items: baseline;
+  gap: var(--cf-space-sm);
+  margin: 0;
+  padding: var(--cf-space-lg) var(--cf-space-xl);
+  border: 1px solid var(--cf-line-strong);
+  border-radius: var(--cf-radius);
+  background: var(--cf-surface);
+  color: var(--cf-fg-dim);
+  max-width: 60rem;
+  font-size: var(--cf-text-md);
+}
+
+.ex-note__icon {
+  line-height: 1;
+  font-size: var(--cf-text-lg);
+}
+
+.ex-note--warn {
+  border-color: var(--cf-warn);
+}
+
+.ex-note--warn .ex-note__icon {
+  color: var(--cf-warn);
+}
+
+/*
+ * The depth note is bordered on the accent so it reads as part of the report rather than as a
+ * legal footer somebody learns to skip. It is the sentence this whole surface turns on.
+ */
+.ex-note--depth {
+  border-color: var(--cf-accent);
+}
+
+.ex-note--depth .ex-note__icon {
+  color: var(--cf-accent);
+}
+
+.ex-note--depth strong {
+  color: var(--cf-fg);
+}
+
+.ex-notice {
+  border-width: 2px;
+}
+
+/* ---- facts ------------------------------------------------------------ */
+
+.ex-facts {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(22rem, 1fr));
+  gap: var(--cf-space-md) var(--cf-space-xl);
+}
+
+.ex-facts--tight {
+  gap: var(--cf-space-sm) var(--cf-space-lg);
+}
+
+.ex-fact {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cf-space-3xs);
+  padding: var(--cf-space-sm) 0;
+  border-top: 1px solid var(--cf-line);
+}
+
+.ex-fact__label {
+  color: var(--cf-fg-mute);
+  font-size: var(--cf-text-sm);
+}
+
+.ex-fact__value {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+/* ---- badges ----------------------------------------------------------- */
+
+.ex-badge {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--cf-space-2xs);
+  padding: 0.1rem 0.5rem;
+  border: 1px solid var(--cf-line-strong);
+  border-radius: var(--cf-radius-sm);
+  font-size: var(--cf-text-xs);
+  white-space: nowrap;
+}
+
+.ex-badge__glyph {
+  line-height: 1;
+}
+
+/* Colour is the THIRD channel. The word and the glyph carry the meaning on their own. */
+.ex-badge--good {
+  border-color: var(--cf-success);
+  color: var(--cf-success);
+}
+
+.ex-badge--warn {
+  border-color: var(--cf-warn);
+  color: var(--cf-warn);
+}
+
+.ex-badge--bad {
+  border-color: var(--cf-danger);
+  color: var(--cf-danger);
+}
+
+.ex-badge--idle {
+  color: var(--cf-fg-mute);
+}
+
+/* ---- depth ------------------------------------------------------------ */
+
+.ex-depth {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--cf-space-2xs);
+  flex-wrap: wrap;
+}
+
+.ex-depth__n {
+  font-weight: 600;
+}
+
+.ex-depth__of {
+  color: var(--cf-fg-dim);
+}
+
+/*
+ * The head label is never optional and never hidden behind a hover.
+ *
+ * A confirmation count with no head named is the ambiguity this whole surface exists to remove:
+ * `micro-indexer` counts one way for its decision reads and another for its record reads
+ * (reads.ts:18-30), and the same block honestly has two depths.
+ */
+.ex-depth__head {
+  padding: 0.05rem 0.35rem;
+  border: 1px solid var(--cf-line);
+  border-radius: var(--cf-radius-sm);
+  color: var(--cf-fg-mute);
+  font-size: var(--cf-text-2xs);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.ex-depth--none {
+  color: var(--cf-fg-mute);
+}
+
+/* ---- the verdict panel ------------------------------------------------ */
+
+.ex-verdict {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cf-space-md);
+  padding: var(--cf-space-xl);
+  border: 1px solid var(--cf-line-strong);
+  border-radius: var(--cf-radius-lg);
+  background: var(--cf-surface-solid);
+}
+
+.ex-verdict--yes {
+  border-color: var(--cf-success);
+}
+
+/*
+ * "Not yet" is NOT an error state. It is the normal condition of a young transaction, and painting
+ * it red would make waiting look like failure — which is exactly the misreading that made a
+ * marketplace tell every seller their escrow had gone wrong.
+ */
+.ex-verdict--no {
+  border-color: var(--cf-line-strong);
+}
+
+.ex-verdict__answer {
+  display: flex;
+  align-items: baseline;
+  gap: var(--cf-space-sm);
+  margin: 0;
+  font-size: var(--cf-text-lg);
+  font-weight: 600;
+}
+
+.ex-verdict--yes .ex-verdict__glyph {
+  color: var(--cf-success);
+}
+
+.ex-verdict--no .ex-verdict__glyph {
+  color: var(--cf-fg-mute);
+}
+
+.ex-verdict__why {
+  margin: 0;
+  padding-left: var(--cf-space-xl);
+  color: var(--cf-fg-dim);
+  display: flex;
+  flex-direction: column;
+  gap: var(--cf-space-3xs);
+}
+
+.ex-verdict__note {
+  margin: 0;
+  color: var(--cf-fg-mute);
+  font-size: var(--cf-text-sm);
+}
+
+/* ---- withheld --------------------------------------------------------- */
+
+/*
+ * A withheld balance gets a panel, not a dash.
+ *
+ * `indexer/src/reads.ts:225-259` withholds `balances` rather than returning zero, and the reason it
+ * gives is the whole value of the answer. A layout that reduced that to an em dash would discard
+ * precisely the field the API was designed to carry.
+ */
+.ex-withheld {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cf-space-md);
+  padding: var(--cf-space-xl);
+  border: 1px solid var(--cf-warn);
+  border-radius: var(--cf-radius-lg);
+  background: var(--cf-bg-sunken);
+}
+
+.ex-withheld__title {
+  margin: 0;
+  font-weight: 600;
+}
+
+.ex-withheld__why,
+.ex-withheld__note {
+  margin: 0;
+  color: var(--cf-fg-dim);
+  max-width: 52rem;
+}
+
+.ex-withheld__note {
+  font-size: var(--cf-text-sm);
+  color: var(--cf-fg-mute);
+}
+
+/* ---- search ----------------------------------------------------------- */
+
+.ex-search {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--cf-space-md);
+  padding: var(--cf-space-xl);
+  border: 1px solid var(--cf-line);
+  border-radius: var(--cf-radius-lg);
+  background: var(--cf-surface-solid);
+}
+
+.ex-search__scope {
+  display: flex;
+  gap: var(--cf-space-md);
+}
+
+.ex-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cf-space-3xs);
+}
+
+.ex-field--grow {
+  flex: 1 1 22rem;
+}
+
+.ex-field__label {
+  color: var(--cf-fg-mute);
+  font-size: var(--cf-text-sm);
+}
+
+/*
+ * `.ex-input` and `.ex-select`, not `.cf-input` and `.cf-select`.
+ *
+ * The design system declares neither (`ui/packages/ui/src/ui.css` has `.cf-btn` and no form
+ * controls at all), and a class that does not exist fails as silently as an undefined custom
+ * property: the control renders with the browser's own chrome, on a dark substrate, and nothing
+ * reports it. Named locally so the failure cannot be silent, and `test/tokens.test.ts` refuses any
+ * `cf-` class this bundle names that upstream does not declare.
+ */
+.ex-input,
+.ex-select {
+  padding: var(--cf-space-sm) var(--cf-space-md);
+  border: 1px solid var(--cf-line-strong);
+  border-radius: var(--cf-radius-sm);
+  background: var(--cf-bg-sunken);
+  color: var(--cf-fg);
+  font-family: var(--cf-font-mono);
+  font-size: var(--cf-text-md);
+}
+
+.ex-input:focus-visible,
+.ex-select:focus-visible {
+  outline: 2px solid var(--cf-accent);
+  outline-offset: 1px;
+}
+
+.ex-guess {
+  margin: 0;
+  color: var(--cf-fg-dim);
+  max-width: 52rem;
+}
+
+/* ---- chain list ------------------------------------------------------- */
+
+.ex-scopes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--cf-space-lg);
+  grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
+}
+
+.ex-scope {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cf-space-md);
+  padding: var(--cf-space-lg);
+  border: 1px solid var(--cf-line);
+  border-radius: var(--cf-radius-lg);
+  background: var(--cf-surface-solid);
+}
+
+.ex-scope__name {
+  margin: 0;
+  font-size: var(--cf-text-md);
+  font-weight: 600;
+}
+
+.ex-scope__nets {
+  display: flex;
+  gap: var(--cf-space-sm);
+  flex-wrap: wrap;
+}
+
+.ex-scope__link {
+  padding: var(--cf-space-2xs) var(--cf-space-sm);
+  border: 1px solid var(--cf-line-strong);
+  border-radius: var(--cf-radius-sm);
+  text-decoration: none;
+  color: var(--cf-fg);
+}
+
+.ex-scope__link:hover {
+  border-color: var(--cf-accent);
+}
+
+/* ---- tables ----------------------------------------------------------- */
+
+.ex-tablewrap {
+  overflow-x: auto;
+  border: 1px solid var(--cf-line);
+  border-radius: var(--cf-radius);
+}
+
+.ex-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--cf-text-sm);
+}
+
+.ex-table th,
+.ex-table td {
+  padding: var(--cf-space-sm) var(--cf-space-md);
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--cf-line);
+}
+
+.ex-table thead th {
+  color: var(--cf-fg-mute);
+  font-weight: 600;
+  white-space: nowrap;
+  background: var(--cf-bg-sunken);
+}
+
+.ex-table tbody tr:last-child th,
+.ex-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+/*
+ * An orphaned row is dimmed AND badged. The badge is the channel that carries the meaning; the
+ * dimming only reinforces it, because a reader who cannot separate the two greys still reads the
+ * word "Orphaned" in the row.
+ */
+.ex-table tbody tr.is-orphaned {
+  color: var(--cf-fg-mute);
+  background: var(--cf-bg-sunken);
+}
+
+.ex-hashlist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--cf-space-2xs);
+}
+
+.ex-topics {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--cf-space-3xs);
+}
+
+.ex-stepper {
+  display: flex;
+  gap: var(--cf-space-sm);
+  flex-wrap: wrap;
+}
