@@ -24,7 +24,7 @@
  * seen, and **200 with `confirmed: false`** for one it has seen that is not deep enough. Those are
  * different facts. `micro-market` merged them and reported "the on-chain escrow is not confirmed
  * yet" for every activation, against a route that did not exist at the time
- * (`indexer/src/server.ts:426-436`). A caller separates them **by the error CODE, never by the
+ * (`indexer/src/server.ts:445-455`). A caller separates them **by the error CODE, never by the
  * status** — a path the service does not serve answers `not_found`, an unrun chain answers
  * `unknown_chain` — which is exactly what the branches below do.
  *

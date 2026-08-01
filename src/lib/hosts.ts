@@ -18,46 +18,15 @@
  * `explorer.<apex>` and the indexer serves `/v1/...` behind the same hostname, exactly as
  * `trade.<apex>` is shared. So `apiBase()` is `''` in production and every request is relative.
  *
- * ── The dev port disagreement, reported rather than papered over ───────────────────────────────
+ * ── The dev port disagreement, reported and then fixed upstream ────────────────────────────────
  *
- * The registry gives `explorer` **devPort 8080** (`ui/packages/ui/src/surfaces.ts:443`). 8080 is
- * this bundle's own container port — the nginx-unprivileged image listens on it (`Dockerfile:67`,
- * `nginx.conf:29`) — rather than a port any API answers on. The indexer binds **4008**:
- * `indexer/src/env.ts:295` defaults `PORT` to 4008, `indexer/.env.example:9` sets it to 4008, and
- * `indexer/Dockerfile:91` exposes it.
- *
- * So under `pnpm dev` this bundle resolves `http://localhost:8080` and an indexer started from its
- * own example environment is not there.
- *
- * ── The list of prior instances, RE-READ rather than inherited ────────────────────────────────
- *
- * `micro-trade-web/src/lib/hosts.ts:16-17` names three earlier instances in the present tense —
- * "`admin` (registry 3002, `admin-api` binds 4014), `emberkin` (registry 3014, service binds
- * 4100)". **Two of those three have since been fixed upstream**, and copying that sentence forward
- * would have carried a corrected defect into a new repository as a live one. Read on the day this
- * was written:
- *
- *   * `admin`     — registry **4014** (`ui/packages/ui/src/surfaces.ts:276`), `admin-api` binds
- *                   4014 (`admin-api/src/env.ts:167`). **Agrees.** It said 3002, "which nothing
- *                   anywhere listens on" (`ui/packages/ui/src/surfaces.ts:265-268`).
- *   * `emberkin`  — registry **4100** (`ui/packages/ui/src/surfaces.ts:412`), service binds 4100
- *                   (`emberkin/src/env.ts:121`). **Agrees.** It was briefly 3014.
- *   * `create`    — registry **4004** (`ui/packages/ui/src/surfaces.ts:219`), `mint` binds 4000
- *                   (`mint/src/env.ts:251`). **Still disagrees.**
- *   * `trade`     — registry **4006** (`ui/packages/ui/src/surfaces.ts:206`), `trade` binds 4000
- *                   (`trade/src/env.ts:166`). **Still disagrees.**
- *   * `explorer`  — this one.
- *
- * So the honest count is THREE live disagreements, not seven, and two entries the registry has
- * already corrected. `test/hosts.test.ts` pins every number above, so the day another is fixed
- * this comment fails rather than quietly becoming another stale inherited claim — which is the
- * defect it is describing.
- *
- * It is NOT fixed with a literal port here: a hard-coded host is a second, unversioned copy of the
- * registry, and the copy is the one that goes stale. What is missing is anything that MAKES the
- * registry true, so the README says `PORT=8080 pnpm dev` for the indexer, in one line, next to the
- * citation, and `test/hosts.test.ts` pins BOTH numbers so that whichever moves first fails and
- * names the other. Reported to micro-ui and micro-indexer; fixed in neither from here.
+ * The registry now gives `explorer` **devPort 4008** (`ui/packages/ui/src/surfaces.ts:456`) — the
+ * port `micro-indexer` binds (`indexer/src/env.ts:295`, `indexer/.env.example:9`,
+ * `indexer/Dockerfile:91`). It used to say 8080, which is this bundle's OWN container port
+ * (`Dockerfile:67`, `nginx.conf:29`): the registry told a frontend to ask itself for chain data,
+ * and under `pnpm dev` an indexer started from its own example environment was never consulted.
+ * This repository reported it rather than papering over it with a literal, micro-ui corrected it
+ * and pinned the value against the service, and the pins in test/hosts.test.ts flipped with it.
  */
 import { cloudsforgeHosts, type CloudsForgeHosts, type SurfaceKey } from '@cloudsforge/ui'
 
@@ -78,7 +47,7 @@ export const PRODUCT: SurfaceKey = 'explorer'
  *
  * `explorer` has **no `[data-cf-product='explorer']` block** in `ui/packages/ui/src/tokens.css`;
  * `network`'s is at `:340-345` and carries `#d6412f`, which is the exact accent the registry gives
- * `explorer` (`ui/packages/ui/src/surfaces.ts:444`). So `network` is the correct selector and it
+ * `explorer` (`ui/packages/ui/src/surfaces.ts:457`). So `network` is the correct selector and it
  * is set statically in index.html.
  *
  * That the explorer has no block of its own is worth stating, because tokens.css says at `:389-396`

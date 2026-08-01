@@ -3,7 +3,7 @@
  *
  * Five chains (`indexer/src/chains.ts:41`) times two networks (`indexer/src/chains.ts:43`), and
  * one `GET /v1/chains/:chain/:network/status` per scope — `indexer/src/server.ts:154`, handler at
- * `:384`, anonymous (`authoriseRead`, `indexer/src/server.ts:708-717`).
+ * `:384`, anonymous (`authoriseRead`, `indexer/src/server.ts:727-736`).
  *
  * ── This page used to fetch nothing, and the reason it gave is no longer true ──────────────────
  *

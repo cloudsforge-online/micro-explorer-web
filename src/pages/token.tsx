@@ -9,7 +9,7 @@
  * This route exists because `micro-mint` could not tell them apart, and every ForgeMint project
  * page rendered its supply and authorities as unknown, permanently
  * (`indexer/src/server.ts:144-147`). The handler's own comment sets out the split
- * (`indexer/src/server.ts:478-492`):
+ * (`indexer/src/server.ts:497-511`):
  *
  *   **404 `token_not_found`** — this service asked the chain and there is no contract answering
  *   `totalSupply()` at that address, at the block it has walked. A REAL answer. A contract
@@ -21,7 +21,7 @@
  *   **501 / 503** — `TokenStateUnavailableError` (`indexer/src/tokenstate.ts:136-157`). The
  *   observation could not be MADE. `family_not_supported` is 501 because no amount of waiting will
  *   change it; the other four are 503 because a provider, a head or a follower is behind
- *   (`indexer/src/server.ts:274-283`). **Never rendered as "no token here".**
+ *   (`indexer/src/server.ts:293-302`). **Never rendered as "no token here".**
  *
  * ── The observation is as at a block, and the block is named ──────────────────────────────────
  *
@@ -109,7 +109,7 @@ export function TokenPage() {
               &ldquo;I could not ask the chain&rdquo; and &ldquo;there is no token at that
               address&rdquo; are different answers, and a consumer that cannot tell them apart
               renders the second when it means the first
-              (<code className="cf-num">indexer/src/server.ts:274-283</code>). This page does not.
+              (<code className="cf-num">indexer/src/server.ts:293-302</code>). This page does not.
             </p>
           </div>
           {resource.error.status !== 501 && (

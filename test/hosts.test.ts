@@ -6,11 +6,12 @@
  * and production — and the tests install four different windows to prove it rather than trusting
  * a comment.
  *
- * The second thing under test is the dev-port disagreement, asserted as a FACT rather than fixed
- * with a literal: the registry gives `explorer` **8080** (`ui/packages/ui/src/surfaces.ts:443`) and
- * `micro-indexer` binds **4008** (`indexer/src/env.ts:295`, `indexer/.env.example:9`,
- * `indexer/Dockerfile:91`). BOTH halves are pinned, so whichever moves first fails and names the
- * other. See the header of src/lib/hosts.ts.
+ * The second thing under test WAS the dev-port disagreement, asserted as a fact rather than fixed
+ * with a literal: the registry said 8080 — this bundle's own container port — while `micro-indexer`
+ * binds **4008** (`indexer/src/env.ts:295`, `indexer/.env.example:9`, `indexer/Dockerfile:91`).
+ * micro-ui corrected the registry to 4008 (`ui/packages/ui/src/surfaces.ts:456`) and these pins
+ * flipped to the agreeing direction; both halves stay pinned, so a NEW disagreement fails and
+ * names the side that moved. See the header of src/lib/hosts.ts.
  */
 import assert from 'node:assert/strict'
 import { existsSync, readFileSync } from 'node:fs'

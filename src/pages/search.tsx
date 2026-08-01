@@ -10,19 +10,19 @@
  * It used to say something else, and the difference is worth recording: every `micro-indexer` route
  * required an authority this bundle could not hold, so a front page that fetched anything would
  * have greeted every visitor with a refusal before they asked a question. That is fixed
- * (`authoriseRead`, `indexer/src/server.ts:708-717`) and the refusal machinery is deleted — the
+ * (`authoriseRead`, `indexer/src/server.ts:727-736`) and the refusal machinery is deleted — the
  * front page still fetches nothing, now for the plain reason rather than the defensive one.
  *
  * ── The classification is the SERVICE's rules, not this app's ─────────────────────────────────
  *
  * `guessKind` in `src/lib/routes.ts` uses the same three shapes the indexer validates against:
- * `/^\d{1,15}$/` for a height (`indexer/src/server.ts:518`), `EVM_HASH`
- * (`indexer/src/server.ts:591`) and `EVM_ADDRESS` (`indexer/src/server.ts:590`). Sending somebody
+ * `/^\d{1,15}$/` for a height (`indexer/src/server.ts:537`), `EVM_HASH`
+ * (`indexer/src/server.ts:610`) and `EVM_ADDRESS` (`indexer/src/server.ts:609`). Sending somebody
  * to a page the service would answer 400 for would be this app inventing a surface again.
  *
  * A paste it cannot classify is `unknown`, and the page says which three shapes it knows rather
  * than guessing at the nearest one. The non-EVM families are length-checked only upstream
- * (`indexer/src/server.ts:610-616`), because "the family that would validate them is not built yet
+ * (`indexer/src/server.ts:629-635`), because "the family that would validate them is not built yet
  * and a wrong validator would reject valid addresses" — so on those chains a paste that is not a
  * height cannot be classified here either, and the page offers both destinations instead of
  * choosing.

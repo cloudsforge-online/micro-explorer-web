@@ -12,7 +12,7 @@
  * (`indexer/src/reads.ts:225-259`). The field that replaces them is `unavailable`, naming which of
  * four reasons applied. The service's own words: "an indexer that started following at the tip
  * knows nothing about what anybody held", and "a missing balance is missing, never zero, because
- * zero is what evicts a token-gated member" (`indexer/src/server.ts:460-461`).
+ * zero is what evicts a token-gated member" (`indexer/src/server.ts:479-480`).
  *
  * So this page renders the reason as a sentence and prints no number at all. A dash would be
  * kinder to the layout and would lose the only thing worth knowing.

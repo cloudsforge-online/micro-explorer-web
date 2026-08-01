@@ -133,10 +133,10 @@ describe('there is no gate, and the reason is read off the service', () => {
   it('states the reason with a citation somebody can go and check', () => {
     // The citation moved when the finding did. `:708-717` is `authoriseRead`, and the range is
     // pinned against the real source in test/indexer.test.ts rather than only spelled here.
-    assert.match(read('src/lib/auth.tsx'), /indexer\/src\/server\.ts:708-717/)
+    assert.match(read('src/lib/auth.tsx'), /indexer\/src\/server\.ts:727-736/)
     assert.doesNotMatch(
       read('src/lib/auth.tsx'),
-      /indexer\/src\/server\.ts:679-697/,
+      /indexer\/src\/server\.ts:698-716/,
       'the old authorise range is back; it is now the doc comment, not the function',
     )
   })

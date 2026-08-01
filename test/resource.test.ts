@@ -31,7 +31,7 @@ const notice = { message: 'boom', requestId: 'req-1', code: undefined, status: 5
  * A 401 — which on this surface is now an ordinary failure and nothing more.
  *
  * There used to be a fifth state, `refused`, entered on 401 OR 403, because every `micro-indexer`
- * read demanded `indexer:read` or an admin. The reads are anonymous (`indexer/src/server.ts:708-717`)
+ * read demanded `indexer:read` or an admin. The reads are anonymous (`indexer/src/server.ts:727-736`)
  * and this bundle presents no credential, so an auth status can only mean the service was re-gated
  * or something in front of it injected one. Neither is a thing a reader can act on, and both are
  * exactly what `failed` says: a message, and a request id to quote.

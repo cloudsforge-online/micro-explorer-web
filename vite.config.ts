@@ -32,27 +32,16 @@ export default defineConfig({
   },
   // ════════════════════════════════════════════════════════════════════════════════════════════
   // 5189 IS A VITE PORT. IT IS NEITHER THE REGISTRY'S `explorer` ENTRY NOR THE INDEXER'S PORT,
-  // AND ON THIS SURFACE ALL THREE ARE DIFFERENT NUMBERS.
+  // Three numbers, all different, and each names a different thing.
   //
-  // The registry's devPort names where this surface answers on localhost, and for `explorer` it
-  // says **8080** (`ui/packages/ui/src/surfaces.ts:443`). 8080 is the port the nginx-unprivileged
-  // image listens on — it is this bundle's own container port, not an API.
+  // The registry's devPort for `explorer` is **4008** (`ui/packages/ui/src/surfaces.ts:456`) —
+  // where `micro-indexer`, the API this bundle reads, answers on localhost
+  // (`indexer/src/env.ts:295`). It briefly said 8080, this bundle's own container port, which
+  // made the app ask itself for chain data; micro-ui corrected it and pinned it to the service.
   //
-  // The API this bundle reads is `micro-indexer`, which binds **4008**: `indexer/src/env.ts:295`
-  // defaults `PORT` to 4008, `indexer/.env.example:9` sets it to 4008, and `indexer/Dockerfile:91`
-  // exposes it. The registry has **no `indexer` entry at all**, so `cloudsforgeHosts()` cannot
-  // name it — the closest key is `explorer`, and under `pnpm dev` that resolves 8080, where the
-  // indexer is not.
-  //
-  // That is NOT papered over with a literal port here. A hard-coded host is a second, unversioned
-  // copy of the registry and the copy is the one that goes stale — the same conclusion admin-web,
-  // mint-web and trade-web each reached about their own entry. The README says
-  // `PORT=8080 pnpm dev` for the indexer in one line, `test/hosts.test.ts` pins BOTH numbers so
-  // whichever moves first fails and names the other, and the finding is reported to micro-ui.
-  //
-  // In production the bundle and the indexer share `explorer.<apex>`, `apiBase()` is `''`, and
-  // every request is relative. See src/lib/hosts.ts.
-  // ════════════════════════════════════════════════════════════════════════════════════════════
+  // 8080 is the nginx-unprivileged container port (`nginx.conf:29`) — a fact about the IMAGE.
+  // And the number below is Vite's dev-server port, a fact about development. Confusing any two
+  // of these is how five registry entries came to be wrong.
   server: { port: 5189 },
   preview: { port: 5189 },
 })

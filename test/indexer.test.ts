@@ -87,13 +87,13 @@ const SURFACE: ReadonlyArray<{
   handler: number
   gate: 'authoriseRead' | 'authorise'
 }> = [
-  { method: 'GET', path: '/chains/:chain/:network/status', line: 154, handler: 384, gate: 'authoriseRead' },
-  { method: 'GET', path: '/addresses/:chain/:network/:address/activity', line: 155, handler: 396, gate: 'authoriseRead' },
-  { method: 'GET', path: '/addresses/:chain/:network/:address/token-balances', line: 156, handler: 463, gate: 'authoriseRead' },
-  { method: 'GET', path: '/transactions/:chain/:network/:hash', line: 157, handler: 412, gate: 'authoriseRead' },
-  { method: 'GET', path: '/transactions/:chain/:network/:hash/confirmations', line: 158, handler: 437, gate: 'authoriseRead' },
-  { method: 'GET', path: '/tokens/:chain/:network/:address', line: 159, handler: 493, gate: 'authoriseRead' },
-  { method: 'GET', path: '/blocks/:chain/:network/:height', line: 160, handler: 514, gate: 'authoriseRead' },
+  { method: 'GET', path: '/chains/:chain/:network/status', line: 154, handler: 403, gate: 'authoriseRead' },
+  { method: 'GET', path: '/addresses/:chain/:network/:address/activity', line: 155, handler: 415, gate: 'authoriseRead' },
+  { method: 'GET', path: '/addresses/:chain/:network/:address/token-balances', line: 156, handler: 482, gate: 'authoriseRead' },
+  { method: 'GET', path: '/transactions/:chain/:network/:hash', line: 157, handler: 431, gate: 'authoriseRead' },
+  { method: 'GET', path: '/transactions/:chain/:network/:hash/confirmations', line: 158, handler: 456, gate: 'authoriseRead' },
+  { method: 'GET', path: '/tokens/:chain/:network/:address', line: 159, handler: 512, gate: 'authoriseRead' },
+  { method: 'GET', path: '/blocks/:chain/:network/:height', line: 160, handler: 533, gate: 'authoriseRead' },
 ]
 
 /**
@@ -115,7 +115,7 @@ const DECLINED: ReadonlyArray<{
     method: 'POST',
     path: '/watch/:chain/:network/:address',
     line: 161,
-    handler: 531,
+    handler: 550,
     gate: 'authorise',
     why: 'indexer:write — enlarging what a shared deployment indexes is not a browser decision',
   },
@@ -123,7 +123,7 @@ const DECLINED: ReadonlyArray<{
     method: 'POST',
     path: '/backfills/:chain/:network',
     line: 162,
-    handler: 553,
+    handler: 572,
     gate: 'authorise',
     why: 'indexer:write — enqueues a range walk, with a cost attached',
   },
@@ -329,10 +329,10 @@ describe('the cited lines are the lines that register the routes', () => {
     assert.match(server, /const PREFIXES: readonly string\[\] = \['\/v1', ''\]/)
     // Line 134, as the client cites.
     assert.match(lines[133] ?? '', /\['\/v1', ''\]/, `indexer/src/server.ts:134 is: ${lines[133]}`)
-    // And the loop that mounts them, at :374-378.
-    assert.match(lines[373] ?? '', /for \(const prefix of PREFIXES\)/)
-    assert.match(lines[374] ?? '', /for \(const \[method, path, handler\] of DOMAIN\)/)
-    assert.match(lines[375] ?? '', /built\.push\(route\(method, `\$\{prefix\}\$\{path\}`, handler\)\)/)
+    // And the loop that mounts them, at :393-378.
+    assert.match(lines[392] ?? '', /for \(const prefix of PREFIXES\)/)
+    assert.match(lines[393] ?? '', /for \(const \[method, path, handler\] of DOMAIN\)/)
+    assert.match(lines[394] ?? '', /built\.push\(route\(method, `\$\{prefix\}\$\{path\}`, handler\)\)/)
   })
 
   /**
@@ -491,20 +491,20 @@ describe('the cited lines are the lines that register the routes', () => {
   })
 
   it('the three cited line ranges are the functions this repository says they are', () => {
-    // `:708-717`, `:719-737` and `:679-707` appear verbatim across src/lib/indexer.ts,
+    // `:727-717`, `:738-737` and `:698-707` appear verbatim across src/lib/indexer.ts,
     // src/lib/auth.tsx, src/app.tsx and four more files, where a reader is invited to go and check
     // them. A range that has drifted onto the wrong function is a citation that reads as verified.
-    assert.match(lines[707] ?? '', /^async function authoriseRead\(/, `:708 is: ${lines[707]}`)
-    assert.match(lines[716] ?? '', /^\}/, `:717 is: ${lines[716]}`)
-    assert.match(lines[718] ?? '', /^async function authorise\(/, `:719 is: ${lines[718]}`)
-    assert.match(lines[736] ?? '', /^\}/, `:737 is: ${lines[736]}`)
+    assert.match(lines[726] ?? '', /^async function authoriseRead\(/, `:727 is: ${lines[726]}`)
+    assert.match(lines[735] ?? '', /^\}/, `:736 is: ${lines[735]}`)
+    assert.match(lines[737] ?? '', /^async function authorise\(/, `:738 is: ${lines[737]}`)
+    assert.match(lines[755] ?? '', /^\}/, `:756 is: ${lines[755]}`)
     // …and the doc comment the reasoning lives in.
-    assert.match(lines[678] ?? '', /^\/\*\*/, `:679 is: ${lines[678]}`)
-    assert.match(lines[706] ?? '', /^\s+\*\//, `:707 is: ${lines[706]}`)
+    assert.match(lines[697] ?? '', /^\/\*\*/, `:698 is: ${lines[697]}`)
+    assert.match(lines[725] ?? '', /^\s+\*\//, `:726 is: ${lines[725]}`)
     assert.match(
-      lines.slice(678, 707).join('\n'),
+      lines.slice(697, 726).join('\n'),
       /Reads are ANONYMOUS, because what they return is already public/,
-      'the doc comment at :679-707 is no longer the one explaining the anonymous reads',
+      'the doc comment at :698-707 is no longer the one explaining the anonymous reads',
     )
   })
 
@@ -568,13 +568,13 @@ describe('the cited lines are the lines that register the routes', () => {
     assert.equal(CONFIRMATIONS_AGAINST.transaction, 'claimed-tip')
     assert.equal(CONFIRMATIONS_AGAINST.activity, 'claimed-tip')
     // Each cited line, individually — this is the claim every "vs claimed tip" label rests on.
-    assert.match(readsLines[569] ?? '', /confirmationsAt\(tipHeight, record\.height\)/, `:570 is: ${readsLines[569]}`)
-    assert.match(readsLines[417] ?? '', /confirmationsAt\(tipHeight, record\.blockHeight\)/, `:418 is: ${readsLines[417]}`)
-    assert.match(readsLines[355] ?? '', /confirmationsAt\(tipHeight, item\.blockHeight\)/, `:356 is: ${readsLines[355]}`)
+    assert.match(readsLines[569] ?? '', /confirmationsAt\(tipHeight, record\.height\)/, `:589 is: ${readsLines[569]}`)
+    assert.match(readsLines[417] ?? '', /confirmationsAt\(tipHeight, record\.blockHeight\)/, `:437 is: ${readsLines[417]}`)
+    assert.match(readsLines[355] ?? '', /confirmationsAt\(tipHeight, item\.blockHeight\)/, `:375 is: ${readsLines[355]}`)
     // …and that `tipHeight` in each really is the checkpoint's, not the head's.
-    assert.match(readsLines[344] ?? '', /checkpoint\?\.tipHeight \?\? null/, `:345 is: ${readsLines[344]}`)
-    assert.match(readsLines[398] ?? '', /checkpoint\?\.tipHeight \?\? null/, `:399 is: ${readsLines[398]}`)
-    assert.match(readsLines[558] ?? '', /checkpoint\?\.tipHeight \?\? null/, `:559 is: ${readsLines[558]}`)
+    assert.match(readsLines[344] ?? '', /checkpoint\?\.tipHeight \?\? null/, `:364 is: ${readsLines[344]}`)
+    assert.match(readsLines[398] ?? '', /checkpoint\?\.tipHeight \?\? null/, `:418 is: ${readsLines[398]}`)
+    assert.match(readsLines[558] ?? '', /checkpoint\?\.tipHeight \?\? null/, `:578 is: ${readsLines[558]}`)
   })
 
   it('the rule that scopes the two is where this repository cites it', () => {

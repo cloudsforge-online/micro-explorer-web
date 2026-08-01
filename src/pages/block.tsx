@@ -19,7 +19,7 @@
  *
  * `blockAtHeight` filters `status <> 'orphaned'` (`indexer/src/store.ts:195`), so a height whose
  * block was retracted by a reorg is a **404 `block_not_found`** — "no such block on the canonical
- * chain" (`indexer/src/server.ts:524`) — rather than a 200 with an orphaned badge. The 404 screen
+ * chain" (`indexer/src/server.ts:543`) — rather than a 200 with an orphaned badge. The 404 screen
  * says that, because "we have never seen this height" and "the block we saw here is gone" look
  * identical from outside and mean different things.
  * ══════════════════════════════════════════════════════════════════════════════════════════════

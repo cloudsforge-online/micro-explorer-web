@@ -54,7 +54,7 @@ export function ChainPage() {
   if (resource.state === 'loading') return <Loading label={`Reading ${scopeLabel(scope)}`} />
   if (resource.error) {
     // `unknown_chain` and `unknown_network` are 404s that mean "this estate does not run that",
-    // which is a fact rather than a fault (`indexer/src/server.ts:583-586`).
+    // which is a fact rather than a fault (`indexer/src/server.ts:602-605`).
     if (resource.error.code === 'unknown_chain' || resource.error.code === 'unknown_network') {
       return <UnknownScope chain={params['chain']} network={params['network']} />
     }

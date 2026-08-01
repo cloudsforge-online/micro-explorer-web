@@ -183,6 +183,37 @@ describe('every citation names a line that exists', () => {
     assert.deepEqual(broken, [])
   })
 
+  it('the registry citations land on the line that carries the named key, not merely a line', () => {
+    // THE SWEEP ABOVE ONLY PROVES A LINE EXISTS, and that is not enough: when micro-ui's explorer
+    // entry gained a long comment, this repository's citations to surfaces.ts:443/:444/:446 all
+    // resolved to lines INSIDE that comment — real lines, wrong lines — and the suite stayed
+    // green. A citation that resolves but points at prose reads as verified while verifying
+    // nothing, which is worse than a citation that fails.
+    //
+    // So the surfaces.ts citations are checked for CONTENT: each must land on the line that
+    // declares the key its sentence is about. The map is maintained by hand, which is the point —
+    // moving the registry means updating a claim somebody can check.
+    const root = siblingRoot('ui')
+    if (root === undefined || !existsSync(root)) {
+      console.log('UNCHECKED: the surfaces.ts content pins — micro-ui is not checked out')
+      return
+    }
+    const lines = readFileSync(join(root, 'packages/ui/src/surfaces.ts'), 'utf8').split('\n')
+    const PINS: ReadonlyArray<{ line: number; mustContain: string; claimedBy: string }> = [
+      { line: 456, mustContain: 'devPort: 4008', claimedBy: 'src/lib/hosts.ts, vite.config.ts, test/hosts.test.ts' },
+      { line: 457, mustContain: "accent: '#d6412f'", claimedBy: 'src/lib/hosts.ts' },
+      { line: 459, mustContain: 'markId: null', claimedBy: 'src/components/shell.tsx, test/brand-chrome.test.ts' },
+      { line: 461, mustContain: 'inSwitcher: false', claimedBy: 'src/components/shell.tsx' },
+    ]
+    for (const pin of PINS) {
+      const text = lines[pin.line - 1] ?? ''
+      assert.ok(
+        text.includes(pin.mustContain),
+        `surfaces.ts:${pin.line} is cited by ${pin.claimedBy} as "${pin.mustContain}" but reads: ${text.trim()}`,
+      )
+    }
+  })
+
   it('reports which repositories were NOT available, rather than passing quietly', () => {
     // Not a failure: `pnpm test` has to work for somebody who cloned only this repository. But an
     // unmeasured citation must never look like a verified one, so the absence is printed and the

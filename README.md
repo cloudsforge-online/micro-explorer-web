@@ -6,7 +6,7 @@ and no environment in the image — and it **states the head every confirmation 
 against, and never says that anything is final**.
 
 > **It holds no credential, it proxies nothing, and it sends no bearer.** Every `micro-indexer`
-> route it calls is anonymous (`authoriseRead`, `indexer/src/server.ts:708-717`), and every call is
+> route it calls is anonymous (`authoriseRead`, `indexer/src/server.ts:727-736`), and every call is
 > issued with `auth: false` — see `publicRead` in `src/lib/indexer.ts`. That is not tidiness: a
 > token that IS presented is still verified, so an expired one would turn a page that needs no
 > session into a 401 and the explorer would have made itself depend on a credential it never
@@ -37,14 +37,14 @@ rewrite.
 
 | Caller | On a READ | On a WRITE | Where |
 | --- | --- | --- | --- |
-| No token at all | **served** | `TokenError` → 401 | `authoriseRead`, `indexer/src/server.ts:710`; `authorise`, `:727` |
-| A **service** token carrying the scope | served | served | `requireScope`, `indexer/src/server.ts:713`, `:730` |
+| No token at all | **served** | `TokenError` → 401 | `authoriseRead`, `indexer/src/server.ts:729`; `authorise`, `:727` |
+| A **service** token carrying the scope | served | served | `requireScope`, `indexer/src/server.ts:732`, `:730` |
 | A **service** token without it | `ForbiddenError` → 403 | 403 | same lines |
-| A broken or expired token | 401 | 401 | `deps.verifier.principal`, `indexer/src/server.ts:711`, `:728` |
-| A **user** token | served | served only if `isAdmin` | `indexer/src/server.ts:735` |
+| A broken or expired token | 401 | 401 | `deps.verifier.principal`, `indexer/src/server.ts:730`, `:728` |
+| A **user** token | served | served only if `isAdmin` | `indexer/src/server.ts:754` |
 
 The service's reasoning is in the doc comment above `authoriseRead`
-(`indexer/src/server.ts:679-707`): every read answers with a chain fact anyone can obtain by running
+(`indexer/src/server.ts:698-726`): every read answers with a chain fact anyone can obtain by running
 a Hearth node, and this service stores nothing linking an address to a person, so there was no
 privacy for the check to protect — "it was a lock on a public library". The estate's own position is
 one line: "A public chain whose explorer is paywalled is not a public chain"
@@ -126,7 +126,7 @@ source, in both directions.
 | `POST` | `/v1/watch/:chain/:network/:address` | `indexer:write`. Enlarging what a shared deployment indexes is not a browser's decision. | `indexer/src/server.ts:161` |
 | `POST` | `/v1/backfills/:chain/:network` | `indexer:write`. Enqueues a range walk, with a cost attached. | `indexer/src/server.ts:162` |
 
-`/livez`, `/readyz` and `/metrics` (`indexer/src/server.ts:340`, `:350`, `:357`) are platform probes
+`/livez`, `/readyz` and `/metrics` (`indexer/src/server.ts:359`, `:350`, `:357`) are platform probes
 and are not wrapped.
 
 **Both spellings of every path are mounted** — `PREFIXES` is `['/v1', '']`
@@ -176,16 +176,16 @@ Three more facts this surface renders rather than smooths over:
 - **A withheld balance is a panel, not a dash.** `balances` is *absent* rather than zero when the
   coverage cannot support it (`indexer/src/reads.ts:225-259`), and the reason is the value of the
   answer — "a missing balance is missing, never zero, because zero is what evicts a token-gated
-  member" (`indexer/src/server.ts:460-461`).
+  member" (`indexer/src/server.ts:479-480`).
 
 A block page never shows an orphaned block: `blockAtHeight` filters `status <> 'orphaned'`
 (`indexer/src/store.ts:195`), so a retracted height is a 404 `block_not_found`
-(`indexer/src/server.ts:524`).
+(`indexer/src/server.ts:543`).
 
 ## The two meanings of 404
 
 `micro-indexer` distinguishes them **by the error CODE, never by the status**
-(`indexer/src/server.ts:426-436`). `micro-market` merged them and reported "the on-chain escrow is
+(`indexer/src/server.ts:445-455`). `micro-market` merged them and reported "the on-chain escrow is
 not confirmed yet" for every activation; `micro-mint` merged them the other way and rendered "not yet
 indexed" on every project page, permanently. Both passed all their own tests.
 
@@ -198,7 +198,7 @@ indexed" on every project page, permanently. Both passed all their own tests.
 
 And the 501/503 family from `TokenStateUnavailableError` (`indexer/src/tokenstate.ts:136-157`) is
 never rendered as "there is no token here". `family_not_supported` is 501 because waiting will not
-change it; the other four are 503 (`indexer/src/server.ts:274-283`).
+change it; the other four are 503 (`indexer/src/server.ts:293-302`).
 
 ## Configuration
 
@@ -320,7 +320,7 @@ docker run --rm -p 8080:8080 explorer-web
   `amountFormatted: null` for a token on purpose (`indexer/src/reads.ts:365-372`), so raw units are
   shown and labelled as raw. Scaling them would need the same token registry.
 - **Non-EVM addresses and hashes are length-checked only**, upstream and here
-  (`indexer/src/server.ts:610-616`), so the search box cannot classify a Bitcoin, Solana or XRP
+  (`indexer/src/server.ts:629-635`), so the search box cannot classify a Bitcoin, Solana or XRP
   address by shape. It says so rather than guessing.
 - **The CI file is bespoke and should not be.** `check:` and `image:` exist only because
   `@cloudsforge/ui` is unpublished; the day it is published they are replaced by a call to

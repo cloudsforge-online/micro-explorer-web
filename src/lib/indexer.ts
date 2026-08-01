@@ -13,7 +13,7 @@
  *
  * The table is `DOMAIN` at `indexer/src/server.ts:153-163`, one entry per line. Both spellings of
  * every path are mounted, because `PREFIXES` is `['/v1', '']` (`indexer/src/server.ts:134`) and
- * `buildRoutes` loops over it (`indexer/src/server.ts:374-378`). This client uses the `/v1` form
+ * `buildRoutes` loops over it (`indexer/src/server.ts:393-397`). This client uses the `/v1` form
  * throughout: it is the estate convention, and the service's own comment at `:130-133` says the
  * bare form exists for the operator runbooks rather than for new callers.
  *
@@ -30,11 +30,11 @@
  * ══════════════════════════════════════════════════════════════════════════════════════════════
  * THE READS ARE ANONYMOUS, AND THIS CLIENT SENDS NO BEARER FOR ONE.
  *
- * `authoriseRead` (`indexer/src/server.ts:708-717`) reads the `authorization` header and, when
- * there is none, **returns `null` and lets the handler run** (`indexer/src/server.ts:710`). Every
+ * `authoriseRead` (`indexer/src/server.ts:727-736`) reads the `authorization` header and, when
+ * there is none, **returns `null` and lets the handler run** (`indexer/src/server.ts:729`). Every
  * one of the seven routes above opens with `await authoriseRead(ctx, deps)`, so a browser holding
  * no credential at all is served. The service's reasoning is in the doc comment above it
- * (`indexer/src/server.ts:679-707`): every read answers with a chain fact anyone can obtain by
+ * (`indexer/src/server.ts:698-726`): every read answers with a chain fact anyone can obtain by
  * running a Hearth node, this service stores nothing linking an address to a person, and the check
  * that used to sit there was "a lock on a public library".
  *
@@ -51,7 +51,7 @@
  *
  * `src/lib/api.ts` attaches a bearer whenever it happens to hold an access token. On a public read
  * that would be actively harmful, because **a token that IS presented is still verified**: a
- * service principal without `indexer:read` is a 403 (`indexer/src/server.ts:712-715`) and a broken
+ * service principal without `indexer:read` is a 403 (`indexer/src/server.ts:731-734`) and a broken
  * or expired one is a 401. An operator whose access token had expired would therefore get a 401 on
  * a page that needs no session at all — the explorer would depend on a credential to show public
  * data, which is the same defect arriving from the client's side. `auth: false` is how this bundle
@@ -65,19 +65,19 @@
  * ── Two routes are declined, and both are writes that STILL require a scope ────────────────────
  *
  *   * `POST /v1/watch/:chain/:network/:address` (`indexer/src/server.ts:161`) calls
- *     `authorise(ctx, deps, WRITE_SCOPE)` (`indexer/src/server.ts:532`, scope at `:90`). "Watch
+ *     `authorise(ctx, deps, WRITE_SCOPE)` (`indexer/src/server.ts:551`, scope at `:90`). "Watch
  *     this address" is an operator or a service decision about what this deployment indexes; a
  *     browser does not get to enlarge a shared work queue.
  *   * `POST /v1/backfills/:chain/:network` (`indexer/src/server.ts:162`) takes `indexer:write` too
- *     (`indexer/src/server.ts:554`) and enqueues a range walk. Same reason, with a cost attached:
+ *     (`indexer/src/server.ts:573`) and enqueues a range walk. Same reason, with a cost attached:
  *     a backfill is provider calls, which is money.
  *
  * Neither was relaxed, and this app must not start depending on either. `authorise`
- * (`indexer/src/server.ts:719-737`) is the write gate and is unchanged: no token is a 401
+ * (`indexer/src/server.ts:738-756`) is the write gate and is unchanged: no token is a 401
  * (`:727`), a service without the scope is a 403 (`:730`), and a user is refused unless `isAdmin`
  * (`:735`).
  *
- * `/livez`, `/readyz` and `/metrics` (`indexer/src/server.ts:340`, `:350`, `:357`) are the platform
+ * `/livez`, `/readyz` and `/metrics` (`indexer/src/server.ts:359`, `:350`, `:357`) are the platform
  * probes and are not wrapped here either.
  *
  * ── Amounts are strings, and nothing here parses one with Number ───────────────────────────────
@@ -276,7 +276,7 @@ export interface TransactionView {
  *
  * `status` cannot be `orphaned` here: `blockAtHeight` filters `status <> 'orphaned'`
  * (`indexer/src/store.ts:195`), so a height whose block was reorged away is a 404
- * `block_not_found` — "no such block on the canonical chain" (`indexer/src/server.ts:524`).
+ * `block_not_found` — "no such block on the canonical chain" (`indexer/src/server.ts:543`).
  * That is worth knowing before rendering an "orphaned" badge that can never appear.
  */
 export interface BlockView {
@@ -345,7 +345,7 @@ export interface CoverageView {
  * `indexer/src/reads.ts:225-259`. **`balances` and `balance` are ABSENT rather than zero** whenever
  * the answer may not be believed, and `unavailable` names which of the four reasons applied
  * (`indexer/src/reads.ts:258`). A missing balance is missing: "zero is what evicts a token-gated
- * member" (`indexer/src/server.ts:460-461`). This app renders the reason and never a nought.
+ * member" (`indexer/src/server.ts:479-480`). This app renders the reason and never a nought.
  */
 export interface TokenBalancesView {
   readonly chain: string
@@ -476,11 +476,11 @@ type RequestQuery = Record<string, string | number | boolean | undefined | null>
 /**
  * `GET /v1/chains/:chain/:network/status` — `indexer/src/server.ts:154`.
  *
- * Authenticates: `authoriseRead(ctx, deps)` at `indexer/src/server.ts:385`. Anonymous is served
- * (`indexer/src/server.ts:710`), and this call presents nothing.
+ * Authenticates: `authoriseRead(ctx, deps)` at `indexer/src/server.ts:404`. Anonymous is served
+ * (`indexer/src/server.ts:729`), and this call presents nothing.
  *
  * A chain this estate does not run is a **404 `unknown_chain`** rather than a 400, and the service
- * says why (`indexer/src/server.ts:580-583`): the path names a resource that does not exist, and a
+ * says why (`indexer/src/server.ts:599-602`): the path names a resource that does not exist, and a
  * caller asking for `/chains/doge/mainnet/status` "has not made a malformed request, it has asked
  * for a chain this estate does not run".
  */
@@ -493,12 +493,12 @@ export function getChainStatus(scope: Scope, signal?: AbortSignal): Promise<Chai
 /**
  * `GET /v1/blocks/:chain/:network/:height` — `indexer/src/server.ts:160`.
  *
- * Authenticates: `authoriseRead(ctx, deps)` at `indexer/src/server.ts:515`. Anonymous is served.
+ * Authenticates: `authoriseRead(ctx, deps)` at `indexer/src/server.ts:534`. Anonymous is served.
  *
  * The height is validated as `/^\d{1,15}$/` before any query runs, and anything else is a **400
- * `bad_height`** (`indexer/src/server.ts:518-519`). A height off the canonical chain — including
+ * `bad_height`** (`indexer/src/server.ts:537-538`). A height off the canonical chain — including
  * one whose block was orphaned, because `blockAtHeight` filters those out
- * (`indexer/src/store.ts:195`) — is a **404 `block_not_found`** (`indexer/src/server.ts:524`).
+ * (`indexer/src/store.ts:195`) — is a **404 `block_not_found`** (`indexer/src/server.ts:543`).
  */
 export function getBlock(
   scope: Scope,
@@ -514,14 +514,14 @@ export function getBlock(
 /**
  * `GET /v1/transactions/:chain/:network/:hash` — `indexer/src/server.ts:157`.
  *
- * Authenticates: `authoriseRead(ctx, deps)` at `indexer/src/server.ts:413`. Anonymous is served.
+ * Authenticates: `authoriseRead(ctx, deps)` at `indexer/src/server.ts:432`. Anonymous is served.
  *
  * A hash this indexer has never seen is a **404 `transaction_not_found`**
- * (`indexer/src/server.ts:419`). On an EVM or Ember chain the hash must match
- * `/^0x[0-9a-fA-F]{64}$/` or it is a **400 `bad_hash`** (`indexer/src/server.ts:622-625`); on the
+ * (`indexer/src/server.ts:438`). On an EVM or Ember chain the hash must match
+ * `/^0x[0-9a-fA-F]{64}$/` or it is a **400 `bad_hash`** (`indexer/src/server.ts:641-644`); on the
  * other families it is length-checked only, because "the family that would validate them is not
  * built yet and a wrong validator would reject valid addresses"
- * (`indexer/src/server.ts:610-612`).
+ * (`indexer/src/server.ts:629-631`).
  */
 export function getTransaction(
   scope: Scope,
@@ -537,10 +537,10 @@ export function getTransaction(
 /**
  * `GET /v1/transactions/:chain/:network/:hash/confirmations` — `indexer/src/server.ts:158`.
  *
- * Authenticates: `authoriseRead(ctx, deps)` at `indexer/src/server.ts:438`. Anonymous is served.
+ * Authenticates: `authoriseRead(ctx, deps)` at `indexer/src/server.ts:457`. Anonymous is served.
  *
  * **THE 404 HERE IS A GENUINE ANSWER AND MUST NOT BE COLLAPSED INTO "not confirmed yet".** The
- * handler's own comment (`indexer/src/server.ts:426-436`) records what happened when it was: a
+ * handler's own comment (`indexer/src/server.ts:445-455`) records what happened when it was: a
  * transaction this indexer has never seen answers 404 `transaction_not_found`; one it has seen and
  * that has not reached its depth answers **200 with `confirmed: false`**. `micro-market` reported
  * "the on-chain escrow is not confirmed yet" for every activation because a route-level 404 and a
@@ -565,16 +565,16 @@ export function getConfirmations(
 /**
  * `GET /v1/addresses/:chain/:network/:address/activity` — `indexer/src/server.ts:155`.
  *
- * Authenticates: `authoriseRead(ctx, deps)` at `indexer/src/server.ts:397`. Anonymous is served —
+ * Authenticates: `authoriseRead(ctx, deps)` at `indexer/src/server.ts:416`. Anonymous is served —
  * which matters most here, because this is the route the old gate had the strongest argument for.
  * The service's answer is that it stores nothing linking an address to a person: ownership is a
- * fact `micro-wallet` holds, deliberately (`indexer/src/server.ts:684-687`).
+ * fact `micro-wallet` holds, deliberately (`indexer/src/server.ts:703-706`).
  *
  * `limit` must be an integer in 1..200 or it is a **400 `bad_limit`**
- * (`indexer/src/server.ts:667-674`); the default is 50 (`indexer/src/server.ts:101`). `cursor` is
+ * (`indexer/src/server.ts:686-693`); the default is 50 (`indexer/src/server.ts:101`). `cursor` is
  * passed straight through and comes back as `nextCursor`.
  *
- * An EVM address is lower-cased before the query (`indexer/src/server.ts:601-608`) precisely so a
+ * An EVM address is lower-cased before the query (`indexer/src/server.ts:620-627`) precisely so a
  * caller pasting the EIP-55 checksum form — "which is what every wallet and every block explorer
  * displays" — does not silently receive an empty page. This app pastes exactly that form, so the
  * normalisation is load-bearing for this surface in particular.
@@ -600,11 +600,11 @@ export function getAddressActivity(
 /**
  * `GET /v1/addresses/:chain/:network/:address/token-balances` — `indexer/src/server.ts:156`.
  *
- * Authenticates: `authoriseRead(ctx, deps)` at `indexer/src/server.ts:464`. Anonymous is served.
+ * Authenticates: `authoriseRead(ctx, deps)` at `indexer/src/server.ts:483`. Anonymous is served.
  *
  * Takes an optional `contract` filter, normalised exactly as an address is
- * (`indexer/src/server.ts:641-655`), and an optional `block` bound; absent means "as at the head
- * this service has walked" (`indexer/src/server.ts:657-665`). Both are **400** when malformed.
+ * (`indexer/src/server.ts:660-674`), and an optional `block` bound; absent means "as at the head
+ * this service has walked" (`indexer/src/server.ts:676-684`). Both are **400** when malformed.
  *
  * The answer withholds `balances` entirely when the coverage cannot support one. See
  * `TokenBalancesView`.
@@ -630,10 +630,10 @@ export function getTokenBalances(
 /**
  * `GET /v1/tokens/:chain/:network/:address` — `indexer/src/server.ts:159`.
  *
- * Authenticates: `authoriseRead(ctx, deps)` at `indexer/src/server.ts:494`. Anonymous is served.
+ * Authenticates: `authoriseRead(ctx, deps)` at `indexer/src/server.ts:513`. Anonymous is served.
  *
  * **Three different failures, three different meanings, and this app renders three different
- * screens.** The handler's comment (`indexer/src/server.ts:478-492`) is explicit:
+ * screens.** The handler's comment (`indexer/src/server.ts:497-511`) is explicit:
  *
  *   * **404 `token_not_found`** — this service asked the chain and there is no contract answering
  *     `totalSupply()` at that address, at the block it has walked. A fresh deployment above the
@@ -645,7 +645,7 @@ export function getTokenBalances(
  *     (`indexer/src/tokenstate.ts:136-157`). `family_not_supported` is **501**, because no amount
  *     of waiting will change it; `chain_not_followed`, `nothing_indexed`, `head_diverged` and
  *     `rpc_unavailable` are **503**, because it is a provider, a head or a follower that is behind
- *     (`indexer/src/server.ts:274-283`).
+ *     (`indexer/src/server.ts:293-302`).
  */
 export function getToken(
   scope: Scope,

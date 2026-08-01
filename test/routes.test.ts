@@ -132,12 +132,12 @@ describe('every route is public, and NOTHING is gated', () => {
     // citation, and it is the CURRENT one: `:708-717` is `authoriseRead`, pinned against the real
     // source in test/indexer.test.ts. The old range is banned in both, because a stale citation
     // that still resolves to a real function is the worst kind — it reads as verified.
-    assert.match(appSource, /indexer\/src\/server\.ts:708-717/)
-    assert.match(read('src/lib/auth.tsx'), /indexer\/src\/server\.ts:708-717/)
+    assert.match(appSource, /indexer\/src\/server\.ts:727-736/)
+    assert.match(read('src/lib/auth.tsx'), /indexer\/src\/server\.ts:727-736/)
     for (const file of ['src/app.tsx', 'src/lib/auth.tsx', 'src/lib/routes.ts']) {
       assert.doesNotMatch(
         read(file),
-        /indexer\/src\/server\.ts:679-697/,
+        /indexer\/src\/server\.ts:698-716/,
         `${file} still cites the old authorise range as the reason there is no gate`,
       )
     }
