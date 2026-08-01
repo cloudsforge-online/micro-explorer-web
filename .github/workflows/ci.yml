@@ -461,14 +461,18 @@ jobs:
           cp src/pages/not-found.tsx "$RUNNER_TEMP/not-found.tsx.orig"
           restore() { cp "$RUNNER_TEMP/not-found.tsx.orig" src/pages/not-found.tsx; }
           trap restore EXIT
-          # `.cf-input` is the exact class this surface reached for before ui.css was opened.
-          sed -i '0,/className="ex-page"/s//className="ex-page cf-input"/' src/pages/not-found.tsx
+          # The canary must name a class the design system genuinely does NOT declare. It used to
+          # inject `cf-input`, which was the exact class this surface reached for when ui.css had no
+          # form controls — and the day ui.css grew them, this step started failing for the right
+          # reason: the cross-check accepted `cf-input` because it had become real. A canary that
+          # names a real class proves nothing and eventually reports the opposite of the truth.
+          sed -i '0,/className="ex-page"/s//className="ex-page cf-not-a-real-class"/' src/pages/not-found.tsx
           if cmp -s src/pages/not-found.tsx "$RUNNER_TEMP/not-found.tsx.orig"; then
             echo "::error::the mutation changed nothing, so this step proves nothing"
             exit 1
           fi
           if node --import tsx --test test/tokens.test.ts >/dev/null 2>&1; then
-            echo "::error::the class cross-check accepted cf-input, which ui.css does not declare"
+            echo "::error::the class cross-check accepted cf-not-a-real-class, which ui.css does not declare"
             exit 1
           fi
           echo "ok: a class the design system does not declare turns the suite red"
