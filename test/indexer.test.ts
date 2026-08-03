@@ -486,7 +486,7 @@ describe('the cited lines are the lines that register the routes', () => {
     assert.doesNotMatch(fn, /throw new TokenError/, 'authoriseRead has grown a missing-token throw')
   })
 
-  it('…and the ten handlers are seven anonymous reads, one scoped read and two gated writes', () => {
+  it('…and the nine handlers are exactly seven anonymous reads and two gated writes, and the TENTH is a read that takes a token', () => {
     // Counted off the SERVICE rather than off the table above, so a route that changed gate
     // without anybody updating this file is a failure rather than an agreement with ourselves.
     //

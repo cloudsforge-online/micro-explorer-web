@@ -88,7 +88,7 @@
  * (`:811`), a service without the scope is a 403 (`:814`), and a user is refused unless `isAdmin`
  * (`:819`).
  *
- * `/livez`, `/readyz` and `/metrics` (`indexer/src/server.ts:382`, `:373`, `:380`) are the platform
+ * `/livez`, `/readyz` and `/metrics` (`indexer/src/server.ts:382`, `:392`, `:399`) are the platform
  * probes and are not wrapped here either.
  *
  * ── Amounts are strings, and nothing here parses one with Number ───────────────────────────────

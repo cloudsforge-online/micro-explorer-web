@@ -133,7 +133,7 @@ source, in both directions.
 | `POST` | `/v1/watch/:chain/:network/:address` | `indexer:write`. Enlarging what a shared deployment indexes is not a browser's decision. | `indexer/src/server.ts:172` |
 | `POST` | `/v1/backfills/:chain/:network` | `indexer:write`. Enqueues a range walk, with a cost attached. | `indexer/src/server.ts:173` |
 
-`/livez`, `/readyz` and `/metrics` (`indexer/src/server.ts:382`, `:373`, `:380`) are platform probes
+`/livez`, `/readyz` and `/metrics` (`indexer/src/server.ts:382`, `:392`, `:399`) are platform probes
 and are not wrapped.
 
 **Both spellings of every path are mounted** — `PREFIXES` is `['/v1', '']`
