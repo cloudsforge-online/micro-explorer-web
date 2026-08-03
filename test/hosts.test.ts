@@ -124,11 +124,13 @@ describe('the dev port disagreement, recorded rather than papered over', () => {
     assert.equal(SURFACES.find((s) => s.key === 'explorer')?.devPort, 4008)
   })
 
-  it('and micro-indexer binds 4008, which is a different number', () => {
-    // Read from the service, not from the registry and not from a sibling's comment. Skipped
-    // without the checkout; CI has one and makes the absence fatal.
+  it('and micro-indexer binds 4008, which is a different number', (t) => {
+    // Read from the service, not from the registry and not from a sibling's comment. The comment
+    // here already said "Skipped without the checkout" — and it was not skipped, it PASSED, which
+    // is the estate's signature defect written down beside itself. `t.skip` now, so a run that
+    // could not read the service says so. CI has the checkout and makes the absence fatal.
     const env = at('../indexer/src/env.ts')
-    if (!existsSync(env)) return
+    if (!existsSync(env)) return void t.skip('micro-indexer is not checked out; CI has it')
     assert.match(readFileSync(env, 'utf8'), /port\(source, 'PORT', 4008\)/)
     const example = at('../indexer/.env.example')
     if (existsSync(example)) assert.match(readFileSync(example, 'utf8'), /^PORT=4008$/m)

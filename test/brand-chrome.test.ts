@@ -30,6 +30,7 @@
  * lines: reading a Dockerfile is not evidence that an image serves a file, which is why the second
  * of them requires CI to CURL the running container.
  */
+import { citeIfPresent } from '@cloudsforge/ui/cite'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
@@ -80,12 +81,15 @@ test('the icons are this surface’s own, byte for byte', () => {
   }
 })
 
-test('THE BRAND SET REALLY CONTAINS NO MARK, so shipping none is following it rather than missing it', () => {
+test('THE BRAND SET REALLY CONTAINS NO MARK, so shipping none is following it rather than missing it', (t) => {
   // The assertion that makes the decision checkable. If micro-brand ever generates a mark for this
   // surface, this fails and somebody has to decide deliberately whether to wire it — rather than a
   // mark sitting unused in a directory, or being copied in without anybody noticing that
   // `markId: null` said not to.
-  if (!existsSync(at(BRAND))) return // the sibling is not checked out; CI has it.
+  //
+  // `t.skip`, never a bare `return`: a test that returns early reports as a PASS, so an absent
+  // sibling would have certified a decision nobody checked. CI checks micro-brand out.
+  if (!existsSync(at(BRAND))) return void t.skip('micro-brand is not checked out; CI has it')
   const files = readdirSync(at(BRAND)).filter((f) => f.endsWith('.png') || f.endsWith('.svg'))
   const marks = files.filter((f) => /mark|wordmark|logo/i.test(f))
   assert.deepEqual(
@@ -174,7 +178,7 @@ test('the accent and substrate are declared on <html>, before React can paint', 
   assert.match(HTML, /data-cf-substrate="warm"/)
 })
 
-test('the accent selector this page names really exists, and "explorer" would NOT have', () => {
+test('the accent selector this page names really exists, and "explorer" would NOT have', (t) => {
   // ══════════════════════════════════════════════════════════════════════════════════════════
   // THE CHECK THAT WOULD HAVE CAUGHT ADMIN'S, MADE SHARP FOR THIS SURFACE.
   //
@@ -187,8 +191,11 @@ test('the accent selector this page names really exists, and "explorer" would NO
   // reproduced admin's bug exactly. `network` is correct because it carries the same accent the
   // registry gives this surface — asserted below rather than assumed. Reported to micro-ui.
   // ══════════════════════════════════════════════════════════════════════════════════════════
+  // `t.skip`, never a bare `return`: a test that returns early reports as a pass, and this one
+  // asserts the ABSENCE of an explorer block — the single most valuable thing here, and the thing
+  // most easily certified by accident. CI checks micro-ui out.
   const tokens = at('../ui/packages/ui/src/tokens.css')
-  if (!existsSync(tokens)) return // the sibling design system is not checked out; CI has it.
+  if (!existsSync(tokens)) return void t.skip('micro-ui is not checked out; CI has it')
   const css = readFileSync(tokens, 'utf8')
   assert.match(css, /\[data-cf-product='network'\]/, 'the selector this page names has gone')
   // The absence, so the day micro-ui adds an explorer block this fails and index.html is corrected.
@@ -199,7 +206,7 @@ test('the accent selector this page names really exists, and "explorer" would NO
   )
   // And they really are the same colour, which is the whole reason network is the right stand-in.
   const surfaces = at('../ui/packages/ui/src/surfaces.ts')
-  if (!existsSync(surfaces)) return
+  if (!existsSync(surfaces)) return void t.skip('micro-ui has no surfaces.ts; the accents are unchecked')
   // 1600, not 400: the registry entry gained a long comment explaining why its devPort names the
   // indexer's port rather than this bundle's own, and the accent fell outside the window. The
   // window is how far the search looks, not what it asserts — the equality below is unchanged.
@@ -231,14 +238,16 @@ test('the Dockerfile copies public/ into the build context', () => {
   )
 })
 
-test('the template really does carry that line, rather than a sibling saying so', () => {
-  const template = at('../web-template/Dockerfile')
-  if (!existsSync(template)) return // not checked out; CI has it.
-  const lines = readFileSync(template, 'utf8').split('\n')
-  assert.equal(
-    (lines[38] ?? '').trim(),
-    'COPY public ./public',
-    `micro-web-template/Dockerfile:39 is: ${lines[38]}`,
+test('the template really does carry that line, rather than a sibling saying so', (t) => {
+  // A CONTENT pin, and a `t.skip` rather than a `return`. It named Dockerfile:39 and passed
+  // silently whenever micro-web-template was absent — so the one check standing between this
+  // repository and an image with no icons reported a pass for a file it had not opened.
+  const copy = citeIfPresent(at('../web-template/Dockerfile'), 'COPY public ./public')
+  if (copy === null) return void t.skip('micro-web-template is not checked out; CI has it')
+  assert.match(
+    copy.text,
+    /^COPY public \.\/public$/,
+    `micro-web-template/Dockerfile:${copy.line} is: ${copy.text}`,
   )
 })
 

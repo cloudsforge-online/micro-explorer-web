@@ -18,6 +18,7 @@
  * re-read. When a sibling is not checked out, the citations into it are REPORTED as unchecked
  * rather than passed over in silence, so a green run never implies more than it measured.
  */
+import { block, cite } from '@cloudsforge/ui/cite'
 import assert from 'node:assert/strict'
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { extname, join, relative } from 'node:path'
@@ -183,48 +184,55 @@ describe('every citation names a line that exists', () => {
     assert.deepEqual(broken, [])
   })
 
-  it('the registry citations land on the line that carries the named key, not merely a line', () => {
+  it('the registry citations land on the line that carries the named key, not merely a line', (t) => {
     // THE SWEEP ABOVE ONLY PROVES A LINE EXISTS, and that is not enough: when micro-ui's explorer
     // entry gained a long comment, this repository's citations to surfaces.ts:443/:444/:446 all
     // resolved to lines INSIDE that comment — real lines, wrong lines — and the suite stayed
     // green. A citation that resolves but points at prose reads as verified while verifying
     // nothing, which is worse than a citation that fails.
     //
-    // So the surfaces.ts citations are checked for CONTENT: each must land on the line that
-    // declares the key its sentence is about. The map is maintained by hand, which is the point —
-    // moving the registry means updating a claim somebody can check.
+    // So the registry claims are CONTENT PINS now, via `@cloudsforge/ui/cite`: the anchor names
+    // what the line says and `cite()` refuses to resolve unless EXACTLY ONE line matches. The
+    // line number is then an output — printed in the message so a reader can go and look — rather
+    // than an input that decays. Four of these were maintained by hand as line numbers, and the
+    // registry has moved twice this week.
     const root = siblingRoot('ui')
     if (root === undefined || !existsSync(root)) {
-      console.log('UNCHECKED: the surfaces.ts content pins — micro-ui is not checked out')
+      // `t.skip`, never `return`: a test that returns early reports as a pass, and a pass for work
+      // that was never done is the defect this whole file exists to catch.
+      t.skip('the surfaces.ts content pins — micro-ui is not checked out')
       return
     }
-    const lines = readFileSync(join(root, 'packages/ui/src/surfaces.ts'), 'utf8').split('\n')
-    const PINS: ReadonlyArray<{ line: number; mustContain: string; claimedBy: string }> = [
-      { line: 523, mustContain: 'devPort: 4008', claimedBy: 'src/lib/hosts.ts, vite.config.ts, test/hosts.test.ts' },
-      { line: 524, mustContain: "accent: '#d6412f'", claimedBy: 'src/lib/hosts.ts' },
-      { line: 526, mustContain: 'markId: null', claimedBy: 'src/components/shell.tsx, test/brand-chrome.test.ts' },
-      { line: 528, mustContain: 'inSwitcher: false', claimedBy: 'src/components/shell.tsx' },
+    const surfaces = join(root, 'packages/ui/src/surfaces.ts')
+    // The `explorer` entry, found by its key, so everything below is read from inside it.
+    const entry = cite(surfaces, "key: 'explorer'")
+    const body = block(entry, 40)
+    const PINS: ReadonlyArray<{ says: string; claimedBy: string }> = [
+      { says: 'devPort: 4008', claimedBy: 'src/lib/hosts.ts, vite.config.ts, test/hosts.test.ts' },
+      { says: "accent: '#d6412f'", claimedBy: 'src/lib/hosts.ts' },
+      { says: 'markId: null', claimedBy: 'src/components/shell.tsx, test/brand-chrome.test.ts' },
+      { says: 'inSwitcher: false', claimedBy: 'src/components/shell.tsx' },
     ]
     for (const pin of PINS) {
-      const text = lines[pin.line - 1] ?? ''
       assert.ok(
-        text.includes(pin.mustContain),
-        `surfaces.ts:${pin.line} is cited by ${pin.claimedBy} as "${pin.mustContain}" but reads: ${text.trim()}`,
+        body.includes(pin.says),
+        `the explorer entry at surfaces.ts:${entry.line} is cited by ${pin.claimedBy} as ` +
+          `"${pin.says}", and the 40 lines from there do not say it`,
       )
     }
   })
 
-  it('reports which repositories were NOT available, rather than passing quietly', () => {
+  it('was able to check every repository it cites, and says which it could not', (t) => {
     // Not a failure: `pnpm test` has to work for somebody who cloned only this repository. But an
-    // unmeasured citation must never look like a verified one, so the absence is printed and the
-    // CI job that has every sibling checked out is where it becomes fatal.
+    // unmeasured citation must never look like a verified one, so a partial checkout SKIPS — the
+    // CI job has every sibling and is where the absence becomes fatal.
+    assert.ok(SIBLINGS.length > 0, 'the sibling list is empty, so this reports nothing')
     const absent = SIBLINGS.filter((name) => {
       const root = siblingRoot(name)
       return root === undefined || !existsSync(root)
     })
     if (absent.length > 0) {
-      console.log(`UNCHECKED: citations into ${absent.join(', ')} — those repositories are not checked out`)
+      t.skip(`citations into ${absent.join(', ')} — those repositories are not checked out`)
     }
-    assert.ok(true)
   })
 })

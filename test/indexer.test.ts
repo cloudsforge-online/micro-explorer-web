@@ -276,9 +276,12 @@ describe('the shape check can say no', () => {
 
 describe('the cited lines are the lines that register the routes', () => {
   if (indexerRoot === undefined) {
-    // NOT a silent pass. It says which check did not run, and CI makes the absence fatal.
-    it('SKIPPED: no micro-indexer checkout — CI checks one out and requires this to run', () => {
-      assert.ok(true)
+    // NOT a silent pass, and no longer a LOUD one either. This used to be a green test named
+    // "SKIPPED", which still counted towards `pass` and towards the number a reader compares
+    // between runs. `t.skip()` puts it in the `skipped` column, where an unmeasured check belongs.
+    // CI checks micro-indexer out and makes the absence fatal.
+    it('no micro-indexer checkout — CI checks one out and requires this to run', (t) => {
+      t.skip('micro-indexer is not checked out')
     })
     return
   }

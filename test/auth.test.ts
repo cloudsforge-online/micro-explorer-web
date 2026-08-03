@@ -27,8 +27,9 @@
  * a repository being written now. The absence is PINNED below, so the choice is a decision.
  * ══════════════════════════════════════════════════════════════════════════════════════════════
  */
+import { block, citeIfPresent } from '@cloudsforge/ui/cite'
 import assert from 'node:assert/strict'
-import { existsSync, readFileSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, it } from 'node:test'
 import { readReader } from '../src/lib/auth.tsx'
@@ -146,20 +147,29 @@ describe('there is no gate, and the reason is read off the service', () => {
 })
 
 describe('the template this file follows really says what it is quoted as saying', () => {
-  it('declares the nested shape at micro-web-template/src/lib/auth.tsx:26', () => {
-    const template = at('../web-template/src/lib/auth.tsx')
-    if (!existsSync(template)) return // not checked out; CI has it.
-    const lines = readFileSync(template, 'utf8').split('\n')
-    assert.equal((lines[25] ?? '').trim(), 'interface Me {', `:26 is: ${lines[25]}`)
-    assert.equal((lines[26] ?? '').trim(), 'user?: {', `:27 is: ${lines[26]}`)
+  // Content pins, not line pins. These two used to name :26 and :98-99 and pass silently whenever
+  // micro-web-template was absent — a `return` inside `it()` reports as a pass, which is how a
+  // suite comes to certify work it never did. `citeIfPresent` returns null for the missing
+  // checkout so the test can `t.skip()`, and holds the file to `cite`'s one rule when it is there:
+  // the anchor must match EXACTLY ONE line, or it throws and names the ones it found.
+  it('declares the nested shape, at micro-web-template/src/lib/auth.tsx', (t) => {
+    const decl = citeIfPresent(at('../web-template/src/lib/auth.tsx'), 'interface Me {')
+    if (decl === null) return void t.skip('micro-web-template is not checked out; CI has it')
+    assert.match(
+      block(decl, 3),
+      /user\?: \{/,
+      `the template's Me is no longer nested — interface Me is at auth.tsx:${decl.line}`,
+    )
   })
 
-  it('reads it nested at :98-99', () => {
-    const template = at('../web-template/src/lib/auth.tsx')
-    if (!existsSync(template)) return
-    const lines = readFileSync(template, 'utf8').split('\n')
-    assert.match(lines[97] ?? '', /me\?\.user\?\.handle/, `:98 is: ${lines[97]}`)
-    assert.match(lines[98] ?? '', /me\?\.user\?\.roles/, `:99 is: ${lines[98]}`)
+  it('reads it nested, in the same file', (t) => {
+    const read = citeIfPresent(at('../web-template/src/lib/auth.tsx'), /me\?\.user\?\.handle/)
+    if (read === null) return void t.skip('micro-web-template is not checked out; CI has it')
+    assert.match(
+      block(read, 2),
+      /me\?\.user\?\.roles/,
+      `the roles no longer come from the nested user — the handle is at auth.tsx:${read.line}`,
+    )
   })
 })
 
@@ -181,29 +191,26 @@ describe('identity really does nest it', () => {
    * against what was found. The failure message carries the line it is at, so a genuine change is
    * one edit away from fixed and a move is no change at all.
    */
-  it('at identity/src/server.ts, wherever GET /auth/me now is', () => {
-    const identity = at('../identity/src/server.ts')
-    if (!existsSync(identity)) return // not checked out; CI has it.
-    const lines = readFileSync(identity, 'utf8').split('\n')
-    const at404 = lines.findIndex((line) => /define\('GET', '\/auth\/me'/.test(line))
-    assert.ok(
-      at404 >= 0,
-      'identity no longer defines GET /auth/me at all, which is a much bigger problem than a ' +
-        'stale citation',
-    )
-    const body = lines.slice(at404, at404 + 14).join('\n')
+  it('at identity/src/server.ts, wherever GET /auth/me now is', (t) => {
+    // Hand-rolled `findIndex` before, which found the FIRST match and would have followed a call
+    // site rather than the definition if one ever appeared above it. `cite` refuses an anchor that
+    // matches twice, and names both lines when it does.
+    const me = citeIfPresent(at('../identity/src/server.ts'), "define('GET', '/auth/me'")
+    if (me === null) return void t.skip('micro-identity is not checked out; CI has it')
     assert.match(
-      body,
+      block(me, 14),
       /user: toPublicUser\(user\)/,
-      `the profile is no longer nested under \`user\` — GET /auth/me is at :${at404 + 1}`,
+      `the profile is no longer nested under \`user\` — GET /auth/me is at :${me.line}`,
     )
   })
 
-  it('and toPublicUser is where the roles come from, at identity/src/users.ts:52-63', () => {
-    const users = at('../identity/src/users.ts')
-    if (!existsSync(users)) return
-    const lines = readFileSync(users, 'utf8').split('\n')
-    assert.match(lines[51] ?? '', /export function toPublicUser/, `:52 is: ${lines[51]}`)
-    assert.match(lines.slice(51, 63).join('\n'), /roles: row\.roles/, 'roles left the public user')
+  it('and toPublicUser is where the roles come from, in identity/src/users.ts', (t) => {
+    const fn = citeIfPresent(at('../identity/src/users.ts'), 'export function toPublicUser')
+    if (fn === null) return void t.skip('micro-identity is not checked out; CI has it')
+    assert.match(
+      block(fn, 12),
+      /roles: row\.roles/,
+      `roles left the public user — toPublicUser is at users.ts:${fn.line}`,
+    )
   })
 })
