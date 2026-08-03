@@ -558,8 +558,8 @@ describe('the cited lines are the lines that register the routes', () => {
 
   it('confirmation counts against the WALKED HEAD, as CONFIRMATIONS_AGAINST claims', () => {
     assert.equal(CONFIRMATIONS_AGAINST.confirmations, 'walked-head')
-    // `indexer/src/reads.ts:442-445`.
-    const cited = readsLines.slice(441, 445).join('\n')
+    // `indexer/src/reads.ts:452-455`.
+    const cited = readsLines.slice(451, 455).join('\n')
     assert.match(cited, /confirmationsAt\(record\.headHeight, record\.blockHeight\)/, cited)
   })
 
@@ -568,13 +568,13 @@ describe('the cited lines are the lines that register the routes', () => {
     assert.equal(CONFIRMATIONS_AGAINST.transaction, 'claimed-tip')
     assert.equal(CONFIRMATIONS_AGAINST.activity, 'claimed-tip')
     // Each cited line, individually — this is the claim every "vs claimed tip" label rests on.
-    assert.match(readsLines[569] ?? '', /confirmationsAt\(tipHeight, record\.height\)/, `:589 is: ${readsLines[569]}`)
-    assert.match(readsLines[417] ?? '', /confirmationsAt\(tipHeight, record\.blockHeight\)/, `:437 is: ${readsLines[417]}`)
-    assert.match(readsLines[355] ?? '', /confirmationsAt\(tipHeight, item\.blockHeight\)/, `:375 is: ${readsLines[355]}`)
+    assert.match(readsLines[578] ?? '', /confirmationsAt\(tipHeight, record\.height\)/, `:579 is: ${readsLines[578]}`)
+    assert.match(readsLines[426] ?? '', /confirmationsAt\(tipHeight, record\.blockHeight\)/, `:427 is: ${readsLines[426]}`)
+    assert.match(readsLines[364] ?? '', /confirmationsAt\(tipHeight, item\.blockHeight\)/, `:365 is: ${readsLines[364]}`)
     // …and that `tipHeight` in each really is the checkpoint's, not the head's.
-    assert.match(readsLines[344] ?? '', /checkpoint\?\.tipHeight \?\? null/, `:364 is: ${readsLines[344]}`)
-    assert.match(readsLines[398] ?? '', /checkpoint\?\.tipHeight \?\? null/, `:418 is: ${readsLines[398]}`)
-    assert.match(readsLines[558] ?? '', /checkpoint\?\.tipHeight \?\? null/, `:578 is: ${readsLines[558]}`)
+    assert.match(readsLines[350] ?? '', /checkpoint\?\.tipHeight \?\? null/, `:351 is: ${readsLines[350]}`)
+    assert.match(readsLines[407] ?? '', /checkpoint\?\.tipHeight \?\? null/, `:408 is: ${readsLines[407]}`)
+    assert.match(readsLines[567] ?? '', /checkpoint\?\.tipHeight \?\? null/, `:568 is: ${readsLines[567]}`)
   })
 
   it('the rule that scopes the two is where this repository cites it', () => {

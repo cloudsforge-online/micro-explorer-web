@@ -9,7 +9,7 @@
  * The second thing under test WAS the dev-port disagreement, asserted as a fact rather than fixed
  * with a literal: the registry said 8080 — this bundle's own container port — while `micro-indexer`
  * binds **4008** (`indexer/src/env.ts:295`, `indexer/.env.example:9`, `indexer/Dockerfile:91`).
- * micro-ui corrected the registry to 4008 (`ui/packages/ui/src/surfaces.ts:456`) and these pins
+ * micro-ui corrected the registry to 4008 (`ui/packages/ui/src/surfaces.ts:523`) and these pins
  * flipped to the agreeing direction; both halves stay pinned, so a NEW disagreement fails and
  * names the side that moved. See the header of src/lib/hosts.ts.
  */

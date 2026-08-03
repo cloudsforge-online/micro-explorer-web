@@ -8,7 +8,7 @@
  * ══════════════════════════════════════════════════════════════════════════════════════════════
  * ── THIS SURFACE HAS NO MARK, AND THAT IS A DECISION RATHER THAN A GAP ────────────────────────
  *
- * `explorer` carries `markId: null` in the registry (`ui/packages/ui/src/surfaces.ts:459`) and
+ * `explorer` carries `markId: null` in the registry (`ui/packages/ui/src/surfaces.ts:526`) and
  * `brand/assets/explorer/` deliberately holds favicons and an og card ONLY.
  * `brand/plan.ts:50-62` gives the reason: a status page is Beacon with its internals removed and
  * an explorer is part of Forge Network, so "neither should claim a mark of its own" — but each is
@@ -92,7 +92,7 @@ test('THE BRAND SET REALLY CONTAINS NO MARK, so shipping none is following it ra
     marks,
     [],
     `brand/assets/explorer/ now holds ${marks.join(', ')}. explorer carries markId: null in the ` +
-      'registry (surfaces.ts:459) and brand/plan.ts:50-62 says why. Read both before wiring it.',
+      'registry (surfaces.ts:526) and brand/plan.ts:50-62 says why. Read both before wiring it.',
   )
   // And it holds what a separate hostname does need.
   for (const needed of [...REQUIRED_ICONS, OG_CARD]) {

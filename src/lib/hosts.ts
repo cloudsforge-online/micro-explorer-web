@@ -13,14 +13,14 @@
  * and `indexer` is not among them). `CloudsForgeHosts` is `Record<SurfaceKey, string>`
  * (`ui/packages/ui/src/index.tsx:121`), so there is no key to ask for.
  *
- * The registry key that exists is `explorer` (`ui/packages/ui/src/surfaces.ts:437-449`), and the
+ * The registry key that exists is `explorer` (`ui/packages/ui/src/surfaces.ts:504-529`), and the
  * production arrangement it describes is the right one: nginx serves this bundle at
  * `explorer.<apex>` and the indexer serves `/v1/...` behind the same hostname, exactly as
  * `trade.<apex>` is shared. So `apiBase()` is `''` in production and every request is relative.
  *
  * ── The dev port disagreement, reported and then fixed upstream ────────────────────────────────
  *
- * The registry now gives `explorer` **devPort 4008** (`ui/packages/ui/src/surfaces.ts:456`) — the
+ * The registry now gives `explorer` **devPort 4008** (`ui/packages/ui/src/surfaces.ts:523`) — the
  * port `micro-indexer` binds (`indexer/src/env.ts:295`, `indexer/.env.example:9`,
  * `indexer/Dockerfile:91`). It used to say 8080, which is this bundle's OWN container port
  * (`Dockerfile:67`, `nginx.conf:29`): the registry told a frontend to ask itself for chain data,
@@ -33,7 +33,7 @@ import { cloudsforgeHosts, type CloudsForgeHosts, type SurfaceKey } from '@cloud
 /**
  * The surface this application IS.
  *
- * `ui/packages/ui/src/surfaces.ts:437-449` registers `explorer` as a `service` with
+ * `ui/packages/ui/src/surfaces.ts:504-529` registers `explorer` as a `service` with
  * `inSwitcher: false`, subdomain `explorer`, accent `#d6412f`, glyph `▦` and **`markId: null`**.
  * The null is a decision rather than a gap: `brand/plan.ts:50-62` explains that an explorer is
  * part of Forge Network and must not claim a mark of its own, and `brand/assets/explorer/`
@@ -47,7 +47,7 @@ export const PRODUCT: SurfaceKey = 'explorer'
  *
  * `explorer` has **no `[data-cf-product='explorer']` block** in `ui/packages/ui/src/tokens.css`;
  * `network`'s is at `:340-345` and carries `#d6412f`, which is the exact accent the registry gives
- * `explorer` (`ui/packages/ui/src/surfaces.ts:457`). So `network` is the correct selector and it
+ * `explorer` (`ui/packages/ui/src/surfaces.ts:524`). So `network` is the correct selector and it
  * is set statically in index.html.
  *
  * That the explorer has no block of its own is worth stating, because tokens.css says at `:389-396`

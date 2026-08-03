@@ -5,7 +5,7 @@
  * THE `/auth/me` SHAPE, RE-READ FOR THIS REPOSITORY.
  *
  * Identity answers `{ user: {...}, session: {...}, organisations: [...] }` — the profile is NESTED
- * under `user`. The route is `identity/src/server.ts:891-903` and the body is built by
+ * under `user`. The route is `identity/src/server.ts:1000-1012` and the body is built by
  * `toPublicUser` at `identity/src/users.ts:52-63`.
  *
  * The estate got this wrong at the root: the web template declared `interface Me { handle?, roles? }`
@@ -74,7 +74,7 @@ describe('reading the profile out of /auth/me', () => {
     const source = read('src/lib/auth.tsx')
     assert.doesNotMatch(source, /body as \{ handle/, 'a flat fallback has appeared')
     assert.doesNotMatch(source, /\?\?\s*\(body as/, 'a flat fallback has appeared')
-    assert.match(source, /identity\/src\/server\.ts:891-903/, 'the citation for the shape has gone')
+    assert.match(source, /identity\/src\/server\.ts:1000-1012/, 'the citation for the shape has gone')
     assert.match(source, /identity\/src\/users\.ts:52-63/, 'the citation for the body has gone')
   })
 })
@@ -161,12 +161,12 @@ describe('the template this file follows really says what it is quoted as saying
 })
 
 describe('identity really does nest it', () => {
-  it('at identity/src/server.ts:891-903', () => {
+  it('at identity/src/server.ts:1000-1012', () => {
     const identity = at('../identity/src/server.ts')
     if (!existsSync(identity)) return // not checked out; CI has it.
     const lines = readFileSync(identity, 'utf8').split('\n')
-    assert.match(lines[890] ?? '', /define\('GET', '\/auth\/me'/, `:891 is: ${lines[890]}`)
-    const body = lines.slice(890, 903).join('\n')
+    assert.match(lines[999] ?? '', /define\('GET', '\/auth\/me'/, `:1000 is: ${lines[999]}`)
+    const body = lines.slice(999, 1012).join('\n')
     assert.match(body, /user: toPublicUser\(user\)/, 'the profile is no longer nested under `user`')
   })
 

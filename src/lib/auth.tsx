@@ -29,7 +29,7 @@
  * ── The `/auth/me` shape, re-read for this repository ─────────────────────────────────────────
  *
  * Identity answers `{ user: {...}, session: {...}, organisations: [...] }` — the profile is
- * **NESTED under `user`**. The route is `identity/src/server.ts:891-903` and the body is built by
+ * **NESTED under `user`**. The route is `identity/src/server.ts:1000-1012` and the body is built by
  * `toPublicUser` at `identity/src/users.ts:52-63`. Both citations were opened and read against the
  * source for this repository rather than carried over from a sibling.
  *

@@ -200,10 +200,10 @@ describe('every citation names a line that exists', () => {
     }
     const lines = readFileSync(join(root, 'packages/ui/src/surfaces.ts'), 'utf8').split('\n')
     const PINS: ReadonlyArray<{ line: number; mustContain: string; claimedBy: string }> = [
-      { line: 456, mustContain: 'devPort: 4008', claimedBy: 'src/lib/hosts.ts, vite.config.ts, test/hosts.test.ts' },
-      { line: 457, mustContain: "accent: '#d6412f'", claimedBy: 'src/lib/hosts.ts' },
-      { line: 459, mustContain: 'markId: null', claimedBy: 'src/components/shell.tsx, test/brand-chrome.test.ts' },
-      { line: 461, mustContain: 'inSwitcher: false', claimedBy: 'src/components/shell.tsx' },
+      { line: 523, mustContain: 'devPort: 4008', claimedBy: 'src/lib/hosts.ts, vite.config.ts, test/hosts.test.ts' },
+      { line: 524, mustContain: "accent: '#d6412f'", claimedBy: 'src/lib/hosts.ts' },
+      { line: 526, mustContain: 'markId: null', claimedBy: 'src/components/shell.tsx, test/brand-chrome.test.ts' },
+      { line: 528, mustContain: 'inSwitcher: false', claimedBy: 'src/components/shell.tsx' },
     ]
     for (const pin of PINS) {
       const text = lines[pin.line - 1] ?? ''
