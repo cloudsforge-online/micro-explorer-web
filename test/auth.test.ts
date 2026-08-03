@@ -5,7 +5,7 @@
  * THE `/auth/me` SHAPE, RE-READ FOR THIS REPOSITORY.
  *
  * Identity answers `{ user: {...}, session: {...}, organisations: [...] }` — the profile is NESTED
- * under `user`. The route is `identity/src/server.ts:1000-1012` and the body is built by
+ * under `user`. The route is `GET /auth/me` in `identity/src/server.ts` and the body is built by
  * `toPublicUser` at `identity/src/users.ts:52-63`.
  *
  * The estate got this wrong at the root: the web template declared `interface Me { handle?, roles? }`
@@ -74,7 +74,10 @@ describe('reading the profile out of /auth/me', () => {
     const source = read('src/lib/auth.tsx')
     assert.doesNotMatch(source, /body as \{ handle/, 'a flat fallback has appeared')
     assert.doesNotMatch(source, /\?\?\s*\(body as/, 'a flat fallback has appeared')
-    assert.match(source, /identity\/src\/server\.ts:1000-1012/, 'the citation for the shape has gone')
+    // The FILE, not a line in it. The line moves whenever micro-identity is edited and this
+    // repository cannot see the move; the file is the durable half of the claim, and the shape
+    // itself is asserted against the found handler below.
+    assert.match(source, /identity\/src\/server\.ts/, 'the citation for the shape has gone')
     assert.match(source, /identity\/src\/users\.ts:52-63/, 'the citation for the body has gone')
   })
 })
@@ -161,13 +164,39 @@ describe('the template this file follows really says what it is quoted as saying
 })
 
 describe('identity really does nest it', () => {
-  it('at identity/src/server.ts:1000-1012', () => {
+  /**
+   * Pinned by CONTENT, not by line number, and that is a correction rather than a relaxation.
+   *
+   * This assertion used to name `identity/src/server.ts:891-903`. micro-identity's route table has
+   * since moved twice in one afternoon — 891 → 954 → 1000 — and each move turned this repository's
+   * CI red for a change in a repository it does not own, while saying only ":954 is: const body =
+   * await readJson(ctx.req)", which tells a reader nothing about what to do.
+   *
+   * Worse, a line pin is not even the stronger check: this repository's own citations.test.ts
+   * records that when micro-ui's explorer entry gained a comment, three citations resolved to real
+   * lines INSIDE it and the suite stayed green. "A citation that resolves but points at prose reads
+   * as verified while verifying nothing."
+   *
+   * So the handler is FOUND, and the claim — that the profile is nested under `user` — is asserted
+   * against what was found. The failure message carries the line it is at, so a genuine change is
+   * one edit away from fixed and a move is no change at all.
+   */
+  it('at identity/src/server.ts, wherever GET /auth/me now is', () => {
     const identity = at('../identity/src/server.ts')
     if (!existsSync(identity)) return // not checked out; CI has it.
     const lines = readFileSync(identity, 'utf8').split('\n')
-    assert.match(lines[999] ?? '', /define\('GET', '\/auth\/me'/, `:1000 is: ${lines[999]}`)
-    const body = lines.slice(999, 1012).join('\n')
-    assert.match(body, /user: toPublicUser\(user\)/, 'the profile is no longer nested under `user`')
+    const at404 = lines.findIndex((line) => /define\('GET', '\/auth\/me'/.test(line))
+    assert.ok(
+      at404 >= 0,
+      'identity no longer defines GET /auth/me at all, which is a much bigger problem than a ' +
+        'stale citation',
+    )
+    const body = lines.slice(at404, at404 + 14).join('\n')
+    assert.match(
+      body,
+      /user: toPublicUser\(user\)/,
+      `the profile is no longer nested under \`user\` — GET /auth/me is at :${at404 + 1}`,
+    )
   })
 
   it('and toPublicUser is where the roles come from, at identity/src/users.ts:52-63', () => {
