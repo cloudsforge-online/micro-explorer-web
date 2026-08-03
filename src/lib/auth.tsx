@@ -7,7 +7,7 @@
  * A gate exists to spare a customer a screen made entirely of 401s by sending them somewhere that
  * fixes it. **Nothing on this surface can produce one.** Every `micro-indexer` route this app
  * calls is anonymous — `authoriseRead` returns `null` for a caller with no token and lets the
- * handler run (`indexer/src/server.ts:727-736`, the branch at `:710`) — and every call is issued
+ * handler run (`indexer/src/server.ts:792-801`, the branch at `:794`) — and every call is issued
  * with `auth: false` (`publicRead` in `src/lib/indexer.ts`). A gate here would demand a session
  * for public chain facts and would be the defect this repository was built around, arriving from
  * the client's side: `docs/ecosystem/15-monetisation-model.md:50` — "A public chain whose explorer
@@ -103,7 +103,7 @@ export function readReader(body: unknown): Reader {
  * role, because `authorise` accepted a user principal only when `isAdmin`. Its one caller was the
  * standing notice in the shell, which used it to choose between two wordings of the same apology.
  *
- * The reads are anonymous now (`indexer/src/server.ts:727-736`), so the predicate has no true
+ * The reads are anonymous now (`indexer/src/server.ts:792-801`), so the predicate has no true
  * answer other than "yes", the notice is gone, and a helper that can only return one value is a
  * helper somebody eventually reads as meaningful. Nothing in this bundle asks who a reader is
  * before making a request.

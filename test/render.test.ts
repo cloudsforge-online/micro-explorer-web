@@ -21,9 +21,9 @@
  * exists to remove.
  *
  * **3. A withheld answer is shown as withheld, never as zero and never as a dash.** `balances` is
- * ABSENT rather than zero when the coverage cannot support it (`indexer/src/reads.ts:225-259`), and
+ * ABSENT rather than zero when the coverage cannot support it (`indexer/src/reads.ts:231-265`), and
  * "a missing balance is missing, never zero, because zero is what evicts a token-gated member"
- * (`indexer/src/server.ts:479-480`). The reason field is the value of the answer.
+ * (`indexer/src/server.ts:502-503`). The reason field is the value of the answer.
  * ══════════════════════════════════════════════════════════════════════════════════════════════
  */
 import assert from 'node:assert/strict'
@@ -212,7 +212,7 @@ describe('a withheld answer is shown as withheld', () => {
  * This block used to assert the opposite: that every page reading the chain index rendered a
  * `<Refused>` panel, that it offered no sign-in, and that it printed the line where the refusal was
  * decided. All of that was correct while `micro-indexer` served only a scoped service or an admin.
- * It opened the seven reads (`authoriseRead`, `indexer/src/server.ts:727-736`), and a surface that
+ * It opened the seven reads (`authoriseRead`, `indexer/src/server.ts:792-801`), and a surface that
  * goes on explaining a restriction nobody is under is worse than one that never had it — a reader
  * believes it, and nothing on the page tells them it is stale.
  *
@@ -284,7 +284,7 @@ describe('a 404 that is an answer does not look like a 404 that is our fault', (
   })
 
   it('the transaction page separates transaction_not_found from a router 404', () => {
-    // The exact split `indexer/src/server.ts:445-455` exists to make possible, and the one
+    // The exact split `indexer/src/server.ts:468-478` exists to make possible, and the one
     // `micro-market` collapsed.
     const source = read('src/pages/transaction.tsx')
     assert.match(source, /code === 'transaction_not_found'/)

@@ -21,7 +21,7 @@
  * ── The dev port disagreement, reported and then fixed upstream ────────────────────────────────
  *
  * The registry now gives `explorer` **devPort 4008** (`ui/packages/ui/src/surfaces.ts:523`) — the
- * port `micro-indexer` binds (`indexer/src/env.ts:295`, `indexer/.env.example:9`,
+ * port `micro-indexer` binds (`indexer/src/env.ts:364`, `indexer/.env.example:9`,
  * `indexer/Dockerfile:91`). It used to say 8080, which is this bundle's OWN container port
  * (`Dockerfile:67`, `nginx.conf:29`): the registry told a frontend to ask itself for chain data,
  * and under `pnpm dev` an indexer started from its own example environment was never consulted.

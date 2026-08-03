@@ -69,31 +69,49 @@ const indexerRoot = INDEXER_CANDIDATES.find((p) => existsSync(`${p}/src/server.t
 const client = readFileSync(here('src/lib/indexer.ts'), 'utf8')
 
 /**
+ * How one route decides who may call it. THREE states, not two.
+ *
+ * It was a pair — `authoriseRead` (anonymous is served) or `authorise` (a write, `indexer:write`)
+ * — and that pair was a complete description of the service until `GET /custody/:chain/:network/
+ * /total` arrived. That route is a READ that takes a token: `authorise(ctx, deps, READ_SCOPE)`.
+ * A two-valued column would have had to call it a write, which is false and would have put it in
+ * the "declined because it takes indexer:write" list under a reason that is not the reason.
+ *
+ * So the scope travels with the helper name. The checks below match on the whole value, so a
+ * route that changed from `authorise:READ_SCOPE` to `authorise:WRITE_SCOPE` — a real change in
+ * who can call it — cannot pass by still containing the word `authorise`.
+ */
+type Gate = 'authoriseRead' | 'authorise:READ_SCOPE' | 'authorise:WRITE_SCOPE'
+
+/**
  * The surface this bundle uses, with the line each was read from and the GATE it opens with.
  *
  * `line` is the line in `DOMAIN` that REGISTERS the route; `handler` is the line the handler
  * function is declared at. Both are cited in the client, and both are checked, because a route can
  * be moved in the table without its handler moving and vice versa.
  *
- * `gate` was `READ_SCOPE | WRITE_SCOPE` until `micro-indexer` opened the reads. It is now the
+ * `gate` was `READ_SCOPE | WRITE_SCOPE` until `micro-indexer` opened the reads. It became the
  * NAME OF THE HELPER, because that is where the difference lives: `authoriseRead` serves a caller
  * with no token, `authorise` refuses one. A column recording a scope could not have expressed
  * "there is no scope", which is the point.
+ *
+ * It now records the helper AND, for `authorise`, the scope — see `Gate`. Two values could not
+ * express the route the service grew.
  */
 const SURFACE: ReadonlyArray<{
   method: string
   path: string
   line: number
   handler: number
-  gate: 'authoriseRead' | 'authorise'
+  gate: Gate
 }> = [
-  { method: 'GET', path: '/chains/:chain/:network/status', line: 154, handler: 403, gate: 'authoriseRead' },
-  { method: 'GET', path: '/addresses/:chain/:network/:address/activity', line: 155, handler: 415, gate: 'authoriseRead' },
-  { method: 'GET', path: '/addresses/:chain/:network/:address/token-balances', line: 156, handler: 482, gate: 'authoriseRead' },
-  { method: 'GET', path: '/transactions/:chain/:network/:hash', line: 157, handler: 431, gate: 'authoriseRead' },
-  { method: 'GET', path: '/transactions/:chain/:network/:hash/confirmations', line: 158, handler: 456, gate: 'authoriseRead' },
-  { method: 'GET', path: '/tokens/:chain/:network/:address', line: 159, handler: 512, gate: 'authoriseRead' },
-  { method: 'GET', path: '/blocks/:chain/:network/:height', line: 160, handler: 533, gate: 'authoriseRead' },
+  { method: 'GET', path: '/chains/:chain/:network/status', line: 164, handler: 426, gate: 'authoriseRead' },
+  { method: 'GET', path: '/addresses/:chain/:network/:address/activity', line: 165, handler: 438, gate: 'authoriseRead' },
+  { method: 'GET', path: '/addresses/:chain/:network/:address/token-balances', line: 166, handler: 505, gate: 'authoriseRead' },
+  { method: 'GET', path: '/transactions/:chain/:network/:hash', line: 167, handler: 454, gate: 'authoriseRead' },
+  { method: 'GET', path: '/transactions/:chain/:network/:hash/confirmations', line: 168, handler: 479, gate: 'authoriseRead' },
+  { method: 'GET', path: '/tokens/:chain/:network/:address', line: 169, handler: 535, gate: 'authoriseRead' },
+  { method: 'GET', path: '/blocks/:chain/:network/:height', line: 171, handler: 598, gate: 'authoriseRead' },
 ]
 
 /**
@@ -108,23 +126,39 @@ const DECLINED: ReadonlyArray<{
   path: string
   line: number
   handler: number
-  gate: 'authoriseRead' | 'authorise'
+  gate: Gate
   why: string
 }> = [
   {
+    method: 'GET',
+    path: '/custody/:chain/:network/total',
+    line: 170,
+    handler: 582,
+    gate: 'authorise:READ_SCOPE',
+    why:
+      'indexer:read, and the ONLY domain GET on this service that takes a token. It answers Σ ' +
+      'confirmed native balance over the estate’s custody set — the number micro-ledger ' +
+      'reconciles its own books against. Every other read answers about a block, a hash or an ' +
+      'address the caller already named, and naming it is what makes the answer public; this one ' +
+      'answers about a SET only the platform knows, so serving it anonymously would publish the ' +
+      'treasury’s size to anyone who can reach the port (indexer/src/server.ts:556-581). A public ' +
+      'block explorer has no business holding a service token, and nothing on this surface has a ' +
+      'use for the number.',
+  },
+  {
     method: 'POST',
     path: '/watch/:chain/:network/:address',
-    line: 161,
-    handler: 550,
-    gate: 'authorise',
+    line: 172,
+    handler: 615,
+    gate: 'authorise:WRITE_SCOPE',
     why: 'indexer:write — enlarging what a shared deployment indexes is not a browser decision',
   },
   {
     method: 'POST',
     path: '/backfills/:chain/:network',
-    line: 162,
-    handler: 572,
-    gate: 'authorise',
+    line: 173,
+    handler: 637,
+    gate: 'authorise:WRITE_SCOPE',
     why: 'indexer:write — enqueues a range walk, with a cost attached',
   },
 ]
@@ -293,8 +327,21 @@ describe('the cited lines are the lines that register the routes', () => {
   const env = readFileSync(`${indexerRoot}/src/env.ts`, 'utf8')
 
   it('reads a server with a route table in it, so this cannot pass on an empty file', () => {
+    // TEN since `micro-indexer` f9344de added `GET /custody/:chain/:network/total`. The count is
+    // not bumped to silence it: the tenth entry was read, and it is in DECLINED above with the
+    // reason. `micro-ledger`'s `reconcileAsset` had taken an optional `indexerObservedTotal` for
+    // the life of that service and, before this route, nothing in the estate could produce one —
+    // it was supplied in exactly one place, a test. So every reconciliation compared the ledger
+    // against the ledger and reported clean, on the one asset the check exists for. This route is
+    // the independent side, and `indexer/src/server.ts:556-581` is the whole argument for it.
+    //
+    // (Stated without a `ledger/…:line` citation on purpose: this repository's CI does not check
+    // micro-ledger out, and a citation nothing verifies is the thing `test/citations.test.ts`
+    // exists to refuse.)
+    //
+    // It is a read that takes a token, which is why `Gate` above has three values rather than two.
     const entries = lines.filter((l) => /^\s{2}\['(GET|POST)',/.test(l))
-    assert.equal(entries.length, 9, `expected the indexer's nine DOMAIN entries, found ${entries.length}`)
+    assert.equal(entries.length, 10, `expected the indexer's ten DOMAIN entries, found ${entries.length}`)
   })
 
   for (const route of [...SURFACE, ...DECLINED]) {
@@ -330,12 +377,12 @@ describe('the cited lines are the lines that register the routes', () => {
     // `market/src/indexerclient.test.ts:29-32` records that a previous reader believed the
     // opposite and wrote it down.
     assert.match(server, /const PREFIXES: readonly string\[\] = \['\/v1', ''\]/)
-    // Line 134, as the client cites.
-    assert.match(lines[133] ?? '', /\['\/v1', ''\]/, `indexer/src/server.ts:134 is: ${lines[133]}`)
-    // And the loop that mounts them, at :393-378.
-    assert.match(lines[392] ?? '', /for \(const prefix of PREFIXES\)/)
-    assert.match(lines[393] ?? '', /for \(const \[method, path, handler\] of DOMAIN\)/)
-    assert.match(lines[394] ?? '', /built\.push\(route\(method, `\$\{prefix\}\$\{path\}`, handler\)\)/)
+    // Line 144, as the client cites.
+    assert.match(lines[143] ?? '', /\['\/v1', ''\]/, `indexer/src/server.ts:144 is: ${lines[143]}`)
+    // And the loop that mounts them, at :416-418.
+    assert.match(lines[415] ?? '', /for \(const prefix of PREFIXES\)/)
+    assert.match(lines[416] ?? '', /for \(const \[method, path, handler\] of DOMAIN\)/)
+    assert.match(lines[417] ?? '', /built\.push\(route\(method, `\$\{prefix\}\$\{path\}`, handler\)\)/)
   })
 
   /**
@@ -373,19 +420,23 @@ describe('the cited lines are the lines that register the routes', () => {
           /await authoriseRead\(ctx, deps\)/,
           `${route.method} ${route.path}: this app believes it is an anonymous read, and the handler does not call authoriseRead`,
         )
-        // …and NOT the write gate. `authoriseRead` is a substring-free name here on purpose: a
+        // …and NOT a scoped gate. `authoriseRead` is a substring-free name here on purpose: a
         // handler calling `authorise(ctx, deps, READ_SCOPE)` would satisfy a sloppier check by
-        // containing the word, and would 401 every visitor to this explorer.
+        // containing the word, and would 401 every visitor to this explorer. That is not
+        // hypothetical any more — `custodyTotal` is exactly such a handler.
         assert.doesNotMatch(
           body,
           /await authorise\(ctx, deps,/,
           `${route.method} ${route.path} has been RE-GATED — this app calls it with no bearer and would now get a 401`,
         )
       } else {
+        // The WHOLE value, scope included. A route moving between the two scopes changes who may
+        // call it, and a check that only looked for `authorise(` would not notice.
+        const scope = route.gate.slice('authorise:'.length)
         assert.match(
           body,
-          /await authorise\(ctx, deps, WRITE_SCOPE\)/,
-          `${route.method} ${route.path}: this app declines it because it takes indexer:write, and the handler no longer asks for it`,
+          new RegExp(`await authorise\\(ctx, deps, ${scope}\\)`),
+          `${route.method} ${route.path}: this app declines it because it takes ${scope}, and the handler no longer asks for it`,
         )
       }
     }
@@ -435,24 +486,42 @@ describe('the cited lines are the lines that register the routes', () => {
     assert.doesNotMatch(fn, /throw new TokenError/, 'authoriseRead has grown a missing-token throw')
   })
 
-  it('…and the nine handlers are exactly seven anonymous reads and two gated writes', () => {
+  it('…and the ten handlers are seven anonymous reads, one scoped read and two gated writes', () => {
     // Counted off the SERVICE rather than off the table above, so a route that changed gate
     // without anybody updating this file is a failure rather than an agreement with ourselves.
+    //
+    // It was "nine handlers … seven anonymous and two gated writes", and that sentence was a
+    // complete description of the service until the custody total arrived. Note what the old
+    // arithmetic would have done with it: `gated` matched only WRITE_SCOPE, so a READ_SCOPE
+    // handler would have landed in NEITHER bucket and the final `anonymous + gated === 9` is what
+    // would have caught it. That line is why the third bucket is named here rather than folded in.
     const handlers = [...SURFACE, ...DECLINED]
-    assert.equal(handlers.length, 9, 'the tables no longer cover all nine domain routes')
-    const anonymous = handlers.filter((r) => /await authoriseRead\(ctx, deps\)/.test(bodyOf(r.handler)))
-    const gated = handlers.filter((r) => /await authorise\(ctx, deps, WRITE_SCOPE\)/.test(bodyOf(r.handler)))
+    assert.equal(handlers.length, 10, 'the tables no longer cover all ten domain routes')
+    const bodies = new Map(handlers.map((r) => [r, bodyOf(r.handler)] as const))
+    const anonymous = handlers.filter((r) => /await authoriseRead\(ctx, deps\)/.test(bodies.get(r) ?? ''))
+    const readScoped = handlers.filter((r) => /await authorise\(ctx, deps, READ_SCOPE\)/.test(bodies.get(r) ?? ''))
+    const gated = handlers.filter((r) => /await authorise\(ctx, deps, WRITE_SCOPE\)/.test(bodies.get(r) ?? ''))
     assert.deepEqual(
       anonymous.map((r) => `${r.method} ${r.path}`).sort(),
       SURFACE.map((r) => `${r.method} ${r.path}`).sort(),
       'the set of anonymous routes upstream is not the set this app calls without a bearer',
     )
     assert.deepEqual(
-      gated.map((r) => `${r.method} ${r.path}`).sort(),
+      [...readScoped, ...gated].map((r) => `${r.method} ${r.path}`).sort(),
       DECLINED.map((r) => `${r.method} ${r.path}`).sort(),
-      'the set of write-gated routes upstream is not the set this app declines',
+      'the set of token-taking routes upstream is not the set this app declines',
     )
-    assert.equal(anonymous.length + gated.length, 9, 'a handler is neither, so somebody must read it')
+    // Each route in exactly one bucket, and every route in one.
+    assert.deepEqual(
+      handlers
+        .filter((r) => [anonymous, readScoped, gated].filter((b) => b.includes(r)).length !== 1)
+        .map((r) => `${r.method} ${r.path}`),
+      [],
+      'a handler opens with two gates or with none, so somebody must read it',
+    )
+    assert.equal(anonymous.length, 7)
+    assert.equal(readScoped.length, 1, 'the custody total is no longer the only read that takes a token')
+    assert.equal(gated.length, 2)
   })
 
   it('the three things still refused are still refused, and this app depends on none of them', () => {
@@ -494,20 +563,25 @@ describe('the cited lines are the lines that register the routes', () => {
   })
 
   it('the three cited line ranges are the functions this repository says they are', () => {
-    // `:727-717`, `:738-737` and `:698-707` appear verbatim across src/lib/indexer.ts,
+    // `:792-801`, `:803-821` and `:763-791` appear verbatim across src/lib/indexer.ts,
     // src/lib/auth.tsx, src/app.tsx and four more files, where a reader is invited to go and check
     // them. A range that has drifted onto the wrong function is a citation that reads as verified.
-    assert.match(lines[726] ?? '', /^async function authoriseRead\(/, `:727 is: ${lines[726]}`)
-    assert.match(lines[735] ?? '', /^\}/, `:736 is: ${lines[735]}`)
-    assert.match(lines[737] ?? '', /^async function authorise\(/, `:738 is: ${lines[737]}`)
-    assert.match(lines[755] ?? '', /^\}/, `:756 is: ${lines[755]}`)
+    //
+    // They were `:727-736`, `:738-756` and `:698-726` until `micro-indexer` f9344de inserted the
+    // custody total and its header above them. Every one of those citations still named a line
+    // that EXISTED, which is why the repository-wide existence sweep stayed green and only this
+    // check — which reads what is AT the line — could tell.
+    assert.match(lines[791] ?? '', /^async function authoriseRead\(/, `:792 is: ${lines[791]}`)
+    assert.match(lines[800] ?? '', /^\}/, `:801 is: ${lines[800]}`)
+    assert.match(lines[802] ?? '', /^async function authorise\(/, `:803 is: ${lines[802]}`)
+    assert.match(lines[820] ?? '', /^\}/, `:821 is: ${lines[820]}`)
     // …and the doc comment the reasoning lives in.
-    assert.match(lines[697] ?? '', /^\/\*\*/, `:698 is: ${lines[697]}`)
-    assert.match(lines[725] ?? '', /^\s+\*\//, `:726 is: ${lines[725]}`)
+    assert.match(lines[762] ?? '', /^\/\*\*/, `:763 is: ${lines[762]}`)
+    assert.match(lines[790] ?? '', /^\s+\*\//, `:791 is: ${lines[790]}`)
     assert.match(
-      lines.slice(697, 726).join('\n'),
+      lines.slice(762, 791).join('\n'),
       /Reads are ANONYMOUS, because what they return is already public/,
-      'the doc comment at :698-707 is no longer the one explaining the anonymous reads',
+      'the doc comment at :763-791 is no longer the one explaining the anonymous reads',
     )
   })
 
@@ -561,7 +635,7 @@ describe('the cited lines are the lines that register the routes', () => {
 
   it('confirmation counts against the WALKED HEAD, as CONFIRMATIONS_AGAINST claims', () => {
     assert.equal(CONFIRMATIONS_AGAINST.confirmations, 'walked-head')
-    // `indexer/src/reads.ts:452-455`.
+    // `indexer/src/reads.ts:461-464`.
     const cited = readsLines.slice(451, 455).join('\n')
     assert.match(cited, /confirmationsAt\(record\.headHeight, record\.blockHeight\)/, cited)
   })
@@ -625,6 +699,6 @@ describe('the cited lines are the lines that register the routes', () => {
     // Half of the devPort disagreement. The other half — the registry's 8080 — is pinned in
     // test/hosts.test.ts, so whichever moves first fails and names the other.
     assert.match(env, /port\(source, 'PORT', 4008\)/, 'the indexer no longer defaults PORT to 4008')
-    assert.match(env.split('\n')[294] ?? '', /4008/, `indexer/src/env.ts:295 is: ${env.split('\n')[294]}`)
+    assert.match(env.split('\n')[363] ?? '', /4008/, `indexer/src/env.ts:364 is: ${env.split('\n')[363]}`)
   })
 })

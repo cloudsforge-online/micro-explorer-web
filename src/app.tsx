@@ -9,7 +9,7 @@
  *
  * There is no `ProtectedRoute` in this repository, and there must not be one. Every
  * `micro-indexer` route this app calls is anonymous: `authoriseRead` returns `null` for a caller
- * with no token and lets the handler run (`indexer/src/server.ts:727-736`). A gate here would
+ * with no token and lets the handler run (`indexer/src/server.ts:792-801`). A gate here would
  * demand a session for facts anyone can read off a public chain —
  * `docs/ecosystem/15-monetisation-model.md:50`: "A public chain whose explorer is paywalled is not
  * a public chain."

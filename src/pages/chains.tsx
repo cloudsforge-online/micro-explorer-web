@@ -2,8 +2,8 @@
  * The ten scopes, each with the state its own index reports.
  *
  * Five chains (`indexer/src/chains.ts:41`) times two networks (`indexer/src/chains.ts:43`), and
- * one `GET /v1/chains/:chain/:network/status` per scope — `indexer/src/server.ts:154`, handler at
- * `:384`, anonymous (`authoriseRead`, `indexer/src/server.ts:727-736`).
+ * one `GET /v1/chains/:chain/:network/status` per scope — `indexer/src/server.ts:164`, handler at
+ * `:426`, anonymous (`authoriseRead`, `indexer/src/server.ts:792-801`).
  *
  * ── This page used to fetch nothing, and the reason it gave is no longer true ──────────────────
  *
@@ -16,9 +16,9 @@
  * ── What a scope answers when it is NOT followed ──────────────────────────────────────────────
  *
  * A 200, not a 404. `status` is assembled from a checkpoint row that may not exist
- * (`indexer/src/reads.ts:288-311`), so an unfollowed scope answers with `indexedHeight: null` and
+ * (`indexer/src/reads.ts:294-317`), so an unfollowed scope answers with `indexedHeight: null` and
  * `tipHeight: null` rather than an error — the scope is real, this replica has simply never walked
- * it. `INDEXER_CHAINS` decides which ones it does (`indexer/src/env.ts:289-291`), and a scope that
+ * it. `INDEXER_CHAINS` decides which ones it does (`indexer/src/env.ts:358-360`), and a scope that
  * is configured with no provider is called out upstream as "a service that reports healthy and
  * indexes nothing" (`indexer/src/env.ts:18-21`). Both cases are rendered as what they are, and
  * neither as a zero.

@@ -103,7 +103,7 @@ describe('every route is public, and NOTHING is gated', () => {
    * THE ASSERTION THIS FILE EXISTS FOR, ALONGSIDE THE nginx ONE.
    *
    * The seven `micro-indexer` reads behind these pages are anonymous — `authoriseRead` returns
-   * `null` for a caller with no token and lets the handler run (`indexer/src/server.ts:708-717`) —
+   * `null` for a caller with no token and lets the handler run (`indexer/src/server.ts:773-782`) —
    * and this bundle attaches no bearer to any of them. A gate would make a browser prove who it is
    * before showing facts anyone can read off a public chain, which is the defect this repository
    * was built around arriving from the client's side.
@@ -132,8 +132,8 @@ describe('every route is public, and NOTHING is gated', () => {
     // citation, and it is the CURRENT one: `:708-717` is `authoriseRead`, pinned against the real
     // source in test/indexer.test.ts. The old range is banned in both, because a stale citation
     // that still resolves to a real function is the worst kind — it reads as verified.
-    assert.match(appSource, /indexer\/src\/server\.ts:727-736/)
-    assert.match(read('src/lib/auth.tsx'), /indexer\/src\/server\.ts:727-736/)
+    assert.match(appSource, /indexer\/src\/server\.ts:792-801/)
+    assert.match(read('src/lib/auth.tsx'), /indexer\/src\/server\.ts:792-801/)
     for (const file of ['src/app.tsx', 'src/lib/auth.tsx', 'src/lib/routes.ts']) {
       assert.doesNotMatch(
         read(file),
@@ -337,7 +337,7 @@ describe('what a pasted string is taken to be', () => {
   it('reads a run of digits as a height, up to the fifteen the service accepts', () => {
     assert.equal(guessKind('0').kind, 'height')
     assert.equal(guessKind('999999999999999').kind, 'height')
-    // Sixteen digits is a 400 `bad_height` upstream (`indexer/src/server.ts:518`), so it is not
+    // Sixteen digits is a 400 `bad_height` upstream (`indexer/src/server.ts:541`), so it is not
     // classified as one here either — being sent to a page that can only fail is not a service.
     assert.equal(guessKind('9999999999999999').kind, 'unknown')
   })
@@ -350,7 +350,7 @@ describe('what a pasted string is taken to be', () => {
   })
 
   it('PRESERVES case, because the service lower-cases EVM values itself', () => {
-    // `indexer/src/server.ts:601-608` normalises so that the EIP-55 checksum form every wallet and
+    // `indexer/src/server.ts:666-673` normalises so that the EIP-55 checksum form every wallet and
     // explorer displays does not silently return an empty page. Doing it here as well would put a
     // second copy of that rule in a browser, and the non-EVM families are case-significant.
     const checksummed = '0xAbCdEf0123456789AbCdEf0123456789AbCdEf01'

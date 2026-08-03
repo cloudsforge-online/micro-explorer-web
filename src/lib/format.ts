@@ -5,9 +5,9 @@
  * FOUR RULES. THE FIRST TWO ARE THIS ESTATE'S; THE LAST TWO ARE THIS SURFACE'S.
  *
  * **1. Never render a null as a zero.** `confirmations` is null "whenever there is nothing honest
- * to count: pending, dropped, or reorged away" (`indexer/src/reads.ts:203`), and `balances` is
+ * to count: pending, dropped, or reorged away" (`indexer/src/reads.ts:209`), and `balances` is
  * ABSENT rather than zero whenever the coverage cannot support one
- * (`indexer/src/reads.ts:253-258`). A nought in either place is a claim the service refused to
+ * (`indexer/src/reads.ts:259-264`). A nought in either place is a claim the service refused to
  * make.
  *
  * **2. Never colour alone.** The estate's reserved status hues sit ΔE 4.6 apart under protanopia
@@ -23,7 +23,7 @@
  * **4. Never divide an amount.** Amounts arrive as decimal strings because a `bigint` does not
  * survive `JSON.stringify` and a `Number` loses the low digits (`indexer/src/reads.ts:8-10`).
  * Nothing in this file calls `Number` on one. A token amount arrives with `amountFormatted: null`
- * on purpose (`indexer/src/reads.ts:365-372`) and is rendered as raw units, labelled as raw.
+ * on purpose (`indexer/src/reads.ts:374-381`) and is rendered as raw units, labelled as raw.
  * ══════════════════════════════════════════════════════════════════════════════════════════════
  */
 import type { HeadKind } from './indexer.ts'
@@ -148,7 +148,7 @@ export const NOT_FINAL =
  * Whether a chain is being followed, halted, or lagging.
  *
  * `halted` is not a degraded state — it is this service saying it has stopped vouching for the
- * chain after a reorg past the alarm depth (`indexer/src/reads.ts:529-532`). It outranks lag.
+ * chain after a reorg past the alarm depth (`indexer/src/reads.ts:538-541`). It outranks lag.
  */
 export function chainTone(status: {
   halted: boolean
@@ -202,7 +202,7 @@ export function providerTone(state: 'healthy' | 'degraded' | 'down'): Tone {
  *
  * `failed` is `bad` rather than `warn`, and that distinction is load-bearing: an EVM transaction
  * that reverted "is mined, sits in a block, and accumulates depth exactly like one that worked"
- * (`indexer/src/reads.ts:458-462`), so a reader who takes depth alone as success reads the wrong
+ * (`indexer/src/reads.ts:467-471`), so a reader who takes depth alone as success reads the wrong
  * answer. `orphaned` is not a failure of the transaction at all — the chain changed underneath it.
  */
 export function transactionTone(status: string): Tone {
@@ -234,20 +234,44 @@ export function transactionTone(status: string): Tone {
   }
 }
 
-/** `indexer/src/reads.ts:118` — activity is `included` or `orphaned` and nothing else. */
-export function activityTone(status: 'included' | 'orphaned'): Tone {
-  return status === 'included'
-    ? { word: 'Included', glyph: '●', tone: 'good', meaning: 'On the canonical chain' }
-    : {
+/**
+ * `indexer/src/reads.ts:124` — activity is `included`, `orphaned` or `conflicted`.
+ *
+ * **`conflicted` is not a spelling of `orphaned`, and this used to render it as one.** The
+ * citation above said "included or orphaned and nothing else"; the service widened the union and
+ * the constraint behind it (`indexer/src/migrations.ts:453-455`) and this file went on believing the
+ * sentence. The difference is the whole point of the field, and `indexer/src/reads.ts:118-123`
+ * states it: an `orphaned` movement may still be re-mined, a `conflicted` one cannot, because the
+ * coins behind it have already been spent by a different canonical transaction. Showing the
+ * second as the first tells a reader to wait for a confirmation that is never coming.
+ *
+ * Reachable only on a UTXO family, which is why it went unnoticed: nothing on an EVM chain
+ * produces it.
+ */
+export function activityTone(status: 'included' | 'orphaned' | 'conflicted'): Tone {
+  switch (status) {
+    case 'included':
+      return { word: 'Included', glyph: '●', tone: 'good', meaning: 'On the canonical chain' }
+    case 'conflicted':
+      return {
+        word: 'Conflicted',
+        glyph: '⊘',
+        tone: 'bad',
+        meaning:
+          'The coins behind it were spent by a different transaction. Unlike an orphaned movement, this one cannot be re-mined',
+      }
+    default:
+      return {
         word: 'Orphaned',
         glyph: '▲',
         tone: 'warn',
         meaning: 'Retracted by a reorg. This movement did not happen on the chain as it now is',
       }
+  }
 }
 
 /**
- * Why a balance was withheld — `indexer/src/reads.ts:258`.
+ * Why a balance was withheld — `indexer/src/reads.ts:264`.
  *
  * Each is a full sentence rather than a code, because the whole point of the field is that a
  * consumer must act differently for each, and a reader cannot act on `coverage_incomplete`.

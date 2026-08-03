@@ -16,7 +16,7 @@
  * On this surface the consequence is now a missing switcher entry and nothing more, which is a
  * change worth writing down. `roles` used to decide whether a standing notice told the reader the
  * chain index would refuse them, because it served an admin and nobody else. It serves everybody
- * (`authoriseRead`, `indexer/src/server.ts:708-717`), the notice is deleted, and `roles` now
+ * (`authoriseRead`, `indexer/src/server.ts:773-782`), the notice is deleted, and `roles` now
  * reaches the shared company bar and stops there.
  *
  * This file follows `micro-web-template/src/lib/auth.tsx:26` (the nested declaration) and `:98-99`
@@ -89,7 +89,7 @@ describe('reading the profile out of /auth/me', () => {
  * There used to be a `servedByIndexer(reader)` predicate here — "would the chain index serve this
  * reader" — answered by the `admin` role, because `authorise` accepted a user principal only when
  * `isAdmin`. Its one caller was a standing notice that used it to choose between two wordings of
- * the same apology. The reads are anonymous now (`indexer/src/server.ts:708-717`), the notice is
+ * the same apology. The reads are anonymous now (`indexer/src/server.ts:773-782`), the notice is
  * deleted, and the predicate went with it.
  *
  * What replaces it is stronger than a test on a helper: NOTHING in this bundle consults the
@@ -137,7 +137,7 @@ describe('there is no gate, and the reason is read off the service', () => {
   it('states the reason with a citation somebody can go and check', () => {
     // The citation moved when the finding did. `:708-717` is `authoriseRead`, and the range is
     // pinned against the real source in test/indexer.test.ts rather than only spelled here.
-    assert.match(read('src/lib/auth.tsx'), /indexer\/src\/server\.ts:727-736/)
+    assert.match(read('src/lib/auth.tsx'), /indexer\/src\/server\.ts:792-801/)
     assert.doesNotMatch(
       read('src/lib/auth.tsx'),
       /indexer\/src\/server\.ts:698-716/,

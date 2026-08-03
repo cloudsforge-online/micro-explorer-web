@@ -2,7 +2,7 @@
  * One chain's state: how far this index has walked, how far behind it is, and every reorg it has
  * recorded.
  *
- * `GET /v1/chains/:chain/:network/status` — `indexer/src/server.ts:154`, handler at `:384`.
+ * `GET /v1/chains/:chain/:network/status` — `indexer/src/server.ts:164`, handler at `:426`.
  *
  * ══════════════════════════════════════════════════════════════════════════════════════════════
  * THE TWO HEIGHTS ARE RENDERED SIDE BY SIDE, ALWAYS, AND NEITHER IS CALLED "THE HEIGHT".
@@ -13,7 +13,7 @@
  * depth, and over-reporting depth credits early."
  *
  * This is the only page in the app that can show `lagBlocks`, which is exactly that difference
- * (`indexer/src/reads.ts:309-310`), and it is null rather than zero when no tip has ever been
+ * (`indexer/src/reads.ts:315-316`), and it is null rather than zero when no tip has ever been
  * observed — "a lag of zero would be a lie, not a default" (`indexer/src/reads.ts:86`).
  * ══════════════════════════════════════════════════════════════════════════════════════════════
  */
@@ -54,7 +54,7 @@ export function ChainPage() {
   if (resource.state === 'loading') return <Loading label={`Reading ${scopeLabel(scope)}`} />
   if (resource.error) {
     // `unknown_chain` and `unknown_network` are 404s that mean "this estate does not run that",
-    // which is a fact rather than a fault (`indexer/src/server.ts:602-605`).
+    // which is a fact rather than a fault (`indexer/src/server.ts:667-670`).
     if (resource.error.code === 'unknown_chain' || resource.error.code === 'unknown_network') {
       return <UnknownScope chain={params['chain']} network={params['network']} />
     }
@@ -89,7 +89,7 @@ export function ChainPage() {
           <strong>This index has stopped vouching for this chain.</strong> A reorg past the alarm
           depth of {count(status.reorgAlarmDepth)} was detected, so holdings questions are refused
           outright rather than answered from a history it cannot stand behind
-          (<code className="cf-num">indexer/src/reads.ts:529-532</code>).
+          (<code className="cf-num">indexer/src/reads.ts:538-541</code>).
           {status.haltReason ? ` The recorded reason: ${status.haltReason}` : ''}
         </Note>
       )}
@@ -223,7 +223,7 @@ export function ChainPage() {
       {status.recentReorgs.length === 0 ? (
         <p className="ex-absent">
           None recorded. That is not a claim that none happened — it is the five most recent this
-          service has detected (<code className="cf-num">indexer/src/reads.ts:293</code>), and a
+          service has detected (<code className="cf-num">indexer/src/reads.ts:299</code>), and a
           service that has walked nothing has detected nothing.
         </p>
       ) : (

@@ -11,7 +11,7 @@
  * ── One thing is different on THIS surface, and it is not a detail ─────────────────────────────
  *
  * **A session has nothing to do with reading the chain here.** Every `micro-indexer` route this
- * bundle calls is anonymous (`authoriseRead`, `indexer/src/server.ts:727-736`), and every one of
+ * bundle calls is anonymous (`authoriseRead`, `indexer/src/server.ts:792-801`), and every one of
  * them is issued with `auth: false` — see `publicRead` in `src/lib/indexer.ts`. The token
  * machinery below exists for exactly one caller, `/auth/me` on Nimbus, which puts the reader's
  * handle in the shared bar and nothing else.
@@ -173,7 +173,7 @@ export interface ErrorNotice {
    *
    * The template drops it, and dropping it is how `micro-market` and `micro-mint` each rendered a
    * router 404 as a fact about a chain. `micro-indexer` distinguishes "no such transaction" from
-   * "no such route" by code alone and says so at `indexer/src/server.ts:452-454` — the status is
+   * "no such route" by code alone and says so at `indexer/src/server.ts:475-477` — the status is
    * 404 either way.
    */
   code: string | undefined
@@ -288,8 +288,8 @@ export interface RequestOptions {
    * Extra request headers. **Nothing on this surface sets one, and that is a fact about the API.**
    *
    * `micro-indexer` reads exactly one request header on a domain route — `authorization`, in
-   * `authoriseRead` (`indexer/src/server.ts:728`) and `authorise` (`:724`) — plus `x-request-id`
-   * and `host` in the server frame (`indexer/src/server.ts:180`, `:187`). There is no
+   * `authoriseRead` (`indexer/src/server.ts:793`) and `authorise` (`:808`) — plus `x-request-id`
+   * and `host` in the server frame (`indexer/src/server.ts:202`, `:198`). There is no
    * `Idempotency-Key` anywhere in that repository, and this bundle sends no request that would
    * need one: every route it calls is a GET, and the two POSTs the indexer serves are declined
    * (see `src/lib/indexer.ts`).

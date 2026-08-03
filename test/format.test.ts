@@ -7,6 +7,7 @@
  * checks the split against the real source. This file checks the words.
  */
 import assert from 'node:assert/strict'
+import { existsSync, readFileSync } from 'node:fs'
 import { describe, it } from 'node:test'
 import {
   NOT_FINAL,
@@ -138,6 +139,7 @@ describe('a chain state is a word, a glyph and only then a tone', () => {
       providerTone('down'),
       activityTone('included'),
       activityTone('orphaned'),
+      activityTone('conflicted'),
       transactionTone('success'),
       transactionTone('failed'),
       transactionTone('pending'),
@@ -157,7 +159,7 @@ describe('a chain state is a word, a glyph and only then a tone', () => {
 describe('a reverted transaction is not a pending one', () => {
   it('reads as bad rather than as something to wait for', () => {
     // "An EVM transaction that reverted is mined, sits in a block, and accumulates depth exactly
-    // like one that worked" (`indexer/src/reads.ts:458-462`). A reader who takes depth alone as
+    // like one that worked" (`indexer/src/reads.ts:467-471`). A reader who takes depth alone as
     // success reads the wrong answer, so the word has to carry it.
     const tone = transactionTone('failed')
     assert.equal(tone.word, 'Reverted')
@@ -180,9 +182,53 @@ describe('a reverted transaction is not a pending one', () => {
   })
 })
 
+describe('a CONFLICTED movement is not an orphaned one', () => {
+  /*
+   * The distinction this surface got wrong. `activityTone` was typed `'included' | 'orphaned'`
+   * and cited `indexer/src/reads.ts:118` for the claim that those were the only two — a sentence
+   * that was true when it was written. The service then added `conflicted` to the union and to
+   * the CHECK constraint behind it (`indexer/src/migrations.ts:453-455`), and because the old
+   * function was a ternary on `included`, every conflicted movement fell through to the orphaned
+   * branch and was labelled "Orphaned" on the address page.
+   *
+   * That is not a cosmetic mislabel. `indexer/src/reads.ts:118-123` states the consequence: an
+   * orphaned movement may be re-mined, a conflicted one cannot, because the coins behind it are
+   * already spent by a different canonical transaction. A reader told "Orphaned" waits.
+   */
+  it('says the coins were spent elsewhere, and does not say the reorg word', () => {
+    const tone = activityTone('conflicted')
+    assert.equal(tone.word, 'Conflicted')
+    assert.match(tone.meaning, /cannot be re-mined/)
+    assert.doesNotMatch(tone.meaning, /reorg/i)
+  })
+
+  it('reads as BAD, where orphaned reads as warn — the reader’s next action differs', () => {
+    assert.equal(activityTone('conflicted').tone, 'bad')
+    assert.equal(activityTone('orphaned').tone, 'warn')
+  })
+
+  it('the three statuses are three distinct badges, not two spellings of one', () => {
+    const words = (['included', 'orphaned', 'conflicted'] as const).map((s) => activityTone(s).word)
+    assert.equal(new Set(words).size, 3, `two statuses render alike: ${words.join(', ')}`)
+  })
+
+  it('the service really does still declare all three, so this is not agreeing with itself', () => {
+    // Read off micro-indexer rather than restated. Without the checkout this is unmeasured, and
+    // `test/indexer.test.ts` is where CI makes the absence of the checkout fatal.
+    const root = process.env['CLOUDSFORGE_INDEXER_DIR'] ?? new URL('../../indexer', import.meta.url).pathname
+    if (!existsSync(`${root}/src/reads.ts`)) return
+    const reads = readFileSync(`${root}/src/reads.ts`, 'utf8')
+    assert.match(
+      reads,
+      /readonly status: 'included' \| 'orphaned' \| 'conflicted'/,
+      'ActivityView.status upstream is no longer the three this file renders',
+    )
+  })
+})
+
 describe('a withheld balance explains itself in a sentence', () => {
   it('covers all four reasons the service can give', () => {
-    // `indexer/src/reads.ts:258`. Each is a different action for the reader, which is why none of
+    // `indexer/src/reads.ts:264`. Each is a different action for the reader, which is why none of
     // them is rendered as a code alone.
     for (const reason of ['nothing_indexed', 'coverage_incomplete', 'chain_halted', 'negative']) {
       const sentence = unavailableReason(reason)

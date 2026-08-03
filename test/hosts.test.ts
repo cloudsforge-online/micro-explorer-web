@@ -8,7 +8,7 @@
  *
  * The second thing under test WAS the dev-port disagreement, asserted as a fact rather than fixed
  * with a literal: the registry said 8080 — this bundle's own container port — while `micro-indexer`
- * binds **4008** (`indexer/src/env.ts:295`, `indexer/.env.example:9`, `indexer/Dockerfile:91`).
+ * binds **4008** (`indexer/src/env.ts:364`, `indexer/.env.example:9`, `indexer/Dockerfile:91`).
  * micro-ui corrected the registry to 4008 (`ui/packages/ui/src/surfaces.ts:523`) and these pins
  * flipped to the agreeing direction; both halves stay pinned, so a NEW disagreement fails and
  * names the side that moved. See the header of src/lib/hosts.ts.
@@ -120,7 +120,7 @@ describe('the dev port disagreement, recorded rather than papered over', () => {
   it('the registry now gives explorer the port the indexer binds', () => {
     // This said 8080 and was pinned as a DISAGREEMENT: 8080 is this bundle's own nginx container
     // port, so the registry told a frontend to ask itself for chain data. It has been corrected in
-    // micro-ui to 4008, which is what indexer/src/env.ts:295 binds, and the pin flipped with it.
+    // micro-ui to 4008, which is what indexer/src/env.ts:364 binds, and the pin flipped with it.
     assert.equal(SURFACES.find((s) => s.key === 'explorer')?.devPort, 4008)
   })
 

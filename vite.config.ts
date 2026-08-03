@@ -40,7 +40,7 @@ export default defineConfig({
   //
   // The registry's devPort for `explorer` is **4008** (`ui/packages/ui/src/surfaces.ts:523`) —
   // where `micro-indexer`, the API this bundle reads, answers on localhost
-  // (`indexer/src/env.ts:295`). It briefly said 8080, this bundle's own container port, which
+  // (`indexer/src/env.ts:364`). It briefly said 8080, this bundle's own container port, which
   // made the app ask itself for chain data; micro-ui corrected it and pinned it to the service.
   //
   // 8080 is the nginx-unprivileged container port (`nginx.conf:29`) — a fact about the IMAGE.

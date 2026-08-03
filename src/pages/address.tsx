@@ -1,18 +1,18 @@
 /**
  * One address: what moved, and what this index is willing to say it holds.
  *
- *   `GET /v1/addresses/:chain/:network/:address/activity`        `indexer/src/server.ts:155` (:396)
- *   `GET /v1/addresses/:chain/:network/:address/token-balances`  `indexer/src/server.ts:156` (:463)
+ *   `GET /v1/addresses/:chain/:network/:address/activity`        `indexer/src/server.ts:165` (:396)
+ *   `GET /v1/addresses/:chain/:network/:address/token-balances`  `indexer/src/server.ts:166` (:463)
  *
  * ══════════════════════════════════════════════════════════════════════════════════════════════
  * A BALANCE IS WITHHELD RATHER THAN GUESSED, AND THE REASON IS ALWAYS SHOWN.
  *
  * `balances` and `balance` are ABSENT — not zero, not null — whenever the canonical chain this
  * service holds does not run unbroken from genesis to the height asked for
- * (`indexer/src/reads.ts:225-259`). The field that replaces them is `unavailable`, naming which of
+ * (`indexer/src/reads.ts:231-265`). The field that replaces them is `unavailable`, naming which of
  * four reasons applied. The service's own words: "an indexer that started following at the tip
  * knows nothing about what anybody held", and "a missing balance is missing, never zero, because
- * zero is what evicts a token-gated member" (`indexer/src/server.ts:479-480`).
+ * zero is what evicts a token-gated member" (`indexer/src/server.ts:502-503`).
  *
  * So this page renders the reason as a sentence and prints no number at all. A dash would be
  * kinder to the layout and would lose the only thing worth knowing.
@@ -20,15 +20,15 @@
  * ── An orphaned movement is shown, and shown as orphaned ──────────────────────────────────────
  *
  * `activity` returns retracted rows with `status: 'orphaned'` and `confirmations: null`
- * (`indexer/src/reads.ts:353-356`). Hiding them would make a reorg invisible on the one page where
+ * (`indexer/src/reads.ts:362-365`). Hiding them would make a reorg invisible on the one page where
  * somebody is looking for their money; showing them unlabelled would be worse. They are listed,
  * badged, and their depth column says there is none to count.
  *
  * ── The depth column is against the CLAIMED TIP ───────────────────────────────────────────────
  *
- * `indexer/src/reads.ts:353-356` counts against `checkpoint.tipHeight` (`:345`), not the walked
+ * `indexer/src/reads.ts:362-365` counts against `checkpoint.tipHeight` (`:351`), not the walked
  * head. Labelled accordingly. The `confirmed` boolean the service computes from it
- * (`indexer/src/reads.ts:381-382`) inherits that, so this page shows the depth and does not repeat
+ * (`indexer/src/reads.ts:390-391`) inherits that, so this page shows the depth and does not repeat
  * the boolean as a verdict — the transaction's own confirmations route is where a verdict lives.
  * ══════════════════════════════════════════════════════════════════════════════════════════════
  */
@@ -114,7 +114,7 @@ export function AddressPage() {
       <h2 className="ex-section__title">Movements</h2>
       <DepthNote>
         Every depth in this table is counted against the tip a provider last claimed
-        (<code className="cf-num">indexer/src/reads.ts:353-356</code>), not against the highest
+        (<code className="cf-num">indexer/src/reads.ts:362-365</code>), not against the highest
         block this index has walked. The{' '}
         <Link to={linkTo.chain(scope.chain, scope.network)}>chain page</Link> shows the gap between
         the two.
@@ -178,7 +178,7 @@ function Holdings({ holdings }: { holdings: ReturnType<typeof useResource<TokenB
         <p className="ex-withheld__note">
           Withheld, not zero. A balance derived from movements is only a balance if the movements
           are all of them, so an incomplete record produces no number at all rather than a plausible
-          one (<code className="cf-num">indexer/src/reads.ts:225-234</code>).
+          one (<code className="cf-num">indexer/src/reads.ts:231-240</code>).
         </p>
       </div>
     )
@@ -203,7 +203,7 @@ function Holdings({ holdings }: { holdings: ReturnType<typeof useResource<TokenB
         <p className="ex-absent">
           This address holds none of the tokens this index has seen move — and here that IS a
           balance of zero rather than an absence, because the coverage runs unbroken from the
-          genesis block (<code className="cf-num">indexer/src/reads.ts:546-548</code>).
+          genesis block (<code className="cf-num">indexer/src/reads.ts:555-557</code>).
         </p>
       ) : (
         <div className="ex-tablewrap">
@@ -236,7 +236,7 @@ function Holdings({ holdings }: { holdings: ReturnType<typeof useResource<TokenB
         These are raw units. This index does not know a token&rsquo;s decimals — that is a call to
         the contract and a fact a token registry would own — so it declines to scale them rather
         than assuming eighteen, "which is how a six-decimal stablecoin gets displayed a million
-        times too small" (<code className="cf-num">indexer/src/reads.ts:365-372</code>).
+        times too small" (<code className="cf-num">indexer/src/reads.ts:374-381</code>).
       </Note>
     </>
   )

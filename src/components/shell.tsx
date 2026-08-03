@@ -83,7 +83,7 @@ export function AppShell({ unregistered = false }: { unregistered?: boolean }) {
 
           It told every reader who was not an operator that the chain index would refuse them,
           because every `micro-indexer` read required `indexer:read` or an admin. That is no longer
-          true: the seven reads are anonymous (`indexer/src/server.ts:727-736`), this bundle sends
+          true: the seven reads are anonymous (`indexer/src/server.ts:792-801`), this bundle sends
           no bearer for one, and the panels below render. A banner apologising for a restriction
           nobody is under would be read as a live fact, which is exactly how a stale claim survives.
 

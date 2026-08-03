@@ -38,7 +38,7 @@ export interface AppRoute {
    *
    * **Every route on this surface is public, and every one of them works that way.** The seven
    * `micro-indexer` reads behind these pages are anonymous — `authoriseRead` returns `null` for a
-   * caller with no token and lets the handler run (`indexer/src/server.ts:727-736`) — and this
+   * caller with no token and lets the handler run (`indexer/src/server.ts:792-801`) — and this
    * bundle attaches no bearer to any of them.
    *
    * This column read differently until recently, and the history is worth one sentence: every read
@@ -125,16 +125,16 @@ export type Guess =
  * The rules are the SERVICE's, not this app's, so a guess that sends somebody to a page the
  * indexer would reject cannot happen quietly:
  *
- *   * a run of digits is a height — `indexer/src/server.ts:537` accepts `/^\d{1,15}$/` and answers
+ *   * a run of digits is a height — `indexer/src/server.ts:602` accepts `/^\d{1,15}$/` and answers
  *     **400 `bad_height`** for anything else;
- *   * `0x` + 64 hex is a hash — `EVM_HASH` at `indexer/src/server.ts:610`;
- *   * `0x` + 40 hex is an address — `EVM_ADDRESS` at `indexer/src/server.ts:609`.
+ *   * `0x` + 64 hex is a hash — `EVM_HASH` at `indexer/src/server.ts:675`;
+ *   * `0x` + 40 hex is an address — `EVM_ADDRESS` at `indexer/src/server.ts:674`.
  *
  * **Case is preserved.** The service lower-cases an EVM address itself
- * (`indexer/src/server.ts:620-627`) precisely so the EIP-55 checksum form every wallet and every
+ * (`indexer/src/server.ts:685-692`) precisely so the EIP-55 checksum form every wallet and every
  * explorer displays does not silently return an empty page; lower-casing here as well would work
  * but would put a second copy of that rule in a bundle, and the non-EVM families are
- * case-significant (`indexer/src/server.ts:629-635`). So the paste goes to the service as typed.
+ * case-significant (`indexer/src/server.ts:694-700`). So the paste goes to the service as typed.
  *
  * Anything else is `unknown` — an honest answer, and the search page says which three shapes it
  * knows rather than picking the nearest one and being wrong.

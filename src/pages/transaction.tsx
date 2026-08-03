@@ -4,16 +4,16 @@
  * ══════════════════════════════════════════════════════════════════════════════════════════════
  * WHY THIS PAGE MAKES TWO CALLS FOR ONE THING
  *
- *   `GET /v1/transactions/:chain/:network/:hash`               `indexer/src/server.ts:157` (:412)
- *   `GET /v1/transactions/:chain/:network/:hash/confirmations`  `indexer/src/server.ts:158` (:437)
+ *   `GET /v1/transactions/:chain/:network/:hash`               `indexer/src/server.ts:167` (:412)
+ *   `GET /v1/transactions/:chain/:network/:hash/confirmations`  `indexer/src/server.ts:168` (:437)
  *
- * `indexer/src/reads.ts:178-190` draws the line and this page is built on it. The first is a
+ * `indexer/src/reads.ts:184-196` draws the line and this page is built on it. The first is a
  * RECORD — what the chain said — and its `confirmations` are counted against `checkpoint.tipHeight`
- * (`indexer/src/reads.ts:415-418`), a provider's claim. The second is a DECISION INPUT, its
- * `confirmations` are counted against `record.headHeight` (`indexer/src/reads.ts:442-445`) — the
+ * (`indexer/src/reads.ts:424-427`), a provider's claim. The second is a DECISION INPUT, its
+ * `confirmations` are counted against `record.headHeight` (`indexer/src/reads.ts:451-454`) — the
  * highest block this service has actually walked — and `confirmed` is true only when the
  * transaction succeeded, is canonical, has reached the published depth, and the chain is not
- * halted (`indexer/src/reads.ts:463-468`).
+ * halted (`indexer/src/reads.ts:472-477`).
  *
  * So: **the record supplies the facts and the confirmations answer supplies the verdict**, and this
  * page never crosses them over. The word "final" appears nowhere on it.
@@ -24,13 +24,13 @@
  * seen, and **200 with `confirmed: false`** for one it has seen that is not deep enough. Those are
  * different facts. `micro-market` merged them and reported "the on-chain escrow is not confirmed
  * yet" for every activation, against a route that did not exist at the time
- * (`indexer/src/server.ts:445-455`). A caller separates them **by the error CODE, never by the
+ * (`indexer/src/server.ts:468-478`). A caller separates them **by the error CODE, never by the
  * status** — a path the service does not serve answers `not_found`, an unrun chain answers
  * `unknown_chain` — which is exactly what the branches below do.
  *
  * ── A reverted transaction gathers depth like any other ───────────────────────────────────────
  *
- * `indexer/src/reads.ts:458-462`: "An EVM transaction that reverted is mined, sits in a block, and
+ * `indexer/src/reads.ts:467-471`: "An EVM transaction that reverted is mined, sits in a block, and
  * accumulates depth exactly like one that worked — so a confirmation test that only counts blocks
  * would tell a marketplace that a failed escrow deposit is confirmed." This page therefore puts the
  * status beside the depth, at the same weight, and the verdict panel says which of the four inputs
@@ -145,9 +145,9 @@ export function TransactionPage() {
 
       <DepthNote>
         The depth above is counted against the highest block this index has walked
-        (<code className="cf-num">indexer/src/reads.ts:442-445</code>). The one in the record below
+        (<code className="cf-num">indexer/src/reads.ts:451-454</code>). The one in the record below
         is counted against the tip a provider claimed
-        (<code className="cf-num">indexer/src/reads.ts:415-418</code>). When they disagree, the
+        (<code className="cf-num">indexer/src/reads.ts:424-427</code>). When they disagree, the
         first is the smaller and the honest one.
       </DepthNote>
 
@@ -294,7 +294,7 @@ export function TransactionPage() {
  * The verdict panel.
  *
  * Its own component so the four inputs `confirmed` was computed from are rendered in one place, in
- * the order the service evaluates them (`indexer/src/reads.ts:463-468`). A verdict of false with no
+ * the order the service evaluates them (`indexer/src/reads.ts:472-477`). A verdict of false with no
  * reason beside it is the shape of answer that made a marketplace tell every seller the wrong
  * thing.
  */

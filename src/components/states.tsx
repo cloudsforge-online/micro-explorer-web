@@ -61,12 +61,12 @@ export function Empty({
  * THE CODE IS SHOWN, AND IT IS NOT DECORATION.
  *
  * `micro-indexer` answers 404 for two entirely different reasons and distinguishes them by CODE,
- * never by status (`indexer/src/server.ts:445-455`):
+ * never by status (`indexer/src/server.ts:468-478`):
  *
  *   `transaction_not_found` / `block_not_found` / `token_not_found`
  *       this service asked and the answer is no. A real answer.
  *   `unknown_chain` / `unknown_network`
- *       the path names a chain this estate does not run (`indexer/src/server.ts:602-605`).
+ *       the path names a chain this estate does not run (`indexer/src/server.ts:667-670`).
  *   `not_found`
  *       the ROUTER's. This client asked for a path the service does not serve — which is a bug in
  *       this bundle and says nothing whatever about the chain.
@@ -163,7 +163,7 @@ export function Failed({
  * and where it was decided, rather than showing an empty page or offering a sign-in that would not
  * have helped.
  *
- * `micro-indexer` opened the seven reads (`authoriseRead`, `indexer/src/server.ts:727-736`), and
+ * `micro-indexer` opened the seven reads (`authoriseRead`, `indexer/src/server.ts:792-801`), and
  * `test/indexer.test.ts` went red the same day — which is exactly what it was written to do. A
  * component that explains a restriction nobody is subject to is worse than one that never existed,
  * because a reader believes it. So it is gone, and so are the standing notice in the shell, the

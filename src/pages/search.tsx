@@ -10,19 +10,19 @@
  * It used to say something else, and the difference is worth recording: every `micro-indexer` route
  * required an authority this bundle could not hold, so a front page that fetched anything would
  * have greeted every visitor with a refusal before they asked a question. That is fixed
- * (`authoriseRead`, `indexer/src/server.ts:727-736`) and the refusal machinery is deleted — the
+ * (`authoriseRead`, `indexer/src/server.ts:792-801`) and the refusal machinery is deleted — the
  * front page still fetches nothing, now for the plain reason rather than the defensive one.
  *
  * ── The classification is the SERVICE's rules, not this app's ─────────────────────────────────
  *
  * `guessKind` in `src/lib/routes.ts` uses the same three shapes the indexer validates against:
- * `/^\d{1,15}$/` for a height (`indexer/src/server.ts:537`), `EVM_HASH`
- * (`indexer/src/server.ts:610`) and `EVM_ADDRESS` (`indexer/src/server.ts:609`). Sending somebody
+ * `/^\d{1,15}$/` for a height (`indexer/src/server.ts:602`), `EVM_HASH`
+ * (`indexer/src/server.ts:675`) and `EVM_ADDRESS` (`indexer/src/server.ts:674`). Sending somebody
  * to a page the service would answer 400 for would be this app inventing a surface again.
  *
  * A paste it cannot classify is `unknown`, and the page says which three shapes it knows rather
  * than guessing at the nearest one. The non-EVM families are length-checked only upstream
- * (`indexer/src/server.ts:629-635`), because "the family that would validate them is not built yet
+ * (`indexer/src/server.ts:694-700`), because "the family that would validate them is not built yet
  * and a wrong validator would reject valid addresses" — so on those chains a paste that is not a
  * height cannot be classified here either, and the page offers both destinations instead of
  * choosing.
@@ -159,7 +159,7 @@ export function SearchPage() {
         <li>
           <strong>A block or a transaction record</strong> carries a confirmation count measured
           against the tip a provider last claimed (<code className="cf-num">
-            indexer/src/reads.ts:570
+            indexer/src/reads.ts:579
           </code>
           , <code className="cf-num">:415-418</code>), which can be ahead of what this index has
           actually walked.
@@ -167,14 +167,14 @@ export function SearchPage() {
         <li>
           <strong>The confirmations page of a transaction</strong> is the only answer counted
           against the block this index has walked (<code className="cf-num">
-            indexer/src/reads.ts:442-445
+            indexer/src/reads.ts:451-454
           </code>
           ), and it is the only one this explorer will describe as a depth worth acting on.
         </li>
         <li>
           <strong>An address&rsquo;s token holdings</strong> may be withheld entirely rather than
           shown as zero, and the reason is always given
-          (<code className="cf-num">indexer/src/reads.ts:225-259</code>). A balance derived from
+          (<code className="cf-num">indexer/src/reads.ts:231-265</code>). A balance derived from
           movements is only a balance if the movements are all of them.
         </li>
       </ul>

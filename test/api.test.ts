@@ -205,7 +205,7 @@ describe('failures', () => {
    * THERE WAS A `refused` FLAG ON `ErrorNotice`, AND IT HAS BEEN DELETED.
    *
    * It was set on 401 OR 403 and drove a screen that explained why `micro-indexer` would not serve
-   * an anonymous read. The reads are anonymous now (`indexer/src/server.ts:727-736`) and this app
+   * an anonymous read. The reads are anonymous now (`indexer/src/server.ts:792-801`) and this app
    * presents no credential, so nothing it sends can be refused for lacking one: an auth status
    * arriving anyway is a fault in the service or in something in front of it, and `failed` — a
    * message and a request id — is the honest screen for that.
@@ -258,7 +258,7 @@ describe('failures', () => {
 
   it('carries the CODE through, because a 404 means two different things on this API', () => {
     // `micro-indexer` distinguishes "no such transaction" from "no such route" by code alone; the
-    // status is 404 either way (`indexer/src/server.ts:452-454`). The template's ErrorNotice drops
+    // status is 404 either way (`indexer/src/server.ts:475-477`). The template's ErrorNotice drops
     // the code, and dropping it is how micro-market and micro-mint each rendered a router 404 as a
     // fact about a chain.
     const err = new ApiError(404, 'no', 'transaction_not_found', 'req-1')
@@ -369,7 +369,7 @@ describe('auth callback', () => {
  * with no `authorization` header.
  *
  * It matters because a token that IS presented is verified rather than ignored
- * (`indexer/src/server.ts:730`). An expired one would come back 401 on a page that needs no
+ * (`indexer/src/server.ts:795`). An expired one would come back 401 on a page that needs no
  * session, and the explorer would have made itself depend on a credential it never needed — the
  * defect this repository was built around, arriving from the client's side.
  * ══════════════════════════════════════════════════════════════════════════════════════════════ */
