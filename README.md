@@ -1,5 +1,11 @@
 # micro-explorer-web
 
+[![ci](https://github.com/cloudsforge-online/micro-explorer-web/actions/workflows/ci.yml/badge.svg)](https://github.com/cloudsforge-online/micro-explorer-web/actions/workflows/ci.yml)
+![node](https://img.shields.io/badge/node-%3E%3D22-5FA04E?logo=node.js&logoColor=white)
+![typescript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)
+![module](https://img.shields.io/badge/module-ESM-F7DF1E?logo=javascript&logoColor=black)
+![tests](https://img.shields.io/badge/tests-in--process%20DOM-6E56CF)
+
 The Forge Network block explorer: blocks, transactions, addresses, token contracts and the state of
 each chain, read from `micro-indexer`. It is a static SPA served by nginx — no Node, no toolchain
 and no environment in the image — and it **states the head every confirmation depth was measured
@@ -331,3 +337,10 @@ docker run --rm -p 8080:8080 explorer-web
 `@cloudsforge/ui` is consumed as `link:../ui/packages/ui` because it is not published yet. When it
 is, `package.json` becomes `"^1.0.0"`, the Dockerfile's `uipkg` build context goes, and the second
 checkout in `ci.yml` goes with it. Nothing else in this repository changes.
+
+---
+
+## Provenance
+
+The code in this repository was written by **Claude Opus 5** and **Claude Fable 5**, assets
+generated with **FLUX 2 Pro**, under human direction and review.
