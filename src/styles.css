@@ -125,6 +125,26 @@ body {
   border-bottom-color: var(--cf-accent);
 }
 
+/*
+  Which network this deployment is, on every page.
+
+  Pushed to the end of the row rather than into the link list: it is not a destination and must not
+  read as one. `white-space: nowrap` because the row scrolls horizontally on a narrow screen and a
+  label that wraps mid-word is how "mainnet" becomes "main".
+*/
+.ex-subnav__net {
+  margin: 0 0 0 auto;
+  align-self: center;
+  padding-left: var(--cf-space-md);
+  font-size: var(--cf-text-sm);
+  color: var(--cf-fg-dim);
+  white-space: nowrap;
+}
+
+.ex-subnav__net strong {
+  color: var(--cf-fg);
+}
+
 .ex-main {
   max-width: var(--cf-max-w);
   margin: 0 auto;

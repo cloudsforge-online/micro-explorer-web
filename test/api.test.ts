@@ -34,6 +34,7 @@ import * as indexerClient from '../src/lib/indexer.ts'
 import {
   getAddressActivity,
   getBlock,
+  getChainOffers,
   getChainStatus,
   getConfirmations,
   getToken,
@@ -380,6 +381,11 @@ describe('the chain index is read anonymously, with a session in storage', () =>
   /** Every read this bundle can issue, called exactly as a page calls it. */
   const READS: ReadonlyArray<{ name: string; call: () => Promise<unknown> }> = [
     { name: 'getChainStatus', call: () => getChainStatus(SCOPE) },
+    // A fan-out over `getChainStatus`, one request per chain, and it is listed here rather than
+    // waved through as "covered by the one it calls". The bearer is decided per request by
+    // `publicRead`, so a fan-out that stopped going through it would present a token six times
+    // while the single-scope check stayed green.
+    { name: 'getChainOffers', call: () => getChainOffers('testnet') },
     { name: 'getBlock', call: () => getBlock(SCOPE, '42') },
     { name: 'getTransaction', call: () => getTransaction(SCOPE, '0xabc') },
     { name: 'getConfirmations', call: () => getConfirmations(SCOPE, '0xabc') },

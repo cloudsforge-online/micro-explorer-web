@@ -34,9 +34,40 @@ import { NOT_FINAL } from '../src/lib/format.ts'
 import { CHAIN_IDS, NETWORKS } from '../src/lib/indexer.ts'
 import { ROUTES } from '../src/lib/routes.ts'
 
-const ORIGIN = 'https://explorer.cloudsforge.online'
+/**
+ * THE ORIGIN AND THE SCOPE HAVE TO AGREE, AND UNTIL NOW THEY DID NOT.
+ *
+ * These scenarios ran at `explorer.cloudsforge.online` — the MAINNET hostname — against a scope of
+ * `ember/testnet`, and every one of them passed. That combination was the defect the owner found
+ * by using the product: the front page's network was the literal `'testnet'` regardless of where
+ * the bundle was served, so the mainnet explorer looked every paste up on a network its index has
+ * never walked. The suite could not see it, because the suite had made the same assumption.
+ *
+ * The network now comes from the hostname (`src/lib/network.ts`), so a mismatched pair is a red
+ * test rather than a silent agreement. These scenarios run on the TESTNET hostname, which is what
+ * makes `ember/testnet` the right scope for them; `test/network.test.ts` is where both hostnames
+ * are driven and required to disagree.
+ */
+const ORIGIN = 'https://explorer-testnet.cloudsforge.online'
 const at = (p: string) => fileURLToPath(new URL(`../${p}`, import.meta.url))
 const SCOPE = 'ember/testnet'
+
+/**
+ * The front page asks which chains this deployment serves before it offers any. Supplied to every
+ * scenario that starts at `/`, with only `ember` served — the live shape, both estates.
+ */
+const chainOffers: Routes = {
+  'GET /v1/chains/': (wire) => {
+    const [, , , chain = '', network = ''] = wire.path.split('/')
+    return {
+      body: fx.chainStatus({
+        chain,
+        network,
+        ...(chain === 'ember' ? {} : { indexedHeight: null, tipHeight: null, lagBlocks: null }),
+      }),
+    }
+  },
+}
 
 /**
  * Every scenario mounts the whole `App`.
@@ -60,19 +91,27 @@ const txRoutes = (over: Routes = {}): Routes => ({
    ══════════════════════════════════════════════════════════════════════════════════════════ */
 
 describe('BJ-NET — the explorer', () => {
-  it('BJ-NET-11 T1: the index offers a search box and asks nothing', async () => {
-    await app('/', {}, async (s) => {
+  it('BJ-NET-11 T1: the index offers a search box, and asks only which chains it can serve', async () => {
+    await app('/', chainOffers, async (s) => {
       await s.settle(20)
       const box = s.allByRole('textbox')[0]
       assert.ok(box, 'the index has no search box')
-      // There is no question yet, so there is nothing to ask. A page that pre-fetched something
-      // here would be loading an answer to a question nobody asked, on the one surface whose
-      // whole job is to answer the question you type.
-      assert.deepEqual(
-        s.api.wire.map((w) => `${w.method} ${w.path}`),
-        [],
-        'the explorer index made a request before anybody asked anything',
-      )
+      // ── THIS SCENARIO USED TO ASSERT THE PAGE FETCHED NOTHING AT ALL ────────────────────────
+      //
+      // The reasoning was that there is no question until somebody types one. That is right about
+      // the PASTE and wrong about the PAGE: which chains can be searched at all is a question, it
+      // has to be answered before the reader commits, and it is a property of the deployment
+      // rather than of the bundle. The old version of this surface offered five chains and served
+      // one — the reader found out only after choosing, typing and pressing the button.
+      //
+      // So the assertion is now about WHICH requests, not whether. Nothing may be fetched except
+      // the chain offer: no block, no transaction, no address, because none of those has been
+      // asked for.
+      const paths = s.api.wire.map((w) => `${w.method} ${w.path}`)
+      assert.ok(paths.length > 0, 'the index did not ask which chains it serves')
+      for (const p of paths) {
+        assert.match(p, /^GET \/v1\/chains\/[a-z]+\/testnet\/status$/, `the index also asked: ${p}`)
+      }
       s.clean('BJ-NET-11')
     })
   })
@@ -87,6 +126,10 @@ describe('BJ-NET — the explorer', () => {
       await app(
         '/',
         {
+          // The chain offer, first: nothing is submittable until the index has said it serves the
+          // selected chain, which is what stops a lookup being sent to a scope this deployment
+          // cannot answer about.
+          ...chainOffers,
           // Deliberately broad: what is asserted is WHICH address the browser went to, and every
           // one of them answers with something the page can render.
           'GET /v1/blocks': {
@@ -149,11 +192,21 @@ describe('BJ-NET — the explorer', () => {
           // And every address carries the scope as TWO path segments. `indexer` reads chain and
           // network separately; a single `ember-testnet` segment would be a 404 nobody could
           // diagnose from the address bar.
-          for (const w of s.api.wire) {
+          //
+          // The chain-offer probes are excluded from the SCOPE check and checked separately: they
+          // sweep every chain by design, so they carry `/eth/testnet/` and `/btc/testnet/` rather
+          // than the selected one. What must hold for them is the NETWORK segment — a probe on the
+          // wrong network is the defect this whole surface was changed for.
+          const record = s.api.wire.filter((w) => !w.path.startsWith('/v1/chains/'))
+          assert.ok(record.length > 0, 'no record read was made at all')
+          for (const w of record) {
             assert.ok(
               w.path.includes(`/${SCOPE}/`),
               `${w.path} does not carry the scope as two segments`,
             )
+          }
+          for (const w of s.api.wire.filter((w) => w.path.startsWith('/v1/chains/'))) {
+            assert.match(w.path, /^\/v1\/chains\/[a-z]+\/testnet\/status$/, `${w.path} is off-network`)
           }
         },
       )

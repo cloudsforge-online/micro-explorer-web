@@ -133,22 +133,41 @@ describe('a screen whose question can change re-asks it', () => {
     })
   }
 
-  it('the one page that calls nothing really calls nothing', () => {
-    // The front page classifies a paste and navigates. A fetch here would spend a round trip to
-    // tell a reader what they had just typed.
-    assert.deepEqual(calls('search'), [], 'search.tsx now fetches something')
-    assert.doesNotMatch(read('src/pages/search.tsx'), /from '\.\.\/lib\/api\.ts'/)
+  it('the front page asks ONE question, and it is not about the paste', () => {
+    // ── THIS ASSERTED THAT `search.tsx` FETCHED NOTHING AT ALL, AND THAT WAS THE DEFECT ────────
+    //
+    // The reasoning held for the PASTE — classifying a height, a hash or an address is work this
+    // bundle does on its own, and a round trip to tell a reader what they typed is waste. It did
+    // not hold for the PAGE. Which chains can be searched at all is a question, it must be
+    // answered before the reader commits, and it is a property of the deployment: both estates run
+    // one scope, so the selector was offering five chains and serving one.
+    //
+    // So the rule is now "exactly one read, and it is the chain offer" rather than "no read". The
+    // half worth keeping is kept: nothing here fetches a block, a transaction or an address before
+    // one is asked for.
+    const found = calls('search')
+    assert.equal(found.length, 1, 'search.tsx no longer makes exactly one read')
+    const source = read('src/pages/search.tsx')
+    assert.match(source, /getChainOffers\(network, signal\)/, 'the front page stopped asking')
+    for (const forbidden of ['getBlock', 'getTransaction', 'getAddressActivity', 'getToken']) {
+      assert.doesNotMatch(
+        source,
+        new RegExp(`\\b${forbidden}\\(`),
+        `search.tsx fetches ${forbidden} before anybody has asked for one`,
+      )
+    }
   })
 
-  it('chains.tsx asks the same fixed question every time, so it takes NO dependencies', () => {
-    // The other half of the rule, asserted rather than assumed. Its subject is the ten scopes, not
-    // an address parameter, so a dependency array would be a value that never changes — and a
-    // reader would have to work out which. `useResource` re-runs it on `reload` alone.
+  it('chains.tsx re-asks when the DEPLOYMENT NETWORK changes, and on nothing else', () => {
+    // Its subject is the chain list on one network, not an address parameter. The network is
+    // derived from the hostname, so within a page load it never changes — but it is threaded as a
+    // dependency rather than closed over, because a value that "cannot change" and is captured
+    // anyway is the arrangement that silently stops re-running the day it can.
     const found = calls('chains')
     assert.equal(found.length, 1, 'chains.tsx no longer makes exactly one read')
     assert.doesNotMatch(found[0] ?? '', /scope\?\.chain/, 'chains.tsx has grown an address parameter')
     // …and it really does read the index, so this is not passing on a page that fetches nothing.
-    assert.match(read('src/pages/chains.tsx'), /getChainStatus\(scope, signal\)/)
+    assert.match(read('src/pages/chains.tsx'), /getChainOffers\(network, signal\)/)
   })
 
   it('no page passes `load` itself as a dependency', () => {

@@ -19,13 +19,37 @@
  * explorer is reached from Forge Network, not chosen from a product list.
  */
 import { CloudsForgeBar } from '@cloudsforge/ui'
-import { NavLink, Outlet } from 'react-router-dom'
+import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { PRODUCT } from '../lib/hosts.ts'
+import { isNetwork, type Network } from '../lib/indexer.ts'
+import { deploymentNetwork, siblingExplorer } from '../lib/network.ts'
 import { NAV } from '../lib/routes.ts'
 import { useSession } from '../lib/auth.tsx'
 
+/**
+ * The network a URL on this app names, or null when it does not name one.
+ *
+ * Every record address on this surface is `/<kind>/<chain>/<network>/<id>` (`src/app.tsx`), so the
+ * network is the fourth segment. Read off the path rather than through `useParams`, because the
+ * shell is the LAYOUT route: it renders above every match and has no params of its own, and a
+ * banner that only appears on some of the pages it is meant to guard is not a guard.
+ */
+function networkInPath(pathname: string): Network | null {
+  const segment = pathname.split('/')[3] ?? ''
+  return isNetwork(segment.toLowerCase()) ? (segment.toLowerCase() as Network) : null
+}
+
 export function AppShell({ unregistered = false }: { unregistered?: boolean }) {
   const { account, signIn, signOut } = useSession()
+  const { pathname } = useLocation()
+  const network = deploymentNetwork()
+  const asked = networkInPath(pathname)
+  // A deep link into the network this deployment is NOT. The page below will render an honest
+  // "not found" off a scope this index has never walked, which is exactly the sentence that reads
+  // as "my transaction is gone" — so it is said here, above the answer, with the address that can
+  // actually answer it.
+  const crossNetwork = asked !== null && asked !== network
+  const elsewhere = crossNetwork && asked ? siblingExplorer(asked) : null
 
   return (
     <>
@@ -56,6 +80,22 @@ export function AppShell({ unregistered = false }: { unregistered?: boolean }) {
               {item.label}
             </NavLink>
           ))}
+          {/*
+            WHICH NETWORK THIS IS, ON EVERY PAGE.
+
+            The right default fixes the common case; this fixes the confused one. Two deployments
+            of one bundle sit on two hostnames under one apex, and until now nothing on the page
+            said which of them you had reached — so a reader who followed a link from a receipt, or
+            who had both open, had no way to tell a mainnet answer from a testnet one. It is a
+            `<strong>` with a label rather than a coloured dot, because the fact has to survive
+            being read aloud.
+          */}
+          <p className="ex-subnav__net">
+            <span className="ex-dim">Network</span>{' '}
+            <strong className="cf-num" data-cf-network={network}>
+              {network}
+            </strong>
+          </p>
         </div>
       </nav>
       <main className="ex-main" id="main">
@@ -75,6 +115,38 @@ export function AppShell({ unregistered = false }: { unregistered?: boolean }) {
               know, so every host it resolves — including the chain index this explorer reads — is
               derived from the wrong apex. Its home is the{' '}
               <code className="cf-num">explorer</code> surface.
+            </span>
+          </p>
+        )}
+        {/*
+          A CROSS-NETWORK ADDRESS, NAMED BEFORE THE PAGE BELOW DENIES IT EXISTS.
+
+          This is tracker #136 from the receiving side. That defect was a testnet transaction
+          linking to the mainnet explorer, which said the transaction did not exist; micro-contracts
+          fixed the BUILDER in 4283686 so each network links to its own hostname. Links already in
+          the world were built by the old one, and a reader who follows one lands here — on a
+          deployment whose index has never walked the scope in the URL. The page renders a truthful
+          404 that reads as "my money is gone". So the address that CAN answer is offered first.
+        */}
+        {crossNetwork && asked && (
+          <p className="ex-note ex-note--warn" role="alert">
+            <span className="ex-note__icon" aria-hidden="true">
+              ▲
+            </span>
+            <span>
+              This address names the <code className="cf-num">{asked}</code> network, and this
+              explorer serves <code className="cf-num">{network}</code>. The two are separate
+              deployments with separate indexes, so anything below is being looked up on a chain
+              this one has never walked and will read as missing whether or not it exists.
+              {elsewhere ? (
+                <>
+                  {' '}
+                  {/* A real anchor: a different origin, which the router cannot reach. */}
+                  <a href={`${elsewhere}${pathname}`}>Open it on the {asked} explorer</a>.
+                </>
+              ) : (
+                <> There is no {asked} explorer to send you to from this address.</>
+              )}
             </span>
           </p>
         )}

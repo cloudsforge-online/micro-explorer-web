@@ -82,6 +82,12 @@ const SIBLINGS: readonly string[] = [
   // and the migration's CHECK constraint — because that contract is the reason every event this
   // bundle sent was silently discarded, and a contract quoted from memory is how it went wrong.
   'lantern',
+  // The asset registry, and specifically `RETIRED_ASSETS`. `src/pages/chains.tsx` records that a
+  // "Why there is no SHARD here" section was DELETED because SHARD is retired rather than merely
+  // not-a-chain, and `test/retired-assets.test.ts` reads the retired list out of this repository
+  // instead of hard-coding a second copy. A claim about which assets no longer exist is exactly
+  // the kind that goes stale silently, so the line it rests on is checked.
+  'contracts',
 ]
 
 // NOTE: `mint-web` is named in prose throughout this repository — the ten invented tokens, the

@@ -674,13 +674,18 @@ describe('the cited lines are the lines that register the routes', () => {
    * FACTS THIS BUNDLE RESTATES RATHER THAN IMPORTS.
    * ──────────────────────────────────────────────────────────────────────────────────────────── */
 
-  it('the five chain ids are the five the service runs', () => {
+  it('the chain ids are the ones the service runs', () => {
+    // THIS TEST HAD BEEN RED, AND IT WAS RIGHT. micro-contracts `7ec2117` added LTC and the
+    // indexer picked it up — Litecoin's spec carries `family: 'bitcoin'` and the worker is chosen
+    // by family, so it needed no worker of its own — while this bundle's list still had five. A
+    // chain the service serves was invisible in the client that reads it. The drift detector
+    // worked; nothing had acted on it.
     const declared = /export const CHAIN_IDS: readonly ChainId\[\] = Object\.freeze\(\[([^\]]*)\]\)/.exec(chains)
     assert.ok(declared, 'CHAIN_IDS is gone from indexer/src/chains.ts')
     const upstream = (declared[1] ?? '').split(',').map((s) => s.trim().replace(/'/g, '')).filter(Boolean)
     assert.deepEqual([...CHAIN_IDS], upstream)
-    // Cited at :41.
-    assert.match(chains.split('\n')[40] ?? '', /CHAIN_IDS/)
+    // Cited at :52.
+    assert.match(chains.split('\n')[51] ?? '', /CHAIN_IDS/)
   })
 
   it('the two networks are the two the service runs', () => {
@@ -688,10 +693,29 @@ describe('the cited lines are the lines that register the routes', () => {
     assert.ok(declared, 'NETWORKS is gone from indexer/src/chains.ts')
     const upstream = (declared[1] ?? '').split(',').map((s) => s.trim().replace(/'/g, '')).filter(Boolean)
     assert.deepEqual([...NETWORKS], upstream)
-    assert.match(chains.split('\n')[42] ?? '', /NETWORKS/)
+    assert.match(chains.split('\n')[53] ?? '', /NETWORKS/)
   })
 
-  it('SHARD is still absent, which is why this app offers no such chain', () => {
+  it('BEING ON THE CHAIN LIST IS NOT BEING INDEXED, and the client must not conflate them', () => {
+    // The defect the owner found by using the product: the explorer offered five chains and one
+    // worked. `CHAIN_IDS` is what the service CAN be asked about; `INDEXER_CHAINS` is what a
+    // deployment walks, and both live estates set it to a single scope. So the client carries a
+    // predicate that reads the difference off `/status` rather than assuming the two are the same
+    // list — see `isServed` and `test/served-chains.test.ts`.
+    assert.match(env, /INDEXER_CHAINS/, 'the deployment no longer chooses which chains it follows')
+    assert.match(
+      client,
+      /export function isServed/,
+      'the client lost the predicate that separates an offered chain from an indexed one',
+    )
+  })
+
+  it('shard is still not a chain slug upstream', () => {
+    // SHARD is RETIRED (`contracts/packages/chain/src/index.ts:58`), not merely absent from the
+    // chain list, and this bundle no longer explains its absence anywhere a reader can see —
+    // `test/retired-assets.test.ts` is what keeps it out. This assertion stays only as the
+    // upstream half: an indexer that started accepting the slug would be advertising an endpoint
+    // for an asset that does not exist.
     assert.doesNotMatch(chains, /export type ChainId = [^\n]*'shard'/)
   })
 

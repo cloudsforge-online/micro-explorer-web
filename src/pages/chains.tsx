@@ -1,57 +1,80 @@
 /**
- * The ten scopes, each with the state its own index reports.
+ * Every chain, on THIS deployment's network, sorted into the ones it serves and the ones it does
+ * not.
  *
- * Five chains (`indexer/src/chains.ts:41`) times two networks (`indexer/src/chains.ts:43`), and
- * one `GET /v1/chains/:chain/:network/status` per scope — `indexer/src/server.ts:164`, handler at
- * `:426`, anonymous (`authoriseRead`, `indexer/src/server.ts:792-801`).
+ * ══════════════════════════════════════════════════════════════════════════════════════════════
+ * WHAT THIS PAGE USED TO DO, AND THE TWO DEFECTS THE OWNER FOUND BY USING IT
  *
- * ── This page used to fetch nothing, and the reason it gave is no longer true ──────────────────
+ * It listed ten cards — five chains times two networks — and rendered whatever each one answered.
+ * Nine of them said "Not walked by this deployment", because both live estates run exactly one
+ * scope: `INDEXER_CHAINS=ember:mainnet` on the mainnet host and `ember:testnet` on the testnet one,
+ * read off the running containers rather than off a manifest. A list in which nine of ten entries
+ * are apologies is a list that presents nine things that do not work as though they might.
  *
- * It said: "ten status calls that all refuse would be ten identical panels, and the standing notice
- * in the shell has already said it once." Every read on `micro-indexer` required `indexer:read` or
- * an admin at the time, so that was correct and it is now false. The reads are anonymous, the
- * notice is deleted, and a list of ten links that cannot say which of them this deployment actually
- * walks is a list that makes the reader open all ten to find out.
+ * So the sorting is the fix. What this deployment serves is stated first, as a fact; what it does
+ * not is stated once, plainly, as "not supported here" rather than ten times as a per-card
+ * disappointment. The reader learns the shape of the estate in one line instead of by opening
+ * every card to find out.
  *
- * ── What a scope answers when it is NOT followed ──────────────────────────────────────────────
+ * **It is measured, not configured.** `isServed` reads each scope's own `/status`
+ * (`src/lib/indexer.ts`), so the day a second chain is indexed this page shows it with no edit
+ * here — and until then it cannot claim one that is not.
  *
- * A 200, not a 404. `status` is assembled from a checkpoint row that may not exist
- * (`indexer/src/reads.ts:294-317`), so an unfollowed scope answers with `indexedHeight: null` and
- * `tipHeight: null` rather than an error — the scope is real, this replica has simply never walked
- * it. `INDEXER_CHAINS` decides which ones it does (`indexer/src/env.ts:358-360`), and a scope that
- * is configured with no provider is called out upstream as "a service that reports healthy and
- * indexes nothing" (`indexer/src/env.ts:18-21`). Both cases are rendered as what they are, and
- * neither as a zero.
+ * ── AND THE OTHER NETWORK IS NOT SHOWN AT ALL ─────────────────────────────────────────────────
  *
- * ── Ten requests, and one failure does not take the page down ─────────────────────────────────
+ * The network comes from the hostname (`src/lib/network.ts`) and this page renders only that one.
+ * That is not tidiness. `ember:testnet` on the MAINNET indexer answers with 87 blocks,
+ * `tipHeight: 0` and `halted: true` — leftovers in the same database from when that estate was
+ * pointed at testnet — so a mainnet page rendering a testnet row showed a plausible-looking scope
+ * whose numbers mean nothing. The other network lives on its own hostname, which is how #136 was
+ * settled in `contracts` `4283686`, and it is linked as one.
  *
- * They are issued together and settled independently. A scope whose call failed says so in its own
- * card and carries its request id; the other nine still render. A `Promise.all` that rejected would
- * have let one unreachable scope blank a page with nine good answers on it.
+ * ── THERE IS NO SHARD SECTION HERE ANY MORE, AND ITS REMOVAL IS THE POINT ─────────────────────
+ *
+ * This page carried a heading, "Why there is no SHARD here", explaining that SHARD "is a
+ * CloudsForge balance rather than a chain". Every word of that was written while it was true and
+ * none of it is now: SHARD is RETIRED (`contracts/packages/chain/src/index.ts:58`,
+ * `RETIRED_ASSETS`), migrated to EMBER, and `IssuableAssetCode` excludes it. A live product
+ * telling a reader that a retired asset is one of their balances is not stale copy on a platform
+ * holding real money — it is the same class of defect as `mint` charging SHARD after retirement,
+ * which broke Forge Create for every user because the shipped wallet spent an asset the shipped
+ * ledger refused.
+ *
+ * Nothing replaces it. Explaining why a retired asset is absent keeps the asset in front of the
+ * reader, which is the thing that must stop. `test/retired-assets.test.ts` now fails if any
+ * retired code reaches a rendered surface again — and it reads the retired list out of
+ * `contracts` rather than hard-coding one, so retiring a second asset arms the same guard.
+ *
+ * **Sparks are untouched and must stay that way.** A Spark is 10⁻⁶ EMBER, a display denomination
+ * and not an asset code. It has nothing to do with SHARD beyond a resemblance, and deleting it as
+ * though it did would break the one unit small EMBER amounts are legible in.
+ * ══════════════════════════════════════════════════════════════════════════════════════════════
  */
 import { useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { Failed, Loading } from '../components/states.tsx'
 import { Note, StateBadge } from '../components/tone.tsx'
-import { noticeFor, type ErrorNotice } from '../lib/api.ts'
 import { chainTone, count } from '../lib/format.ts'
 import {
-  CHAIN_IDS,
-  NETWORKS,
-  getChainStatus,
+  getChainOffers,
+  isServed,
+  type ChainOffer,
   type ChainStatus,
-  type Scope,
 } from '../lib/indexer.ts'
+import { deploymentNetwork, siblingExplorer } from '../lib/network.ts'
 import { useResource } from '../lib/resource.ts'
 import { linkTo } from '../lib/routes.ts'
 
 /**
  * What each chain is, in one line.
  *
- * The asset codes come from `indexer/src/chains.ts:45-51` and the families from
- * `@cloudsforge/contracts-chain` via `familyOf` (`indexer/src/chains.ts:65-67`). Written out here
- * rather than fetched because a list of five names should not require a round trip, and
+ * The asset codes come from `indexer/src/chains.ts:56-63` and the families from
+ * `@cloudsforge/contracts-chain` via `familyOf` (`indexer/src/chains.ts:77-79`). Written out here
+ * rather than fetched because a list of six names should not require a round trip, and
  * `test/indexer.test.ts` checks the chain ids against the real source.
+ *
+ * `ltc` was missing from this record and from `CHAIN_IDS`, so Litecoin rendered as the bare string
+ * `ltc` with no description at all. That is the drift the chain-id test had been red about.
  */
 const ABOUT: Readonly<Record<string, string>> = {
   ember: 'EMBER — the Forge Network chain, proof of work',
@@ -59,50 +82,29 @@ const ABOUT: Readonly<Record<string, string>> = {
   btc: 'BTC — Bitcoin',
   sol: 'SOL — Solana',
   xrp: 'XRP — the XRP Ledger',
+  ltc: 'LTC — Litecoin',
 }
-
-/** One scope's answer, or the reason there is not one. Never both, and never neither. */
-interface ScopeAnswer {
-  readonly scope: Scope
-  readonly status: ChainStatus | null
-  readonly error: ErrorNotice | null
-}
-
-const SCOPES: readonly Scope[] = CHAIN_IDS.flatMap((chain) =>
-  NETWORKS.map((network): Scope => ({ chain, network })),
-)
 
 export function ChainsPage() {
+  const network = deploymentNetwork()
+  const sibling = siblingExplorer(network === 'mainnet' ? 'testnet' : 'mainnet')
+
   const load = useCallback(
-    (signal: AbortSignal): Promise<readonly ScopeAnswer[]> =>
-      Promise.all(
-        SCOPES.map((scope) =>
-          getChainStatus(scope, signal).then(
-            (status): ScopeAnswer => ({ scope, status, error: null }),
-            (err: unknown): ScopeAnswer => {
-              // An abort is this component going away and must not be rendered as a failure, so it
-              // is re-thrown for `useResource`'s abort guard to swallow. Absorbing it here would
-              // paint ten "could not be read" cards on a page nobody is looking at.
-              if (signal.aborted) throw err
-              return {
-                scope,
-                status: null,
-                error: noticeFor(err, 'The chain index could not be reached.'),
-              }
-            },
-          ),
-        ),
-      ),
-    [],
+    (signal: AbortSignal): Promise<readonly ChainOffer[]> => getChainOffers(network, signal),
+    [network],
   )
 
-  // Ten is the count whether or not any of them answered, so this resource is never `empty`: a
-  // scope that failed is a card with a reason on it, not a missing row.
-  const resource = useResource<readonly ScopeAnswer[]>(
+  // The count is the whole chain list whether or not any of them answered, so this resource is
+  // never `empty`: a chain whose call failed is an entry with a reason on it, not a missing row.
+  const resource = useResource<readonly ChainOffer[]>(
     load,
-    (answers) => answers.length,
+    (offers) => offers.length,
     'The chain index could not be reached.',
   )
+
+  const served = (resource.data ?? []).filter((o) => o.status !== null && isServed(o.status))
+  const absent = (resource.data ?? []).filter((o) => o.status !== null && !isServed(o.status))
+  const unreachable = (resource.data ?? []).filter((o) => o.error !== null)
 
   return (
     <div className="ex-page">
@@ -110,36 +112,108 @@ export function ChainsPage() {
         <h1 className="ex-page__title">Chains</h1>
       </header>
       <p className="ex-page__lede">
-        Every <code className="cf-num">(chain, network)</code> pair this index can be asked about,
-        with how far it has walked each one and how far that leaves it behind the tip a provider
-        last claimed.
+        This explorer serves the <strong>{network}</strong> network, and this page is every chain it
+        can be asked about on it — which of them this deployment has actually walked, how far, and
+        how far that leaves it behind the tip a provider last claimed.
       </p>
 
       {resource.state === 'loading' && <Loading label="Reading every chain" />}
       {resource.error && <Failed notice={resource.error} onRetry={resource.reload} />}
 
       {resource.data && (
-        <ul className="ex-scopes">
-          {CHAIN_IDS.map((chain) => (
-            <li key={chain} className="ex-scope">
-              <h2 className="ex-scope__name">{ABOUT[chain] ?? chain}</h2>
-              {NETWORKS.map((network) => (
-                <div key={network} className="ex-scope__net">
-                  <Link className="ex-scope__link" to={linkTo.chain(chain, network)}>
-                    <code className="cf-num">
-                      {chain}/{network}
-                    </code>
-                  </Link>
-                  <ScopeLine
-                    answer={resource.data?.find(
-                      (a) => a.scope.chain === chain && a.scope.network === network,
-                    )}
-                  />
-                </div>
+        <>
+          <h2 className="ex-section__title">Indexed here</h2>
+          {served.length === 0 ? (
+            <p className="ex-page__lede ex-absent">
+              This deployment is not indexing any chain right now. Nothing below can be looked up
+              until it is, and the explorer will not pretend otherwise.
+            </p>
+          ) : (
+            <ul className="ex-scopes">
+              {served.map((offer) => (
+                <li key={offer.chain} className="ex-scope">
+                  <h3 className="ex-scope__name">{ABOUT[offer.chain] ?? offer.chain}</h3>
+                  <div className="ex-scope__net">
+                    <Link className="ex-scope__link" to={linkTo.chain(offer.chain, network)}>
+                      <code className="cf-num">
+                        {offer.chain}/{network}
+                      </code>
+                    </Link>
+                    {offer.status && <ScopeLine status={offer.status} />}
+                  </div>
+                </li>
               ))}
-            </li>
-          ))}
-        </ul>
+            </ul>
+          )}
+
+          {absent.length > 0 && (
+            <>
+              <h2 className="ex-section__title">Not supported by this deployment</h2>
+              <p className="ex-page__lede">
+                {/*
+                  Said once, as a fact about the deployment, rather than once per card as a
+                  disappointment. These are not offered anywhere on this surface: there is no tab
+                  for them, and the search box will not send a paste to one.
+                */}
+                No index has been configured for{' '}
+                {absent.map((offer, i) => (
+                  <span key={offer.chain}>
+                    {i > 0 && (i === absent.length - 1 ? ' or ' : ', ')}
+                    <code className="cf-num">{offer.chain}</code>
+                  </span>
+                ))}{' '}
+                on {network}, so this explorer cannot show a block, a transaction or an address on
+                any of them. They are listed because the chain index knows the chains exist, not
+                because anything here can answer about one.
+              </p>
+              <Note>
+                <strong>Deposits are a different service and are not affected by this.</strong>{' '}
+                Custody issues deposit addresses for several of the chains above, so it is possible
+                to deposit an asset this explorer cannot display. The deposit is credited by the
+                chain index the wallet reads, not by this page; a chain missing here means the
+                public explorer has no view of it, not that funds are lost.
+              </Note>
+            </>
+          )}
+
+          {unreachable.length > 0 && (
+            <>
+              <h2 className="ex-section__title">Could not be read</h2>
+              <p className="ex-page__lede ex-absent">
+                {/*
+                  A third outcome, kept apart from both others on purpose. The service was asked and
+                  did not answer, which says nothing at all about the chain — folding it into
+                  "not supported" would report an outage as a policy.
+                */}
+                The chain index did not answer for{' '}
+                {unreachable.map((offer, i) => (
+                  <span key={offer.chain}>
+                    {i > 0 && ', '}
+                    <code className="cf-num">{offer.chain}</code>
+                  </span>
+                ))}
+                . That is this service failing to reply, not a statement about those chains.
+                {unreachable[0]?.error?.requestId && (
+                  <>
+                    {' '}
+                    <code className="cf-num wt-reqid">{unreachable[0].error?.requestId}</code>
+                  </>
+                )}
+              </p>
+            </>
+          )}
+        </>
+      )}
+
+      {sibling && (
+        <p className="ex-page__lede">
+          The {network === 'mainnet' ? 'testnet' : 'mainnet'} network is a different deployment with
+          its own index, on its own hostname:{' '}
+          {/* A real anchor, not a router Link: it is a different origin. */}
+          <a href={`${sibling}/chains`}>{sibling.replace('https://', '')}</a>. This one never shows
+          it, because the two indexes share nothing and a row from the wrong one is a number that
+          means nothing here.
+        </p>
       )}
 
       <Note>
@@ -149,51 +223,24 @@ export function ChainsPage() {
         counted against the second can exceed the number of blocks anybody here has looked at, by
         exactly the lag shown (<code className="cf-num">indexer/src/reads.ts:24-27</code>).
       </Note>
-
-      <h2 className="ex-section__title">Why there is no SHARD here</h2>
-      <p className="ex-page__lede">
-        SHARD is a CloudsForge balance rather than a chain. `micro-indexer` leaves it out of its
-        chain list on purpose (<code className="cf-num">indexer/src/chains.ts:35-37</code>): it
-        exists in the estate&rsquo;s asset record only so that record is total, it never exists on a
-        chain, and an indexer that accepted it &ldquo;would be advertising an endpoint that can only
-        ever answer empty&rdquo;.
-      </p>
     </div>
   )
 }
 
 /**
- * One scope's line: walked, claimed, and the gap — or the reason there is no answer.
+ * One served scope's line: walked, claimed, and the gap.
  *
- * Three outcomes, three sentences. "Not walked" is not "zero", and a scope whose call failed is
- * neither: the service was asked and did not answer, which says nothing about the chain.
+ * This renders only for a scope `isServed` accepted, so "not walked" is no longer one of its
+ * outcomes — a configured chain that has not got a block yet still has no `indexedHeight`, and it
+ * says so here rather than being sorted into the unsupported list where it does not belong.
  */
-function ScopeLine({ answer }: { answer: ScopeAnswer | undefined }) {
-  if (!answer) return null
-
-  if (answer.error) {
-    return (
-      <p className="ex-scope__state ex-absent">
-        This scope could not be read.
-        {answer.error.requestId && (
-          <>
-            {' '}
-            <code className="cf-num wt-reqid">{answer.error.requestId}</code>
-          </>
-        )}
-      </p>
-    )
-  }
-
-  const status = answer.status
-  if (!status) return null
-
+function ScopeLine({ status }: { status: ChainStatus }) {
   if (status.indexedHeight === null) {
     return (
       <p className="ex-scope__state ex-absent">
-        Not walked by this deployment.{' '}
+        Configured, but no block has been walked yet.{' '}
         {status.tipHeight === null
-          ? 'No tip has ever been observed for it either.'
+          ? 'No tip has been observed for it either.'
           : `A provider has claimed a tip of ${count(status.tipHeight)}.`}
       </p>
     )
@@ -215,6 +262,14 @@ function ScopeLine({ answer }: { answer: ScopeAnswer | undefined }) {
           {' '}
           <span className="ex-dim">· behind by</span>{' '}
           <span className="cf-num">{count(status.lagBlocks)}</span>
+        </>
+      )}
+      {status.halted && (
+        <>
+          {' '}
+          <span className="ex-absent">
+            · halted{status.haltReason ? `: ${status.haltReason}` : ''}
+          </span>
         </>
       )}
     </p>

@@ -98,20 +98,29 @@
  * `Number(amount)` silently loses the low digits of any 18-decimal value above about 9 ETH. This
  * file types them as `string` and `src/lib/format.ts` never converts one.
  */
-import { api } from './api.ts'
+import { api, noticeFor, type ErrorNotice } from './api.ts'
 
 /* ══════════════════════════════ scope ══════════════════════════════ */
 
 /**
- * The five chains this service runs, as `indexer/src/chains.ts:39` declares them.
+ * The chains this service CAN be asked about, as `indexer/src/chains.ts:50` declares them.
  *
- * `shard` is deliberately absent upstream and the reason is at `indexer/src/chains.ts:35-37`:
- * SHARD exists in `CHAINS` only so that record is total, it never exists on a chain, and "an
- * indexer that accepted it would be advertising an endpoint that can only ever answer empty".
+ * **Being on this list is not being indexed, and this bundle must never let the two read as the
+ * same thing.** `INDEXER_CHAINS` decides what a deployment actually walks (`indexer/src/env.ts:324`)
+ * and both live estates set it to exactly one scope — `ember:mainnet` and `ember:testnet`
+ * respectively. Every other scope answers 200 with `indexedHeight: null` and no providers. Use
+ * `isServed` below to tell them apart; nothing may offer a chain on the strength of this constant
+ * alone.
+ *
+ * `ltc` IS ON IT and used not to be. Litecoin's spec carries `family: 'bitcoin'` and the indexer
+ * selects a worker by family (`indexer/src/index.ts:113-118`), so it needs no worker of its own —
+ * the drift test in `test/indexer.test.ts` had been red for exactly this since micro-contracts
+ * `7ec2117` added LTC, and a chain the service serves was missing from the client that reads it.
+ *
  * Restated here rather than imported, because a browser bundle must not depend on a service's
  * source tree; `test/indexer.test.ts` reads the real list and fails if this one drifts.
  */
-export const CHAIN_IDS = ['ember', 'eth', 'btc', 'sol', 'xrp'] as const
+export const CHAIN_IDS = ['ember', 'eth', 'btc', 'sol', 'xrp', 'ltc'] as const
 export type ChainId = (typeof CHAIN_IDS)[number]
 
 /** `indexer/src/chains.ts:43`. */
@@ -506,6 +515,77 @@ export function getChainStatus(scope: Scope, signal?: AbortSignal): Promise<Chai
   return publicRead<ChainStatus>(`/v1/chains/${seg(scope.chain)}/${seg(scope.network)}/status`, {
     ...(signal ? { signal } : {}),
   })
+}
+
+/**
+ * WHETHER THIS DEPLOYMENT CAN ACTUALLY ANSWER ABOUT A SCOPE.
+ *
+ * ── The defect, found by the owner using the product ──────────────────────────────────────────
+ *
+ * The explorer offered every chain in `CHAIN_IDS` on both networks — a chain selector on the front
+ * page, ten cards on `/chains` — and exactly one of those scopes has ever been walked. The rest
+ * rendered "Not walked by this deployment", which is an honest sentence in a dishonest place: the
+ * reader had already chosen the chain, typed the hash and pressed the button before anything told
+ * them the answer could not exist. An offer is a claim, and a selector is an offer.
+ *
+ * ── Why this is measured rather than configured ───────────────────────────────────────────────
+ *
+ * The obvious repair is a constant listing the chains that work. It would be wrong within a day.
+ * What a deployment indexes is `INDEXER_CHAINS` on the container (`indexer/src/env.ts:324`), and
+ * the two live estates set it differently from each other; a literal in a browser bundle would be
+ * a build-time copy of a runtime fact, and the day somebody indexes a second chain the UI would
+ * still hide it. So this is read from `/status`, which every deployment answers for itself.
+ *
+ * ── Both halves of the test, and neither alone ────────────────────────────────────────────────
+ *
+ * `indexedHeight !== null` is "this replica has walked blocks here". `providers.length > 0` is
+ * "this replica is configured to walk here and has not got a block yet" — a scope named in
+ * `INDEXER_CHAINS` whose node is starting up, which is a real state and must not read as
+ * unsupported. `indexedHeight` alone would hide a freshly configured chain; `providers` alone
+ * would MISS one, because provider health rows survive a configuration change: `ember:testnet` on
+ * the mainnet indexer still carries a provider row and 87 stale blocks from when that estate was
+ * pointed at testnet. Requiring either, and rendering `halted` separately, is what tells those
+ * apart.
+ */
+export function isServed(status: ChainStatus): boolean {
+  return status.indexedHeight !== null || status.providers.length > 0
+}
+
+/** One chain's answer to "can you serve me", or the reason there is not one. */
+export interface ChainOffer {
+  readonly chain: ChainId
+  readonly status: ChainStatus | null
+  readonly error: ErrorNotice | null
+}
+
+/**
+ * Ask every chain, on ONE network, whether this deployment serves it.
+ *
+ * Settled independently rather than through `Promise.all`, so one unreachable scope cannot blank a
+ * page that has five good answers on it. A scope whose call failed is neither served nor
+ * unsupported — the service was asked and did not answer, which says nothing about the chain — and
+ * it comes back carrying its notice so the caller can say that rather than guess.
+ *
+ * The network is a parameter and never a default. This function has no opinion about which network
+ * a page is on; `src/lib/network.ts` owns that, and it derives it from the hostname.
+ */
+export async function getChainOffers(
+  network: Network,
+  signal?: AbortSignal,
+): Promise<readonly ChainOffer[]> {
+  return Promise.all(
+    CHAIN_IDS.map((chain) =>
+      getChainStatus({ chain, network }, signal).then(
+        (status): ChainOffer => ({ chain, status, error: null }),
+        (err: unknown): ChainOffer => {
+          // An abort is the component going away, not a failure, and re-throwing lets
+          // `useResource`'s abort guard swallow it rather than painting six refusals.
+          if (signal?.aborted) throw err
+          return { chain, status: null, error: noticeFor(err, 'The chain index could not be reached.') }
+        },
+      ),
+    ),
+  )
 }
 
 /**
