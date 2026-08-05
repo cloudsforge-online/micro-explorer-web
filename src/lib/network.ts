@@ -5,7 +5,7 @@
  * THE DEFECT THIS FILE EXISTS FOR, FOUND BY THE OWNER USING THE PRODUCT
  *
  * `src/pages/search.tsx` opened with `useState<Network>('testnet')`. That literal was the default
- * on BOTH deployments, so the front page of `explorer.cloudsforge.online` — the MAINNET explorer —
+ * on BOTH deployments, so the front page of `explorer.<apex>` — the MAINNET explorer —
  * looked up every pasted hash, height and address on `ember/testnet`.
  *
  * It is worse than a wrong label, and the measurement is the reason. The mainnet estate runs
@@ -19,7 +19,7 @@
  * That is the same failure as tracker #136 — "a testnet transaction links to the mainnet explorer,
  * which then said it did not exist" — arriving from the other side. micro-contracts fixed that one
  * in `4283686` by making the URL BUILDER network-aware, per hostname:
- * `explorer.cloudsforge.online` for mainnet and `explorer-testnet.cloudsforge.online` for testnet.
+ * `explorer.<apex>` for mainnet and `explorer-testnet.<apex>` for testnet.
  * This file is the receiving half of the same mechanism, and it must agree with it: the hostname
  * that was linked to decides the network, so a link built correctly cannot be landed on wrongly.
  *
@@ -27,7 +27,7 @@
  *
  * `hostname.includes('testnet')` would be the obvious version and it is wrong twice. It would read
  * a surface merely NAMED with testnet in it as the testnet environment, and it would read
- * `explorer.testnet.cloudsforge.online` — the two-label shape Cloudflare Universal SSL's one-label
+ * `explorer.testnet.<apex>` — the two-label shape Cloudflare Universal SSL's one-label
  * wildcard does not cover, and the exact dead host `4283686` had to remove — as live. The registry
  * owns this: `splitEnvLabel` (`ui/packages/ui/src/surfaces.ts:1101`) requires the tail to be a
  * KNOWN environment label AND the head to be a KNOWN registry subdomain, and returns null for
@@ -139,7 +139,7 @@ export function deploymentNetwork(): Network {
  * not one to point at.
  *
  * Null on a development address and on an unregistered placement, because inventing a hostname is
- * how `explorer.testnet.cloudsforge.online` got shipped: it looked composed correctly, it resolved
+ * how `explorer.testnet.<apex>` got shipped: it looked composed correctly, it resolved
  * to nothing, and the link was worse than no link because a reader trusts an offered address.
  * Composed the one way the estate serves: mainnet unadorned, every other environment suffixed with
  * a single hyphen so it stays inside Universal SSL's one-label wildcard.

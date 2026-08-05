@@ -6,7 +6,7 @@
  *
  * **1. The network was a literal, and it was the wrong one.** This file opened with
  * `useState<Network>('testnet')`. The same bundle serves both estates, so the front page of
- * `explorer.cloudsforge.online` — the MAINNET explorer — sent every pasted hash, height and address
+ * `explorer.<apex>` — the MAINNET explorer — sent every pasted hash, height and address
  * to `ember/testnet`. On that deployment testnet is not indexed at all; what its database still
  * holds is 87 blocks from a previous configuration, answering `halted: true` and `tipHeight: 0`.
  * So the default lookup for a real mainnet transaction resolved against a halted scope and came

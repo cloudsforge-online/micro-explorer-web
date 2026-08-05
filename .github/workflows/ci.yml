@@ -402,12 +402,21 @@ jobs:
           out=$(node --import tsx --test test/api.test.ts 2>&1 || true)
           count=$(printf '%s\n' "$out" \
                   | grep -oE '[a-zA-Z]+ sends no authorization header' | sort -u | wc -l | tr -d ' ')
-          [ "$count" -eq 7 ] || {
-            echo "::error::only $count of the seven reads were checked for a bearer"
+          # EIGHT, not seven, and the eighth is `getChainOffers` — the fan-out that asks every
+          # chain whether this deployment serves it. It is counted here rather than waved through
+          # as "covered by the getChainStatus it calls", because the bearer is decided per request
+          # inside `publicRead`: a fan-out that stopped going through it would present a token six
+          # times over while the single-scope check stayed green.
+          #
+          # The number is EXACT in both directions on purpose. Too few means a read was added and
+          # nobody checked it; too many means this gate has drifted from the module and is no
+          # longer counting what it names.
+          [ "$count" -eq 8 ] || {
+            echo "::error::$count of the eight reads were checked for a bearer"
             exit 1
           }
           grep -qF 'the stub WOULD have seen one' <<<"$out" || {
-            echo "::error::the not-vacuous control did not run; the seven checks prove nothing"
+            echo "::error::the not-vacuous control did not run; the eight checks prove nothing"
             exit 1
           }
           echo "ok: seven reads issued with a session in storage, none carrying an authorization header"
