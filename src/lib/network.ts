@@ -29,7 +29,7 @@
  * a surface merely NAMED with testnet in it as the testnet environment, and it would read
  * `explorer.testnet.<apex>` — the two-label shape Cloudflare Universal SSL's one-label
  * wildcard does not cover, and the exact dead host `4283686` had to remove — as live. The registry
- * owns this: `splitEnvLabel` (`ui/packages/ui/src/surfaces.ts:1101`) requires the tail to be a
+ * owns this: `splitEnvLabel` (`ui/packages/ui/src/surfaces.ts`) requires the tail to be a
  * KNOWN environment label AND the head to be a KNOWN registry subdomain, and returns null for
  * anything else rather than guessing.
  *
@@ -65,7 +65,7 @@ const NETWORK_FOR_ENV: Readonly<Record<string, Network>> = Object.freeze({
 
 /**
  * The apex a hostname hangs off, by the same rule `cloudsforgeHosts()` uses
- * (`ui/packages/ui/src/index.tsx:206-221`): strip the first label when it names an environment or
+ * (`ui/packages/ui/src/index.tsx`): strip the first label when it names an environment or
  * a known subdomain, and otherwise treat the whole name as its own apex rather than guessing.
  */
 function apexOf(hostname: string): string {
@@ -82,7 +82,7 @@ function apexOf(hostname: string): string {
  * Four cases, and each one is a decision rather than a fallthrough:
  *
  *   1. **A development address** — localhost and friends — is `testnet`. That is not a guess: the
- *      repository's own `indexer/.env.example:39` is `INDEXER_CHAINS=ember:testnet` and
+ *      repository's own `indexer/.env.example` is `INDEXER_CHAINS=ember:testnet` and
  *      `DEEP_LINK_PATH` in `src/lib/routes.ts` is `/blocks/ember/testnet/1`, so testnet is the
  *      only scope a local stack has ever indexed. Defaulting a developer to mainnet would put a
  *      dead scope on the front page of every `pnpm dev`.
@@ -90,9 +90,9 @@ function apexOf(hostname: string): string {
  *      two-label form which `splitEnvLabel` still resolves — takes the label's network.
  *   3. **An unlabelled CloudsForge hostname** — `explorer.<apex>` — is `mainnet`. The estate serves
  *      mainnet unadorned and every other environment suffixed; `contracts/packages/chain/src/
- *      index.ts:219-222` writes exactly that pair.
+ *      index.ts` writes exactly that pair.
  *   4. **An address the registry does not know** is `mainnet`, and the shell already says so out
- *      loud (`isRegisteredPlacement`, `src/lib/hosts.ts:110`). Mainnet is the right answer here
+ *      loud (`isRegisteredPlacement`, `src/lib/hosts.ts`). Mainnet is the right answer here
  *      because it is the one that cannot silently under-report: a reader on an unknown host asking
  *      about mainnet and being told a scope is not indexed has learned something true, whereas one
  *      shown testnet data under a mainnet-looking name has been misinformed.
@@ -110,7 +110,7 @@ export function networkForHost(hostname: string): Network {
   if (env) return NETWORK_FOR_ENV[env.env] ?? 'mainnet'
 
   // The OLDER TWO-LABEL FORM, `explorer.testnet.<apex>`, resolved for the same reason
-  // `cloudsforgeHosts()` still resolves it (`ui/packages/ui/src/index.tsx:199-204`): nothing was
+  // `cloudsforgeHosts()` still resolves it (`ui/packages/ui/src/index.tsx`): nothing was
   // taken away when the names moved, so a bundle served on an old hostname must still be correct.
   // It matters more here than there. That host answers nothing today — Universal SSL's wildcard
   // covers one label — but reading it as MAINNET would be the dangerous direction: a reader who

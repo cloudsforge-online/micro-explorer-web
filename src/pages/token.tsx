@@ -1,15 +1,15 @@
 /**
  * A token contract's supply and authorities, as the contract itself reports them.
  *
- * `GET /v1/tokens/:chain/:network/:address` — `indexer/src/server.ts:169`, handler at `:535`.
+ * `GET /v1/tokens/:chain/:network/:address` — `indexer/src/server.ts`, handler `tokenObservation`.
  *
  * ══════════════════════════════════════════════════════════════════════════════════════════════
  * THREE FAILURES, THREE MEANINGS, THREE SCREENS.
  *
  * This route exists because `micro-mint` could not tell them apart, and every ForgeMint project
  * page rendered its supply and authorities as unknown, permanently
- * (`indexer/src/server.ts:154-157`). The handler's own comment sets out the split
- * (`indexer/src/server.ts:520-534`):
+ * (`indexer/src/server.ts`). The handler's own comment sets out the split
+ * (`indexer/src/server.ts`):
  *
  *   **404 `token_not_found`** — this service asked the chain and there is no contract answering
  *   `totalSupply()` at that address, at the block it has walked. A REAL answer. A contract
@@ -18,17 +18,17 @@
  *   **404 `not_found`** — the router's. This bundle asked for a path the service does not serve.
  *   Entirely different, and a defect here rather than a fact about any chain.
  *
- *   **501 / 503** — `TokenStateUnavailableError` (`indexer/src/tokenstate.ts:136-157`). The
+ *   **501 / 503** — `TokenStateUnavailableError` (`indexer/src/tokenstate.ts`). The
  *   observation could not be MADE. `family_not_supported` is 501 because no amount of waiting will
  *   change it; the other four are 503 because a provider, a head or a follower is behind
- *   (`indexer/src/server.ts:304-325`). **Never rendered as "no token here".**
+ *   (`indexer/src/server.ts`). **Never rendered as "no token here".**
  *
  * ── The observation is as at a block, and the block is named ──────────────────────────────────
  *
  * `observedAtBlock` is the stored canonical head the call was made at, and `observedAtBlockHash` is
  * the hash this service walked at that height "and proved the node still serves"
- * (`indexer/src/tokenstate.ts:126-129`). `tipHeight` sits beside it "for staleness, never read
- * against" (`:130-131`). All three are shown, because a supply figure with no block attached is a
+ * (`indexer/src/tokenstate.ts`). `tipHeight` sits beside it "for staleness, never read
+ * against". All three are shown, because a supply figure with no block attached is a
  * number with no time attached.
  * ══════════════════════════════════════════════════════════════════════════════════════════════
  */
@@ -43,7 +43,7 @@ import { linkTo } from '../lib/routes.ts'
 import { parseScope } from '../lib/scope.ts'
 import { UnknownScope } from './unknown-scope.tsx'
 
-/** The five faults `observe` can raise (`indexer/src/tokenstate.ts:136-141`). */
+/** The five faults `observe` can raise (`indexer/src/tokenstate.ts`). */
 const FAULTS = new Set([
   'family_not_supported',
   'chain_not_followed',
@@ -109,7 +109,7 @@ export function TokenPage() {
               &ldquo;I could not ask the chain&rdquo; and &ldquo;there is no token at that
               address&rdquo; are different answers, and a consumer that cannot tell them apart
               renders the second when it means the first
-              (<code className="cf-num">indexer/src/server.ts:304-325</code>). This page does not.
+              (<code className="cf-num">indexer/src/server.ts</code>). This page does not.
             </p>
           </div>
           {resource.error.status !== 501 && (
@@ -278,7 +278,7 @@ export function TokenPage() {
       <Note>
         The whole answer is as at the block above — the stored canonical head, not the claimed tip.
         The tip is shown so staleness can be judged, and is never what the observation was made
-        against (<code className="cf-num">indexer/src/tokenstate.ts:126-131</code>).
+        against (<code className="cf-num">indexer/src/tokenstate.ts</code>).
       </Note>
     </div>
   )

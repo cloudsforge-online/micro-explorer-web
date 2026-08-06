@@ -220,7 +220,7 @@ body {
 /*
  * There was a `.wt-state--refused` rule here, styling the panel this surface showed when the chain
  * index would not answer an anonymous read. The reads are anonymous now
- * (indexer/src/server.ts:773-782), the component is deleted, and a rule for a class nothing renders
+ * (indexer/src/server.ts), the component is deleted, and a rule for a class nothing renders
  * is the kind of dead weight that gets copied into the next repository.
  */
 
@@ -485,7 +485,7 @@ body {
  *
  * A confirmation count with no head named is the ambiguity this whole surface exists to remove:
  * `micro-indexer` counts one way for its decision reads and another for its record reads
- * (reads.ts:18-30), and the same block honestly has two depths.
+ * (reads.ts), and the same block honestly has two depths.
  */
 .ex-depth__head {
   padding: 0.05rem 0.35rem;
@@ -564,7 +564,7 @@ body {
 /*
  * A withheld balance gets a panel, not a dash.
  *
- * `indexer/src/reads.ts:231-265` withholds `balances` rather than returning zero, and the reason it
+ * `indexer/src/reads.ts` withholds `balances` rather than returning zero, and the reason it
  * gives is the whole value of the answer. A layout that reduced that to an em dash would discard
  * precisely the field the API was designed to carry.
  */

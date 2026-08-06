@@ -33,7 +33,7 @@
  *
  * This page carried a heading, "Why there is no SHARD here", explaining that SHARD "is a
  * CloudsForge balance rather than a chain". Every word of that was written while it was true and
- * none of it is now: SHARD is RETIRED (`contracts/packages/chain/src/index.ts:58`,
+ * none of it is now: SHARD is RETIRED (`contracts/packages/chain/src/index.ts`,
  * `RETIRED_ASSETS`), migrated to EMBER, and `IssuableAssetCode` excludes it. A live product
  * telling a reader that a retired asset is one of their balances is not stale copy on a platform
  * holding real money — it is the same class of defect as `mint` charging SHARD after retirement,
@@ -68,8 +68,8 @@ import { linkTo } from '../lib/routes.ts'
 /**
  * What each chain is, in one line.
  *
- * The asset codes come from `indexer/src/chains.ts:56-63` and the families from
- * `@cloudsforge/contracts-chain` via `familyOf` (`indexer/src/chains.ts:77-79`). Written out here
+ * The asset codes come from `indexer/src/chains.ts` and the families from
+ * `@cloudsforge/contracts-chain` via `familyOf` (`indexer/src/chains.ts`). Written out here
  * rather than fetched because a list of six names should not require a round trip, and
  * `test/indexer.test.ts` checks the chain ids against the real source.
  *
@@ -221,7 +221,7 @@ export function ChainsPage() {
         collapses them. The first is the highest canonical block this index has actually read and
         would have detected a reorg in; the second is what a provider said the tip was. A depth
         counted against the second can exceed the number of blocks anybody here has looked at, by
-        exactly the lag shown (<code className="cf-num">indexer/src/reads.ts:24-27</code>).
+        exactly the lag shown (<code className="cf-num">indexer/src/reads.ts</code>).
       </Note>
     </div>
   )

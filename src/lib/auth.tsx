@@ -7,10 +7,11 @@
  * A gate exists to spare a customer a screen made entirely of 401s by sending them somewhere that
  * fixes it. **Nothing on this surface can produce one.** Every `micro-indexer` route this app
  * calls is anonymous — `authoriseRead` returns `null` for a caller with no token and lets the
- * handler run (`indexer/src/server.ts:792-801`, the branch at `:794`) — and every call is issued
+ * handler run (the `token === null` branch of `authoriseRead` in `indexer/src/server.ts`) — and
+ * every call is issued
  * with `auth: false` (`publicRead` in `src/lib/indexer.ts`). A gate here would demand a session
  * for public chain facts and would be the defect this repository was built around, arriving from
- * the client's side: `docs/ecosystem/15-monetisation-model.md:50` — "A public chain whose explorer
+ * the client's side: `docs/ecosystem/15-monetisation-model.md` — "A public chain whose explorer
  * is paywalled is not a public chain."
  *
  * There was a second argument for the absence, and it is now history worth keeping: the reads used
@@ -30,7 +31,7 @@
  *
  * Identity answers `{ user: {...}, session: {...}, organisations: [...] }` — the profile is
  * **NESTED under `user`**. The route is `GET /auth/me` in `identity/src/server.ts` and the body is built by
- * `toPublicUser` at `identity/src/users.ts:52-63`. Both citations were opened and read against the
+ * `toPublicUser` at `identity/src/users.ts`. Both citations were opened and read against the
  * source for this repository rather than carried over from a sibling.
  *
  * That shape is worth stating because the estate got it wrong at the root: the web template
@@ -39,8 +40,8 @@
  * company bar was always false, and the switcher hid every `adminOnly` entry from every signed-in
  * operator — which is still the consequence here, and the only one.
  *
- * **It is fixed upstream**, and this file follows the template. `micro-web-template/src/lib/auth.tsx:26`
- * declares the nested shape and `:98-99` read `me?.user?.handle` / `me?.user?.roles`. The template
+ * **It is fixed upstream**, and this file follows the template. `micro-web-template/src/lib/auth.tsx`
+ * declares the nested shape and reads `me?.user?.handle` / `me?.user?.roles`. The template
  * accepts ONLY the nested shape and its own comment gives the reason: "Tolerating the flat one as a
  * fallback would encode a response identity does not send, and the next reader would not be able to
  * tell which is real." There is no flat fallback here, and `test/auth.test.ts` pins its absence, so
@@ -103,7 +104,7 @@ export function readReader(body: unknown): Reader {
  * role, because `authorise` accepted a user principal only when `isAdmin`. Its one caller was the
  * standing notice in the shell, which used it to choose between two wordings of the same apology.
  *
- * The reads are anonymous now (`indexer/src/server.ts:792-801`), so the predicate has no true
+ * The reads are anonymous now (`indexer/src/server.ts`), so the predicate has no true
  * answer other than "yes", the notice is gone, and a helper that can only return one value is a
  * helper somebody eventually reads as meaningful. Nothing in this bundle asks who a reader is
  * before making a request.

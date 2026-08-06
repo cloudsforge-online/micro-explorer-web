@@ -206,7 +206,7 @@ describe('failures', () => {
    * THERE WAS A `refused` FLAG ON `ErrorNotice`, AND IT HAS BEEN DELETED.
    *
    * It was set on 401 OR 403 and drove a screen that explained why `micro-indexer` would not serve
-   * an anonymous read. The reads are anonymous now (`indexer/src/server.ts:792-801`) and this app
+   * an anonymous read. The reads are anonymous now (`indexer/src/server.ts`) and this app
    * presents no credential, so nothing it sends can be refused for lacking one: an auth status
    * arriving anyway is a fault in the service or in something in front of it, and `failed` — a
    * message and a request id — is the honest screen for that.
@@ -230,7 +230,7 @@ describe('failures', () => {
 
   it('does NOT fire cf:auth-expired when there was no session to expire', async () => {
     // The template ended a session on ANY 401 to an authenticated call. This surface reported that
-    // and the template has since fixed it (`web-template/src/lib/api.ts:344`). The guard matters
+    // and the template has since fixed it (`web-template/src/lib/api.ts`). The guard matters
     // less here than it did — the chain reads pass `auth: false` and never reach the branch — but a
     // client that is only correct because of where it happens to be called is one refactor from
     // signing a user out of a session they never had.
@@ -259,7 +259,7 @@ describe('failures', () => {
 
   it('carries the CODE through, because a 404 means two different things on this API', () => {
     // `micro-indexer` distinguishes "no such transaction" from "no such route" by code alone; the
-    // status is 404 either way (`indexer/src/server.ts:475-477`). The template's ErrorNotice drops
+    // status is 404 either way (`indexer/src/server.ts`). The template's ErrorNotice drops
     // the code, and dropping it is how micro-market and micro-mint each rendered a router 404 as a
     // fact about a chain.
     const err = new ApiError(404, 'no', 'transaction_not_found', 'req-1')
@@ -287,7 +287,7 @@ describe('auth callback', () => {
    * This block used to assert `trace[1].includes('/auth/exchange')` — a string lifted out of the
    * implementation and compared with itself, green for every possible value including the wrong
    * one it was pinning. **identity has never served `/auth/exchange`.** It serves
-   * `POST /auth/handoff/redeem` (`identity/src/server.ts:1084`), so every SSO callback in the
+   * `POST /auth/handoff/redeem` (`identity/src/server.ts`), so every SSO callback in the
    * estate 404'd, `consumeAuthCallback` returned null exactly as it does for a stale code, and it
    * read as an expiry rather than as a wrong address. This line stayed green throughout.
    *
@@ -370,7 +370,7 @@ describe('auth callback', () => {
  * with no `authorization` header.
  *
  * It matters because a token that IS presented is verified rather than ignored
- * (`indexer/src/server.ts:795`). An expired one would come back 401 on a page that needs no
+ * (`indexer/src/server.ts`). An expired one would come back 401 on a page that needs no
  * session, and the explorer would have made itself depend on a credential it never needed — the
  * defect this repository was built around, arriving from the client's side.
  * ══════════════════════════════════════════════════════════════════════════════════════════════ */

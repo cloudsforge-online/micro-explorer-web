@@ -1,14 +1,14 @@
 /**
  * One block.
  *
- * `GET /v1/blocks/:chain/:network/:height` — `indexer/src/server.ts:171`, handler at `:598`.
+ * `GET /v1/blocks/:chain/:network/:height` — `indexer/src/server.ts`, handler `blockByHeight`.
  *
  * ══════════════════════════════════════════════════════════════════════════════════════════════
  * THE CONFIRMATION COUNT ON THIS PAGE IS AGAINST THE CLAIMED TIP, AND IT SAYS SO.
  *
- * `indexer/src/reads.ts:579` computes it as `confirmationsAt(tipHeight, record.height)` where
- * `tipHeight` is `checkpoint?.tipHeight` (`indexer/src/reads.ts:568`) — what a provider last
- * claimed, not what this service has walked. `indexer/src/reads.ts:24-27` reserves the walked head
+ * `indexer/src/reads.ts` computes it as `confirmationsAt(tipHeight, record.height)` where
+ * `tipHeight` is `checkpoint?.tipHeight` (`indexer/src/reads.ts`) — what a provider last
+ * claimed, not what this service has walked. `indexer/src/reads.ts` reserves the walked head
  * for the two DECISION reads (`confirmation` and `tokenBalances`) and says why: counting against
  * blocks nobody here has looked at over-reports depth.
  *
@@ -17,9 +17,9 @@
  *
  * ── There is no orphaned block here, and that is worth knowing before looking for one ──────────
  *
- * `blockAtHeight` filters `status <> 'orphaned'` (`indexer/src/store.ts:200`), so a height whose
+ * `blockAtHeight` filters `status <> 'orphaned'` (`indexer/src/store.ts`), so a height whose
  * block was retracted by a reorg is a **404 `block_not_found`** — "no such block on the canonical
- * chain" (`indexer/src/server.ts:608`) — rather than a 200 with an orphaned badge. The 404 screen
+ * chain" (`indexer/src/server.ts`) — rather than a 200 with an orphaned badge. The 404 screen
  * says that, because "we have never seen this height" and "the block we saw here is gone" look
  * identical from outside and mean different things.
  * ══════════════════════════════════════════════════════════════════════════════════════════════
@@ -101,7 +101,7 @@ export function BlockPage() {
 
       <DepthNote>
         This block&rsquo;s depth is counted against the tip a provider last claimed
-        (<code className="cf-num">indexer/src/reads.ts:579</code>), which can be ahead of the
+        (<code className="cf-num">indexer/src/reads.ts</code>), which can be ahead of the
         highest block this index has actually walked. The{' '}
         <Link to={linkTo.chain(block.chain, block.network)}>chain page</Link> shows the gap.
       </DepthNote>
@@ -156,7 +156,7 @@ export function BlockPage() {
               {' '}
               The block header says it carries {count(block.txCount)}, so this is a block whose
               header has been walked and whose bodies have not — the two counts come from different
-              places (<code className="cf-num">indexer/src/store.ts:1437-1441</code> lists the rows;{' '}
+              places (<code className="cf-num">indexer/src/store.ts</code> lists the rows;{' '}
               <code className="cf-num">txCount</code> is the header&rsquo;s own figure).
             </>
           )}

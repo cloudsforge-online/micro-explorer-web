@@ -40,7 +40,7 @@ const HOST = 'https://explorer.cloudsforge.online'
  * The unserved shape is the real one, read off the live service today:
  * `{"chain":"btc","network":"mainnet",…,"tipHeight":null,"indexedHeight":null,"providers":[]}` —
  * a **200**, not a 404, because the scope is real and this replica has simply never walked it
- * (`indexer/src/reads.ts:294-317`). A stub that answered 404 would be testing a branch the service
+ * (`indexer/src/reads.ts`). A stub that answered 404 would be testing a branch the service
  * does not take.
  */
 const routesFor = (served: readonly ChainId[]): Routes => ({

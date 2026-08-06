@@ -38,7 +38,7 @@ export interface AppRoute {
    *
    * **Every route on this surface is public, and every one of them works that way.** The seven
    * `micro-indexer` reads behind these pages are anonymous — `authoriseRead` returns `null` for a
-   * caller with no token and lets the handler run (`indexer/src/server.ts:792-801`) — and this
+   * caller with no token and lets the handler run (`indexer/src/server.ts`) — and this
    * bundle attaches no bearer to any of them.
    *
    * This column read differently until recently, and the history is worth one sentence: every read
@@ -56,8 +56,8 @@ export const ROUTES: readonly AppRoute[] = [
   // would be refused, but because there is no question to ask until somebody types one. Sorting a
   // paste into a height, a hash or an address is work this bundle can do on its own.
   { path: '', label: 'Search', wildcard: false, public: true },
-  // `/chains` is the ten scopes as links (five chains from `indexer/src/chains.ts:41`, two
-  // networks from `:43`), and `/chains/:chain/:network` is the status page for one of them.
+  // `/chains` is the ten scopes as links (five chains from `indexer/src/chains.ts`, two
+  // networks from the same file), and `/chains/:chain/:network` is the status page for one of them.
   { path: 'chains', label: 'Chains', wildcard: true, public: true },
   // The four record pages. Each needs an identifier to mean anything, so each is reachable and
   // deliberately NOT offered in the navigation — `label: null`. Offering `/blocks` with no height
@@ -95,7 +95,7 @@ export const DEEP_LINK_PATH = '/blocks/ember/testnet/1'
  *
  * Every segment is encoded, and the scope is always written out as two segments. That is the same
  * discipline `src/lib/indexer.ts` applies to the API paths and for the same reason recorded in
- * `market/src/indexerclient.test.ts:251-259`: a helper that stands for `chain/network` hides a
+ * `market/src/indexerclient.test.ts`: a helper that stands for `chain/network` hides a
  * segment, and a path one segment short of the route it means can silently match a different one.
  */
 export const linkTo = {
@@ -125,16 +125,16 @@ export type Guess =
  * The rules are the SERVICE's, not this app's, so a guess that sends somebody to a page the
  * indexer would reject cannot happen quietly:
  *
- *   * a run of digits is a height — `indexer/src/server.ts:602` accepts `/^\d{1,15}$/` and answers
+ *   * a run of digits is a height — `indexer/src/server.ts` accepts `/^\d{1,15}$/` and answers
  *     **400 `bad_height`** for anything else;
- *   * `0x` + 64 hex is a hash — `EVM_HASH` at `indexer/src/server.ts:675`;
- *   * `0x` + 40 hex is an address — `EVM_ADDRESS` at `indexer/src/server.ts:674`.
+ *   * `0x` + 64 hex is a hash — `EVM_HASH` at `indexer/src/server.ts`;
+ *   * `0x` + 40 hex is an address — `EVM_ADDRESS` at `indexer/src/server.ts`.
  *
  * **Case is preserved.** The service lower-cases an EVM address itself
- * (`indexer/src/server.ts:685-692`) precisely so the EIP-55 checksum form every wallet and every
+ * (`indexer/src/server.ts`) precisely so the EIP-55 checksum form every wallet and every
  * explorer displays does not silently return an empty page; lower-casing here as well would work
  * but would put a second copy of that rule in a bundle, and the non-EVM families are
- * case-significant (`indexer/src/server.ts:694-700`). So the paste goes to the service as typed.
+ * case-significant (`indexer/src/server.ts`). So the paste goes to the service as typed.
  *
  * Anything else is `unknown` — an honest answer, and the search page says which three shapes it
  * knows rather than picking the nearest one and being wrong.

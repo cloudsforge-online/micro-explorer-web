@@ -8,9 +8,9 @@
   'network' — NOT 'explorer', and this was checked rather than assumed.
 
   tokens.css has no `[data-cf-product='explorer']` block. It has `[data-cf-product='network']` at
-  `ui/packages/ui/src/tokens.css:340`, carrying #d6412f — which is the exact accent the registry
-  gives this surface (`ui/packages/ui/src/surfaces.ts:444`), because an explorer is part of Forge
-  Network rather than a brand of its own (`brand/plan.ts:50-62`).
+  `ui/packages/ui/src/tokens.css`, carrying #d6412f — which is the exact accent the registry
+  gives this surface (`ui/packages/ui/src/surfaces.ts`), because an explorer is part of Forge
+  Network rather than a brand of its own (`brand/plan.ts`).
 
   Setting 'explorer' here would have fallen through to the company ember in complete silence.
   platform/apps/admin/index.html did exactly that for as long as nobody looked, and tokens.css says
@@ -47,9 +47,9 @@
       byte-identical — test/brand-chrome.test.ts compares the bytes in both directions.
 
       THERE IS NO MARK AND NO WORDMARK, AND THAT IS A DECISION. `explorer` carries `markId: null` in
-      the registry (`ui/packages/ui/src/surfaces.ts:446`) and brand/assets/explorer/ deliberately
+      the registry (`ui/packages/ui/src/surfaces.ts`) and brand/assets/explorer/ deliberately
       holds favicons and an og card only — the two artefacts a separate hostname needs, because
-      "a browser tab and a shared link inherit nothing" (`brand/plan.ts:50-62`). Nothing here links
+      "a browser tab and a shared link inherit nothing" (`brand/plan.ts`). Nothing here links
       a mark, nothing in src renders one, and the test asserts the absence so that generating one
       later is a decision rather than a reflex.
 

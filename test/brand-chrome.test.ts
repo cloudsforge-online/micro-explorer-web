@@ -8,9 +8,9 @@
  * ══════════════════════════════════════════════════════════════════════════════════════════════
  * ── THIS SURFACE HAS NO MARK, AND THAT IS A DECISION RATHER THAN A GAP ────────────────────────
  *
- * `explorer` carries `markId: null` in the registry (`ui/packages/ui/src/surfaces.ts:526`) and
+ * `explorer` carries `markId: null` in the registry (`ui/packages/ui/src/surfaces.ts`) and
  * `brand/assets/explorer/` deliberately holds favicons and an og card ONLY.
- * `brand/plan.ts:50-62` gives the reason: a status page is Beacon with its internals removed and
+ * `brand/plan.ts` gives the reason: a status page is Beacon with its internals removed and
  * an explorer is part of Forge Network, so "neither should claim a mark of its own" — but each is
  * served from its own subdomain, and "a browser tab and a shared link inherit nothing".
  *
@@ -96,7 +96,7 @@ test('THE BRAND SET REALLY CONTAINS NO MARK, so shipping none is following it ra
     marks,
     [],
     `brand/assets/explorer/ now holds ${marks.join(', ')}. explorer carries markId: null in the ` +
-      'registry (surfaces.ts:526) and brand/plan.ts:50-62 says why. Read both before wiring it.',
+      'registry (surfaces.ts) and brand/plan.ts says why. Read both before wiring it.',
   )
   // And it holds what a separate hostname does need.
   for (const needed of [...REQUIRED_ICONS, OG_CARD]) {
@@ -119,7 +119,7 @@ test('nothing in this bundle renders a mark or a wordmark of its own', () => {
 
 test('the og card is shipped, because this surface’s links are shared outward', () => {
   // A block explorer's links are pasted into chat and support tickets constantly, which is the
-  // exact argument brand/plan.ts:50-62 makes for giving a public child surface a card.
+  // exact argument brand/plan.ts makes for giving a public child surface a card.
   assert.ok(existsSync(at(`public/${OG_CARD}`)), `public/${OG_CARD} is missing`)
   assert.match(HTML, /property="og:image"/, 'index.html declares no og:image')
   assert.match(HTML, /property="og:title"/, 'index.html declares no og:title')
@@ -159,7 +159,7 @@ test('the shared card claims no finality', () => {
 test('index.html does NOT tell crawlers to stay away', () => {
   // The mirror of admin-web's assertion, and the reason this file differs from that one. A noindex
   // here would suppress the reference pages this surface exists to have read —
-  // docs/ecosystem/15-monetisation-model.md:50: "A public chain whose explorer is paywalled is not
+  // docs/ecosystem/15-monetisation-model.md: "A public chain whose explorer is paywalled is not
   // a public chain."
   assert.doesNotMatch(HTML, /name="robots"[^>]*noindex/)
 })
@@ -184,7 +184,7 @@ test('the accent selector this page names really exists, and "explorer" would NO
   //
   // A `data-cf-product` with no matching block is not an error anywhere: the page inherits the
   // company ember and nothing says so. platform/apps/admin/index.html did that for as long as
-  // nobody looked, and tokens.css says at :389-396 that "every key an app may set is declared"
+  // nobody looked, and tokens.css says that "every key an app may set is declared"
   // precisely to stop it.
   //
   // `explorer` is the key that is still missing one. Setting the obvious value here would have

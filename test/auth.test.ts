@@ -6,7 +6,7 @@
  *
  * Identity answers `{ user: {...}, session: {...}, organisations: [...] }` — the profile is NESTED
  * under `user`. The route is `GET /auth/me` in `identity/src/server.ts` and the body is built by
- * `toPublicUser` at `identity/src/users.ts:52-63`.
+ * `toPublicUser` at `identity/src/users.ts`.
  *
  * The estate got this wrong at the root: the web template declared `interface Me { handle?, roles? }`
  * and read both off the TOP level. Four frontends inherited it, `roles` was then always null,
@@ -16,11 +16,11 @@
  * On this surface the consequence is now a missing switcher entry and nothing more, which is a
  * change worth writing down. `roles` used to decide whether a standing notice told the reader the
  * chain index would refuse them, because it served an admin and nobody else. It serves everybody
- * (`authoriseRead`, `indexer/src/server.ts:773-782`), the notice is deleted, and `roles` now
+ * (`authoriseRead`, `indexer/src/server.ts`), the notice is deleted, and `roles` now
  * reaches the shared company bar and stops there.
  *
- * This file follows `micro-web-template/src/lib/auth.tsx:26` (the nested declaration) and `:98-99`
- * (the nested reads). It accepts ONLY the nested shape, and the template's own comment gives the
+ * This file follows `micro-web-template/src/lib/auth.tsx` — the nested declaration, and the two
+ * nested reads of `me?.user?.handle` and `me?.user?.roles`. It accepts ONLY the nested shape, and the template's own comment gives the
  * reason: "Tolerating the flat one as a fallback would encode a response identity does not send,
  * and the next reader would not be able to tell which is real." micro-mint-web keeps a flat
  * fallback for a rollback path; both were read, and the template's argument is the stronger one for
@@ -79,7 +79,7 @@ describe('reading the profile out of /auth/me', () => {
     // repository cannot see the move; the file is the durable half of the claim, and the shape
     // itself is asserted against the found handler below.
     assert.match(source, /identity\/src\/server\.ts/, 'the citation for the shape has gone')
-    assert.match(source, /identity\/src\/users\.ts:52-63/, 'the citation for the body has gone')
+    assert.match(source, /identity\/src\/users\.ts/, 'the citation for the body has gone')
   })
 })
 
@@ -89,7 +89,7 @@ describe('reading the profile out of /auth/me', () => {
  * There used to be a `servedByIndexer(reader)` predicate here — "would the chain index serve this
  * reader" — answered by the `admin` role, because `authorise` accepted a user principal only when
  * `isAdmin`. Its one caller was a standing notice that used it to choose between two wordings of
- * the same apology. The reads are anonymous now (`indexer/src/server.ts:773-782`), the notice is
+ * the same apology. The reads are anonymous now (`indexer/src/server.ts`), the notice is
  * deleted, and the predicate went with it.
  *
  * What replaces it is stronger than a test on a helper: NOTHING in this bundle consults the
@@ -135,19 +135,23 @@ describe('there is no gate, and the reason is read off the service', () => {
   })
 
   it('states the reason with a citation somebody can go and check', () => {
-    // The citation moved when the finding did. `:708-717` is `authoriseRead`, and the range is
-    // pinned against the real source in test/indexer.test.ts rather than only spelled here.
-    assert.match(read('src/lib/auth.tsx'), /indexer\/src\/server\.ts:792-801/)
+    // The citation names the FILE and the FUNCTION. It used to name a line range, and the pair of
+    // assertions here used to be "cites the current range" and "does not cite the stale one" —
+    // which is a check that has to be edited every time micro-indexer inserts a line, in a
+    // repository that never sees micro-indexer change. `authoriseRead` is pinned against the real
+    // source in test/indexer.test.ts rather than only spelled here.
+    assert.match(read('src/lib/auth.tsx'), /indexer\/src\/server\.ts/)
+    assert.match(read('src/lib/auth.tsx'), /authoriseRead/)
     assert.doesNotMatch(
       read('src/lib/auth.tsx'),
-      /indexer\/src\/server\.ts:698-716/,
-      'the old authorise range is back; it is now the doc comment, not the function',
+      /indexer\/src\/server\.ts:\d+/,
+      'a line number is back; cite the file and the symbol',
     )
   })
 })
 
 describe('the template this file follows really says what it is quoted as saying', () => {
-  // Content pins, not line pins. These two used to name :26 and :98-99 and pass silently whenever
+  // Content pins, not line pins. These two used to name two line numbers and pass silently whenever
   // micro-web-template was absent — a `return` inside `it()` reports as a pass, which is how a
   // suite comes to certify work it never did. `citeIfPresent` returns null for the missing
   // checkout so the test can `t.skip()`, and holds the file to `cite`'s one rule when it is there:
@@ -177,7 +181,7 @@ describe('identity really does nest it', () => {
   /**
    * Pinned by CONTENT, not by line number, and that is a correction rather than a relaxation.
    *
-   * This assertion used to name `identity/src/server.ts:891-903`. micro-identity's route table has
+   * This assertion used to name `identity/src/server.ts`. micro-identity's route table has
    * since moved twice in one afternoon — 891 → 954 → 1000 — and each move turned this repository's
    * CI red for a change in a repository it does not own, while saying only ":954 is: const body =
    * await readJson(ctx.req)", which tells a reader nothing about what to do.

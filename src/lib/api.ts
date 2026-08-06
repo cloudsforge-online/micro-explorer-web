@@ -11,7 +11,7 @@
  * ── One thing is different on THIS surface, and it is not a detail ─────────────────────────────
  *
  * **A session has nothing to do with reading the chain here.** Every `micro-indexer` route this
- * bundle calls is anonymous (`authoriseRead`, `indexer/src/server.ts:792-801`), and every one of
+ * bundle calls is anonymous (`authoriseRead`, `indexer/src/server.ts`), and every one of
  * them is issued with `auth: false` — see `publicRead` in `src/lib/indexer.ts`. The token
  * machinery below exists for exactly one caller, `/auth/me` on Nimbus, which puts the reader's
  * handle in the shared bar and nothing else.
@@ -118,8 +118,8 @@ export class ApiError extends Error {
  * Pull the sentence, the code and the request id out of a service's error body.
  *
  * The estate's envelope is **nested** — `{error: {code, message, requestId}}`, built by
- * `errorReply()` in every service (`hub-api/src/server.ts:589`, `identity/src/server.ts:1431`,
- * `service-template/src/server.ts:342`). This function used to read it as flat, assigning
+ * `errorReply()` in every service (`hub-api/src/server.ts`, `identity/src/server.ts`,
+ * `service-template/src/server.ts`). This function used to read it as flat, assigning
  * `data.error` — an object — straight to the displayed message. Every server-side failure in
  * every app cut from this template would have rendered as `[object Object]`, with the real
  * message, the code and the request id all present in the response and all discarded. The
@@ -173,7 +173,7 @@ export interface ErrorNotice {
    *
    * The template drops it, and dropping it is how `micro-market` and `micro-mint` each rendered a
    * router 404 as a fact about a chain. `micro-indexer` distinguishes "no such transaction" from
-   * "no such route" by code alone and says so at `indexer/src/server.ts:475-477` — the status is
+   * "no such route" by code alone and says so at `indexer/src/server.ts` — the status is
    * 404 either way.
    */
   code: string | undefined
@@ -288,8 +288,8 @@ export interface RequestOptions {
    * Extra request headers. **Nothing on this surface sets one, and that is a fact about the API.**
    *
    * `micro-indexer` reads exactly one request header on a domain route — `authorization`, in
-   * `authoriseRead` (`indexer/src/server.ts:793`) and `authorise` (`:808`) — plus `x-request-id`
-   * and `host` in the server frame (`indexer/src/server.ts:202`, `:198`). There is no
+   * `authoriseRead` (`indexer/src/server.ts`) and `authorise` — plus `x-request-id`
+   * and `host` in the server frame (`indexer/src/server.ts`). There is no
    * `Idempotency-Key` anywhere in that repository, and this bundle sends no request that would
    * need one: every route it calls is a GET, and the two POSTs the indexer serves are declined
    * (see `src/lib/indexer.ts`).
@@ -297,7 +297,7 @@ export interface RequestOptions {
    * The parameter is kept rather than deleted because it is the template's and because deleting it
    * would make the next writer add it back without the note. Copying `trade-web`'s client here
    * would have sent an `Idempotency-Key` the indexer never reads; copying this one to `trade` would
-   * fail every write with a **400** (`trade/src/server.ts:840-848`). Two clients that look alike
+   * fail every write with a **400** (`trade/src/server.ts`). Two clients that look alike
    * and are not interchangeable is exactly the shape this estate keeps shipping.
    *
    * `authorization` and `content-type` are set by this function AFTER these are spread, so a
@@ -393,7 +393,7 @@ async function request<T>(base: string, path: string, opts: RequestOptions = {})
     // a session they never had.
     //
     // This surface REPORTED that defect to micro-web-template, and the template has since fixed it
-    // (`web-template/src/lib/api.ts:344`, `if (res.status === 401 && auth && hasSession())`). This
+    // (`web-template/src/lib/api.ts`, `if (res.status === 401 && auth && hasSession())`). This
     // line is the template's, not a fork of it, and `test/api.test.ts` checks the two agree. Note
     // the guard is no longer what keeps the explorer quiet — the chain reads pass `auth: false` and
     // never reach this branch at all — but it is still right for `/auth/me`, and a client that is

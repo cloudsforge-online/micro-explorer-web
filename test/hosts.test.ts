@@ -8,8 +8,8 @@
  *
  * The second thing under test WAS the dev-port disagreement, asserted as a fact rather than fixed
  * with a literal: the registry said 8080 — this bundle's own container port — while `micro-indexer`
- * binds **4008** (`indexer/src/env.ts:364`, `indexer/.env.example:9`, `indexer/Dockerfile:91`).
- * micro-ui corrected the registry to 4008 (`ui/packages/ui/src/surfaces.ts:523`) and these pins
+ * binds **4008** (`indexer/src/env.ts`, `indexer/.env.example`, `indexer/Dockerfile:91`).
+ * micro-ui corrected the registry to 4008 (`ui/packages/ui/src/surfaces.ts`) and these pins
  * flipped to the agreeing direction; both halves stay pinned, so a NEW disagreement fails and
  * names the side that moved. See the header of src/lib/hosts.ts.
  */
@@ -62,9 +62,9 @@ describe('the surface this app is', () => {
     // Out of the switcher on purpose: an explorer is reached from Forge Network, not chosen from a
     // product list.
     assert.equal(surface.inSwitcher, false)
-    // The decision this repository is built around. `brand/plan.ts:50-62` gives the reason, and
+    // The decision this repository is built around. `brand/plan.ts` gives the reason, and
     // test/brand-chrome.test.ts asserts the asset set really matches it.
-    assert.equal(surface.markId, null, 'explorer has grown a mark; brand/plan.ts:50-62 says it has none')
+    assert.equal(surface.markId, null, 'explorer has grown a mark; brand/plan.ts says it has none')
   })
 
   it('names the accent block index.html actually sets, which is NOT its own key', () => {
@@ -120,7 +120,7 @@ describe('the dev port disagreement, recorded rather than papered over', () => {
   it('the registry now gives explorer the port the indexer binds', () => {
     // This said 8080 and was pinned as a DISAGREEMENT: 8080 is this bundle's own nginx container
     // port, so the registry told a frontend to ask itself for chain data. It has been corrected in
-    // micro-ui to 4008, which is what indexer/src/env.ts:364 binds, and the pin flipped with it.
+    // micro-ui to 4008, which is what indexer/src/env.ts binds, and the pin flipped with it.
     assert.equal(SURFACES.find((s) => s.key === 'explorer')?.devPort, 4008)
   })
 
@@ -163,7 +163,7 @@ describe('the dev port disagreement, recorded rather than papered over', () => {
   /**
    * EVERY NUMBER IN THE README'S TABLE, PINNED — including the two that are FIXED.
    *
-   * `micro-trade-web/src/lib/hosts.ts:16-17` names `admin` as "registry 3002" and `emberkin` as
+   * `micro-trade-web/src/lib/hosts.ts` names `admin` as "registry 3002" and `emberkin` as
    * "registry 3014" in the present tense. Both were corrected in micro-ui after that was written,
    * so copying the sentence forward would have carried a fixed defect into a new repository as a
    * live one — which is precisely the class of failure the estate keeps finding in its own
