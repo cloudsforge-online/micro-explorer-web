@@ -214,7 +214,11 @@ test('the accent selector this page names really exists, and "explorer" would NO
     readFileSync(surfaces, 'utf8'),
   )
   assert.ok(entry, 'the explorer entry has gone from the surface registry')
-  const network = /\[data-cf-product='network'\] \{\s*--cf-accent: (#[0-9a-fA-F]{6});/.exec(css)
+  // `--cf-accent-dark`, not `--cf-accent`. The design system split every accent per colour
+  // scheme when it gained a light palette, so the single name this used to read no longer
+  // exists in the block. The dark value is the brand accent — the light one is a darkened
+  // variant chosen for contrast on a light ground, and it is not what the registry records.
+  const network = /\[data-cf-product='network'\] \{\s*--cf-accent-dark: (#[0-9a-fA-F]{6});/.exec(css)
   assert.ok(network, "network's accent block has gone")
   assert.equal(
     entry[1],
