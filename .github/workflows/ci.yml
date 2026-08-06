@@ -520,17 +520,22 @@ jobs:
       #
       # The sweep prints which repositories it could NOT check. That line is surfaced here rather
       # than swallowed: a green run must never imply more than it measured.
-      - name: Every citation names a line that exists
+      - name: Every citation names a file that exists, and carries no line number
         working-directory: explorer-web
         run: |
           set -euo pipefail
           out=$(node --import tsx --test test/citations.test.ts 2>&1) || {
             printf '%s\n' "$out"
-            echo "::error::a citation in this repository names a line that does not exist"
+            echo "::error::a citation names a file that does not exist, or carries a line number"
             exit 1
           }
-          grep -q 'names a line INSIDE that file' <<<"$out" || {
+          grep -q 'names a file that exists' <<<"$out" || {
             echo "::error::the citation sweep did not run"
+            exit 1
+          }
+          # Required as well, so that deleting the no-line-numbers rule cannot leave this green.
+          grep -q 'carries no line numbers' <<<"$out" || {
+            echo "::error::the no-line-numbers rule is no longer being checked"
             exit 1
           }
           if printf '%s\n' "$out" | grep 'UNCHECKED:'; then
@@ -659,17 +664,30 @@ jobs:
           done
           echo "ok: every route renders for everybody, with no session and no bearer"
 
-      - name: Every route this client calls cites the line that serves it
+      - name: Every route this client calls goes through the one cited module
         # The rule test/indexer.test.ts enforces, restated so that deleting the test does not delete
-        # it. Every `/v1/...` path in the client must live in a file that also carries an
-        # `indexer/src/server.ts:<line>` citation, and no page may call one directly.
+        # it.
+        #
+        # It used to count `indexer/src/server.ts:<line>` citations and require at least nine. That
+        # made this the last place holding line numbers open, and it would have gone red on the
+        # commit that removed them — the count is zero now by design. A gate that fails when the
+        # thing it guards is fixed is a gate people delete.
+        #
+        # What the citations were a proxy for is the property restated here: every /v1 call lives in
+        # the one module where the surface is documented and cross-checked against the service, and
+        # no page reaches past it.
         run: |
           set -uo pipefail
-          cites=$(grep -coE 'indexer/src/server\.ts:[0-9]+' src/lib/indexer.ts || true)
-          if [ "${cites:-0}" -lt 9 ]; then
-            echo "::error::src/lib/indexer.ts carries ${cites:-0} route citations; the surface has nine"
+          routes=$(grep -oE "['\"\`](/v1/[^'\"\`]*)['\"\`]" src/lib/indexer.ts |
+            sed "s/[\`'\"]//g; s/\\\${[^}]*}/:id/g" | sort -u | wc -l | tr -d ' ')
+          if [ "${routes:-0}" -lt 7 ]; then
+            echo "::error::src/lib/indexer.ts calls ${routes:-0} distinct routes; it should call seven"
             exit 1
           fi
+          grep -q 'indexer/src/server.ts' src/lib/indexer.ts || {
+            echo "::error::src/lib/indexer.ts no longer says which service source its surface was read from"
+            exit 1
+          }
           if grep -rn --include='*.tsx' -E "api<[^>]*>\(\s*[\`'\"]/v1/" src; then
             echo "::error::a page calls /v1 directly; every call goes through src/lib/indexer.ts, where it is cited"
             exit 1
