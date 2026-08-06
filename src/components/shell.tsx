@@ -6,15 +6,15 @@
  *
  * ── There is no mark and no wordmark here, and that is a decision ──────────────────────────────
  *
- * `explorer` carries `markId: null` in the registry (`ui/packages/ui/src/surfaces.ts:526`), and
- * `brand/plan.ts:50-62` gives the reason: an explorer is part of Forge Network and "neither should
+ * `explorer` carries `markId: null` in the registry (`ui/packages/ui/src/surfaces.ts`), and
+ * `brand/plan.ts` gives the reason: an explorer is part of Forge Network and "neither should
  * claim a mark of its own". `brand/assets/explorer/` therefore holds favicons and an og card and
  * nothing else — the two artefacts a separate hostname needs, because "a browser tab and a shared
  * link inherit nothing". So no chrome in this file is designed around a mark, nothing here renders
  * one, and `test/brand-chrome.test.ts` asserts the absence in both directions so that generating
  * one later is a decision rather than a reflex.
  *
- * `inSwitcher` is false for this surface (`ui/packages/ui/src/surfaces.ts:528`), so the bar shows
+ * `inSwitcher` is false for this surface (`ui/packages/ui/src/surfaces.ts`), so the bar shows
  * the six products and the operator tools, and this app is not among them. That is correct: the
  * explorer is reached from Forge Network, not chosen from a product list.
  */
@@ -171,7 +171,7 @@ export function AppShell({ unregistered = false }: { unregistered?: boolean }) {
 
           It told every reader who was not an operator that the chain index would refuse them,
           because every `micro-indexer` read required `indexer:read` or an admin. That is no longer
-          true: the seven reads are anonymous (`indexer/src/server.ts:792-801`), this bundle sends
+          true: the seven reads are anonymous (`indexer/src/server.ts`), this bundle sends
           no bearer for one, and the panels below render. A banner apologising for a restriction
           nobody is under would be read as a live fact, which is exactly how a stale claim survives.
 
@@ -224,7 +224,7 @@ export function AppShell({ unregistered = false }: { unregistered?: boolean }) {
  *
  * `surfaceMeta('explorer', …)` — the REGISTRY key, not the accent key. `index.html` names
  * `data-cf-product="network"` because tokens.css has no `explorer` accent block to name
- * (`src/lib/hosts.ts:60`); the registry, by contrast, has a real `explorer` row with this
+ * (`src/lib/hosts.ts`); the registry, by contrast, has a real `explorer` row with this
  * surface's own name and blurb, and that is the row a title and a description come from. The two
  * keys are different questions and it would be a mistake to answer both with one constant.
  *

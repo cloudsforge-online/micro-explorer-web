@@ -138,8 +138,8 @@ describe('the stylesheet names only tokens that exist', () => {
        *
        * It was invented by micro-mint-web as `--cf-status-crit` and the warning against it was
        * true when it was written. @cloudsforge/ui 1.1 declares a real severity ramp —
-       * `--cf-critical`, `--cf-critical-text`, `--cf-critical-ink` (`tokens.css:360-362`) — and
-       * makes `--cf-success` and `--cf-danger` aliases of the TEXT steps of it (`:390-391`). So
+       * `--cf-critical`, `--cf-critical-text`, `--cf-critical-ink` (`tokens.css`) — and
+       * makes `--cf-success` and `--cf-danger` aliases of the TEXT steps of it. So
        * this test went red saying "this comment is wrong", which is exactly the job it was given:
        * an absence pinned in both directions fails when the absence ends.
        *

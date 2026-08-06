@@ -13,7 +13,7 @@ and no environment in the image — and it **states the head every confirmation 
 against, and never says that anything is final**.
 
 > **It holds no credential, it proxies nothing, and it sends no bearer.** Every `micro-indexer`
-> route it calls is anonymous (`authoriseRead`, `indexer/src/server.ts:792-801`), and every call is
+> route it calls is anonymous (`authoriseRead`, `indexer/src/server.ts`), and every call is
 > issued with `auth: false` — see `publicRead` in `src/lib/indexer.ts`. That is not tidiness: a
 > token that IS presented is still verified, so an expired one would turn a page that needs no
 > session into a 401 and the explorer would have made itself depend on a credential it never
@@ -44,18 +44,18 @@ rewrite.
 
 | Caller | On a READ | On a WRITE | Where |
 | --- | --- | --- | --- |
-| No token at all | **served** | `TokenError` → 401 | `authoriseRead`, `indexer/src/server.ts:794`; `authorise`, `:811` |
-| A **service** token carrying the scope | served | served | `requireScope`, `indexer/src/server.ts:797`, `:814` |
+| No token at all | **served** | `TokenError` → 401 | `authoriseRead`, `indexer/src/server.ts`; `authorise` |
+| A **service** token carrying the scope | served | served | `requireScope`, `indexer/src/server.ts` |
 | A **service** token without it | `ForbiddenError` → 403 | 403 | same lines |
-| A broken or expired token | 401 | 401 | `deps.verifier.principal`, `indexer/src/server.ts:795`, `:812` |
-| A **user** token | served | served only if `isAdmin` | `indexer/src/server.ts:819` |
+| A broken or expired token | 401 | 401 | `deps.verifier.principal`, `indexer/src/server.ts` |
+| A **user** token | served | served only if `isAdmin` | `indexer/src/server.ts` |
 
 The service's reasoning is in the doc comment above `authoriseRead`
-(`indexer/src/server.ts:763-791`): every read answers with a chain fact anyone can obtain by running
+(`indexer/src/server.ts`): every read answers with a chain fact anyone can obtain by running
 a Hearth node, and this service stores nothing linking an address to a person, so there was no
 privacy for the check to protect — "it was a lock on a public library". The estate's own position is
 one line: "A public chain whose explorer is paywalled is not a public chain"
-(`docs/ecosystem/15-monetisation-model.md:50`).
+(`docs/ecosystem/15-monetisation-model.md`).
 
 **Three things are still refused, and this app must not start depending on any of them.** `/watch`
 and `/backfills` still require `indexer:write`, because they spend provider calls and change what
@@ -105,17 +105,19 @@ from a real one by a machine as well as by a reader.
 
 `micro-indexer`, and nothing else except Nimbus for the session. Every route below was read out of
 `indexer/src/server.ts` one at a time; `test/indexer.test.ts` reads that file from a sibling checkout
-and fails if any line is off by one, and CI bends one citation and requires the suite to go red.
+and fails if any route is missing from it, and CI renames one to a route the service does not serve
+and requires the suite to go red. It finds each route by SEARCHING the service's `DOMAIN` table —
+never by line, because a line names a position in a file micro-indexer owns and edits freely.
 
-| Method | Path | Gate | Registered at | Handler |
+| Method | Path | Gate | Registered in | Handler |
 | --- | --- | --- | --- | --- |
-| `GET` | `/v1/chains/:chain/:network/status` | `authoriseRead` | `indexer/src/server.ts:164` | `:426` |
-| `GET` | `/v1/addresses/:chain/:network/:address/activity` | `authoriseRead` | `indexer/src/server.ts:165` | `:438` |
-| `GET` | `/v1/addresses/:chain/:network/:address/token-balances` | `authoriseRead` | `indexer/src/server.ts:166` | `:505` |
-| `GET` | `/v1/transactions/:chain/:network/:hash` | `authoriseRead` | `indexer/src/server.ts:167` | `:454` |
-| `GET` | `/v1/transactions/:chain/:network/:hash/confirmations` | `authoriseRead` | `indexer/src/server.ts:168` | `:479` |
-| `GET` | `/v1/tokens/:chain/:network/:address` | `authoriseRead` | `indexer/src/server.ts:169` | `:535` |
-| `GET` | `/v1/blocks/:chain/:network/:height` | `authoriseRead` | `indexer/src/server.ts:171` | `:598` |
+| `GET` | `/v1/chains/:chain/:network/status` | `authoriseRead` | `indexer/src/server.ts` | `chainStatus` |
+| `GET` | `/v1/addresses/:chain/:network/:address/activity` | `authoriseRead` | `indexer/src/server.ts` | `addressActivity` |
+| `GET` | `/v1/addresses/:chain/:network/:address/token-balances` | `authoriseRead` | `indexer/src/server.ts` | `addressTokenBalances` |
+| `GET` | `/v1/transactions/:chain/:network/:hash` | `authoriseRead` | `indexer/src/server.ts` | `transactionByHash` |
+| `GET` | `/v1/transactions/:chain/:network/:hash/confirmations` | `authoriseRead` | `indexer/src/server.ts` | `transactionConfirmations` |
+| `GET` | `/v1/tokens/:chain/:network/:address` | `authoriseRead` | `indexer/src/server.ts` | `tokenObservation` |
+| `GET` | `/v1/blocks/:chain/:network/:height` | `authoriseRead` | `indexer/src/server.ts` | `blockByHeight` |
 
 **Every one of them is unauthenticated, and the column records HOW rather than whether.** That
 distinction is the whole reason this table has a gate column instead of a tick: `micro-indexer` has
@@ -130,36 +132,36 @@ source, in both directions.
 
 | Method | Path | Why not | Registered at |
 | --- | --- | --- | --- |
-| `POST` | `/v1/watch/:chain/:network/:address` | `indexer:write`. Enlarging what a shared deployment indexes is not a browser's decision. | `indexer/src/server.ts:172` |
-| `POST` | `/v1/backfills/:chain/:network` | `indexer:write`. Enqueues a range walk, with a cost attached. | `indexer/src/server.ts:173` |
+| `POST` | `/v1/watch/:chain/:network/:address` | `indexer:write`. Enlarging what a shared deployment indexes is not a browser's decision. | `indexer/src/server.ts` |
+| `POST` | `/v1/backfills/:chain/:network` | `indexer:write`. Enqueues a range walk, with a cost attached. | `indexer/src/server.ts` |
 
-`/livez`, `/readyz` and `/metrics` (`indexer/src/server.ts:382`, `:392`, `:399`) are platform probes
+`/livez`, `/readyz` and `/metrics` (`indexer/src/server.ts`) are platform probes
 and are not wrapped.
 
 **Both spellings of every path are mounted** — `PREFIXES` is `['/v1', '']`
-(`indexer/src/server.ts:144`) and `buildRoutes` loops over it (`:374-378`). This client uses `/v1`
-throughout, because the bare form exists for the operator runbooks (`indexer/src/server.ts:140-143`).
+(`indexer/src/server.ts`) and `buildRoutes` loops over it. This client uses `/v1`
+throughout, because the bare form exists for the operator runbooks (`indexer/src/server.ts`).
 
 **No `Idempotency-Key` anywhere.** `micro-indexer` reads no such header, and this bundle makes no
 writes. Copying `micro-trade-web`'s client here would send one nothing reads; copying this one to
-`micro-trade` would fail every write with a 400 (`trade/src/server.ts:840-848`).
+`micro-trade` would fail every write with a 400 (`trade/src/server.ts`).
 
 ## Reorg honesty — the thing this surface exists to get right
 
-`micro-indexer` counts confirmations **two different ways**, and `indexer/src/reads.ts:18-30` scopes
+`micro-indexer` counts confirmations **two different ways**, and `indexer/src/reads.ts` scopes
 which is which. The two reads that were added as *decision inputs* count against the stored
 canonical **head** — "what this service has actually walked and would have detected a reorg in".
 The three *record* reads count against `checkpoint.tipHeight` — "what a provider last claimed".
 
-| Read | Counted against | Line |
+| Read | Counted against | Where |
 | --- | --- | --- |
-| `confirmation` | walked head (`record.headHeight`) | `indexer/src/reads.ts:451-454` |
-| `block` | claimed tip (`checkpoint.tipHeight`) | `indexer/src/reads.ts:579`, tip at `:568` |
-| `transaction` | claimed tip | `indexer/src/reads.ts:424-427`, tip at `:408` |
-| `activity` | claimed tip | `indexer/src/reads.ts:362-365`, tip at `:351` |
+| `confirmation` | walked head (`record.headHeight`) | `indexer/src/reads.ts` |
+| `block` | claimed tip (`checkpoint.tipHeight`) | `indexer/src/reads.ts` |
+| `transaction` | claimed tip | `indexer/src/reads.ts` |
+| `activity` | claimed tip | `indexer/src/reads.ts` |
 
 So **the same block honestly has two depths**, differing by the current lag, and a count against the
-claimed tip can exceed the number of blocks anybody here has looked at. `indexer/src/reads.ts:24-27`
+claimed tip can exceed the number of blocks anybody here has looked at. `indexer/src/reads.ts`
 says why that matters: "over-reporting depth credits early".
 
 This app therefore:
@@ -169,7 +171,7 @@ This app therefore:
 2. carries `NOT_FINAL` on every page that prints one (`test/render.test.ts` requires it), and the
    word "final" appears nowhere in the bundle;
 3. takes a **verdict** only from `/confirmations`, which is the one counted against the walked head,
-   and shows all four inputs `confirmed` was computed from (`indexer/src/reads.ts:472-477`) rather
+   and shows all four inputs `confirmed` was computed from (`indexer/src/reads.ts`) rather
    than only the answer;
 4. shows `indexedHeight` and `tipHeight` side by side on the chain page, and never one without the
    other.
@@ -177,22 +179,22 @@ This app therefore:
 Three more facts this surface renders rather than smooths over:
 
 - **A reverted transaction gathers depth exactly like one that worked**
-  (`indexer/src/reads.ts:467-471`), so the status sits beside the depth at the same weight.
+  (`indexer/src/reads.ts`), so the status sits beside the depth at the same weight.
 - **An orphaned movement is listed and badged**, never hidden. Hiding it would make a reorg
   invisible on the one screen where somebody is looking for their money.
 - **A withheld balance is a panel, not a dash.** `balances` is *absent* rather than zero when the
-  coverage cannot support it (`indexer/src/reads.ts:231-265`), and the reason is the value of the
+  coverage cannot support it (`indexer/src/reads.ts`), and the reason is the value of the
   answer — "a missing balance is missing, never zero, because zero is what evicts a token-gated
-  member" (`indexer/src/server.ts:502-503`).
+  member" (`indexer/src/server.ts`).
 
 A block page never shows an orphaned block: `blockAtHeight` filters `status <> 'orphaned'`
-(`indexer/src/store.ts:200`), so a retracted height is a 404 `block_not_found`
-(`indexer/src/server.ts:608`).
+(`indexer/src/store.ts`), so a retracted height is a 404 `block_not_found`
+(`indexer/src/server.ts`).
 
 ## The two meanings of 404
 
 `micro-indexer` distinguishes them **by the error CODE, never by the status**
-(`indexer/src/server.ts:468-478`). `micro-market` merged them and reported "the on-chain escrow is
+(`indexer/src/server.ts`). `micro-market` merged them and reported "the on-chain escrow is
 not confirmed yet" for every activation; `micro-mint` merged them the other way and rendered "not yet
 indexed" on every project page, permanently. Both passed all their own tests.
 
@@ -203,9 +205,9 @@ indexed" on every project page, permanently. Both passed all their own tests.
 | `bad_height`, `bad_hash`, `bad_address`, `bad_limit`, `bad_contract`, `bad_block` | malformed, **400** | `Missing`, saying what shape the service accepts |
 | `not_found` | **the router's** — this bundle asked for a path the service does not serve | `Missing`, worded as *our* defect and saying so |
 
-And the 501/503 family from `TokenStateUnavailableError` (`indexer/src/tokenstate.ts:136-157`) is
+And the 501/503 family from `TokenStateUnavailableError` (`indexer/src/tokenstate.ts`) is
 never rendered as "there is no token here". `family_not_supported` is 501 because waiting will not
-change it; the other four are 503 (`indexer/src/server.ts:304-325`).
+change it; the other four are 503 (`indexer/src/server.ts`).
 
 ## Configuration
 
@@ -219,19 +221,17 @@ CI both enforce it.
 The one build **argument** is `RELEASE`, stamped into a meta tag `src/lib/obs.ts` reads. It
 identifies the artefact; it does not configure it.
 
-### The devPort disagreement, reported and then fixed upstream
+### The devPort disagreement, reported rather than papered over
 
 | | Value | Read from |
 | --- | --- | --- |
-| Registry `explorer` devPort | **4008** | `ui/packages/ui/src/surfaces.ts:709` |
-| The port `micro-indexer` binds | **4008** | `indexer/src/env.ts:363`, `indexer/.env.example:9`, `indexer/Dockerfile:91` |
+| Registry `explorer` devPort | **8080** | `ui/packages/ui/src/surfaces.ts` |
+| The port `micro-indexer` binds | **4008** | `indexer/src/env.ts`, `indexer/.env.example`, `indexer/Dockerfile:91` |
 | This app's Vite dev server | 5189 | `vite.config.ts` — neither of the above |
 
-The registry **used to say 8080**, which is this bundle's own container port (nginx-unprivileged
-listens on it) and not a port any API answers on — so the registry told a frontend to ask itself for
-chain data. micro-ui corrected it to 4008 and the pins in `test/hosts.test.ts` flipped to the
-agreeing direction. The registry still has **no `indexer` entry at all** — `CloudsForgeHosts` is
-`Record<SurfaceKey, string>` (`ui/packages/ui/src/index.tsx:121`) — so `explorer` is the only key
+8080 is this bundle's own container port (nginx-unprivileged listens on it), not a port any API
+answers on. The registry has **no `indexer` entry at all** — `CloudsForgeHosts` is
+`Record<SurfaceKey, string>` (`ui/packages/ui/src/index.tsx`) — so `explorer` is the only key
 this bundle can ask for, and in production it is the right one because the SPA and the indexer share
 `explorer.<apex>`.
 
@@ -246,27 +246,26 @@ pnpm dev                                  # this bundle, on 5189
 
 ### How many of these there really are
 
-`micro-trade-web/src/lib/hosts.ts:16-17` lists three earlier instances in the present tense. **Two
+`micro-trade-web/src/lib/hosts.ts` lists three earlier instances in the present tense. **Two
 of the three have since been corrected upstream**, so that sentence was re-read rather than copied
 forward — carrying a fixed defect into a new repository as a live one is the same failure this
 estate keeps finding in its own documents.
 
 | Surface | Registry devPort | The service binds | |
 | --- | --- | --- | --- |
-| `admin` | 4014 (`ui/packages/ui/src/surfaces.ts:276`) | 4014 (`admin-api/src/env.ts:167`) | **agrees** — it said 3002 |
-| `emberkin` | 4100 (`ui/packages/ui/src/surfaces.ts:412`) | 4100 (`emberkin/src/env.ts:121`) | **agrees** — it said 3014 |
-| `create` | 4004 (`ui/packages/ui/src/surfaces.ts:219`) | 4000 (`mint/src/env.ts:251`) | still disagrees |
-| `trade` | 4006 (`ui/packages/ui/src/surfaces.ts:206`) | 4000 (`trade/src/env.ts:166`) | still disagrees |
-| `explorer` | 4008 (`ui/packages/ui/src/surfaces.ts:709`) | 4008 (`indexer/src/env.ts:363`) | **agrees** — it said 8080 |
+| `admin` | 4014 (`ui/packages/ui/src/surfaces.ts`) | 4014 (`admin-api/src/env.ts`) | **agrees** — it said 3002 |
+| `emberkin` | 4100 (`ui/packages/ui/src/surfaces.ts`) | 4100 (`emberkin/src/env.ts`) | **agrees** — it said 3014 |
+| `create` | 4004 (`ui/packages/ui/src/surfaces.ts`) | 4000 (`mint/src/env.ts`) | still disagrees |
+| `trade` | 4006 (`ui/packages/ui/src/surfaces.ts`) | 4000 (`trade/src/env.ts`) | still disagrees |
+| `explorer` | 8080 (`ui/packages/ui/src/surfaces.ts`) | 4008 (`indexer/src/env.ts`) | still disagrees |
 
-Two live, not seven, and not the three this section used to claim: `explorer` was corrected upstream
-after that sentence was written. `test/hosts.test.ts` pins every number in that table, so the day
-another is fixed this README fails rather than becoming the next stale inherited claim.
+Three live, not seven. `test/hosts.test.ts` pins every number in that table, so the day another is
+fixed this README fails rather than becoming the next stale inherited claim. Reported to micro-ui.
 
 ## Brand
 
-`explorer` carries **`markId: null`** in the registry (`ui/packages/ui/src/surfaces.ts:446`), and
-`brand/assets/explorer/` deliberately holds favicons and an og card only. `brand/plan.ts:50-62` gives
+`explorer` carries **`markId: null`** in the registry (`ui/packages/ui/src/surfaces.ts`), and
+`brand/assets/explorer/` deliberately holds favicons and an og card only. `brand/plan.ts` gives
 the reason: an explorer is part of Forge Network and "neither should claim a mark of its own" — but
 each is served from its own subdomain, and "a browser tab and a shared link inherit nothing".
 
@@ -277,9 +276,9 @@ decision rather than being copied in by reflex.
 
 `index.html` sets `data-cf-product="network"`, not `"explorer"`, and that was checked rather than
 assumed: **tokens.css has no `[data-cf-product='explorer']` block.** `network`'s is at
-`ui/packages/ui/src/tokens.css:340-345` and carries `#d6412f`, the exact accent the registry gives
+`ui/packages/ui/src/tokens.css` and carries `#d6412f`, the exact accent the registry gives
 this surface. Naming the obvious key would have fallen through to the company ember in silence,
-which is what `platform/apps/admin/index.html` did — and tokens.css says at `:389-396` that "every
+which is what `platform/apps/admin/index.html` did — and tokens.css says that "every
 key an app may set is declared" precisely to stop it. Reported to micro-ui; `explorer` is the key
 that is still missing a block.
 
@@ -320,17 +319,17 @@ docker run --rm -p 8080:8080 explorer-web
   rather than showing blocks to the public.
 - **Nothing is decoded.** Log topics and data are shown raw. An ABI is a fact a token registry would
   own, and no service in this estate owns one — `micro-market`'s `tokenFacts` is the same gap seen
-  from the other side (`market/src/indexerclient.test.ts:289-292`). A decoded transfer here would be
+  from the other side (`market/src/indexerclient.test.ts`). A decoded transfer here would be
   a guess wearing the clothes of a reading.
 - **There is no "latest blocks" list.** `micro-indexer` serves a block by height and nothing that
   enumerates them, so a list would have to be assembled by walking down from `indexedHeight` — N
   requests to render one screen. The chain page links to the head instead, and the block page has a
   previous/next stepper.
 - **A token's decimals are not applied to an activity amount.** The service returns
-  `amountFormatted: null` for a token on purpose (`indexer/src/reads.ts:374-381`), so raw units are
+  `amountFormatted: null` for a token on purpose (`indexer/src/reads.ts`), so raw units are
   shown and labelled as raw. Scaling them would need the same token registry.
 - **Non-EVM addresses and hashes are length-checked only**, upstream and here
-  (`indexer/src/server.ts:694-700`), so the search box cannot classify a Bitcoin, Solana or XRP
+  (`indexer/src/server.ts`), so the search box cannot classify a Bitcoin, Solana or XRP
   address by shape. It says so rather than guessing.
 - **The CI file is bespoke and should not be.** `check:` and `image:` exist only because
   `@cloudsforge/ui` is unpublished; the day it is published they are replaced by a call to

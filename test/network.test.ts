@@ -95,7 +95,7 @@ describe('the network is derived from the hostname', () => {
   })
 
   it('development is testnet, because testnet is the only scope a local stack indexes', () => {
-    // `indexer/.env.example:39` is `INDEXER_CHAINS=ember:testnet` and `DEEP_LINK_PATH` is
+    // `indexer/.env.example` is `INDEXER_CHAINS=ember:testnet` and `DEEP_LINK_PATH` is
     // `/blocks/ember/testnet/1`. Defaulting a developer to mainnet puts a dead scope on the
     // front page of every `pnpm dev`.
     for (const host of ['localhost', '127.0.0.1', 'macbook.local', '']) {
@@ -211,7 +211,7 @@ describe('the same bundle, mounted on both real hostnames', () => {
         )
         // Document order: the warning has to precede the denial, or it is an explanation of a
         // conclusion the reader has already drawn. The denial is the transaction page's own
-        // `transaction_not_found` screen (`src/pages/transaction.tsx:315-322`).
+        // `transaction_not_found` screen (`src/pages/transaction.tsx`).
         assert.match(s.text(), /has never seen that transaction/, 'the denial did not render')
         s.before(
           /names the testnet network/,

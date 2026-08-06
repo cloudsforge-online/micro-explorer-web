@@ -40,7 +40,7 @@ import { describe, it } from 'node:test'
 const at = (p: string) => fileURLToPath(new URL(`../${p}`, import.meta.url))
 const read = (p: string): string => readFileSync(at(p), 'utf8')
 
-/** The retired asset codes, as of `contracts/packages/chain/src/index.ts:58`. */
+/** The retired asset codes, as of `contracts/packages/chain/src/index.ts`. */
 const RETIRED = ['SHARD'] as const
 
 /** Where a micro-contracts checkout is, in the order CI and a developer's machine put it. */

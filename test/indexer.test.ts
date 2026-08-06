@@ -12,9 +12,9 @@
  * **1. WHOLE PATH SHAPES, NEVER PREFIXES AND NEVER A SEGMENT COUNT.** `micro-market`'s first guard
  * matched `path.startsWith(servedPrefix)` and judged **zero of two genuinely dead paths** as
  * unserved, because both began with a prefix the indexer really does serve
- * (`market/src/indexerclient.test.ts:229-239`). Its segment helper then collapsed
+ * (`market/src/indexerclient.test.ts`). Its segment helper then collapsed
  * `/transactions/${scope}/${hash}/confirmations` to five segments — exactly the shape of a
- * DIFFERENT route — and reported it fine (`market/src/indexerclient.test.ts:328-341`). The
+ * DIFFERENT route — and reported it fine (`market/src/indexerclient.test.ts`). The
  * corrected `matches` is copied from that file rather than invented a third time, and the mutation
  * test below re-runs its whole dead list.
  *
@@ -101,17 +101,15 @@ type Gate = 'authoriseRead' | 'authorise:READ_SCOPE' | 'authorise:WRITE_SCOPE'
 const SURFACE: ReadonlyArray<{
   method: string
   path: string
-  line: number
-  handler: number
   gate: Gate
 }> = [
-  { method: 'GET', path: '/chains/:chain/:network/status', line: 164, handler: 426, gate: 'authoriseRead' },
-  { method: 'GET', path: '/addresses/:chain/:network/:address/activity', line: 165, handler: 438, gate: 'authoriseRead' },
-  { method: 'GET', path: '/addresses/:chain/:network/:address/token-balances', line: 166, handler: 505, gate: 'authoriseRead' },
-  { method: 'GET', path: '/transactions/:chain/:network/:hash', line: 167, handler: 454, gate: 'authoriseRead' },
-  { method: 'GET', path: '/transactions/:chain/:network/:hash/confirmations', line: 168, handler: 479, gate: 'authoriseRead' },
-  { method: 'GET', path: '/tokens/:chain/:network/:address', line: 169, handler: 535, gate: 'authoriseRead' },
-  { method: 'GET', path: '/blocks/:chain/:network/:height', line: 171, handler: 598, gate: 'authoriseRead' },
+  { method: 'GET', path: '/chains/:chain/:network/status', gate: 'authoriseRead' },
+  { method: 'GET', path: '/addresses/:chain/:network/:address/activity', gate: 'authoriseRead' },
+  { method: 'GET', path: '/addresses/:chain/:network/:address/token-balances', gate: 'authoriseRead' },
+  { method: 'GET', path: '/transactions/:chain/:network/:hash', gate: 'authoriseRead' },
+  { method: 'GET', path: '/transactions/:chain/:network/:hash/confirmations', gate: 'authoriseRead' },
+  { method: 'GET', path: '/tokens/:chain/:network/:address', gate: 'authoriseRead' },
+  { method: 'GET', path: '/blocks/:chain/:network/:height', gate: 'authoriseRead' },
 ]
 
 /**
@@ -124,16 +122,12 @@ const SURFACE: ReadonlyArray<{
 const DECLINED: ReadonlyArray<{
   method: string
   path: string
-  line: number
-  handler: number
   gate: Gate
   why: string
 }> = [
   {
     method: 'GET',
     path: '/custody/:chain/:network/total',
-    line: 170,
-    handler: 582,
     gate: 'authorise:READ_SCOPE',
     why:
       'indexer:read, and the ONLY domain GET on this service that takes a token. It answers Σ ' +
@@ -141,23 +135,19 @@ const DECLINED: ReadonlyArray<{
       'reconciles its own books against. Every other read answers about a block, a hash or an ' +
       'address the caller already named, and naming it is what makes the answer public; this one ' +
       'answers about a SET only the platform knows, so serving it anonymously would publish the ' +
-      'treasury’s size to anyone who can reach the port (indexer/src/server.ts:556-581). A public ' +
+      'treasury’s size to anyone who can reach the port (indexer/src/server.ts). A public ' +
       'block explorer has no business holding a service token, and nothing on this surface has a ' +
       'use for the number.',
   },
   {
     method: 'POST',
     path: '/watch/:chain/:network/:address',
-    line: 172,
-    handler: 615,
     gate: 'authorise:WRITE_SCOPE',
     why: 'indexer:write — enlarging what a shared deployment indexes is not a browser decision',
   },
   {
     method: 'POST',
     path: '/backfills/:chain/:network',
-    line: 173,
-    handler: 637,
     gate: 'authorise:WRITE_SCOPE',
     why: 'indexer:write — enqueues a range walk, with a cost attached',
   },
@@ -170,7 +160,7 @@ const BOTH_SPELLINGS = [...SURFACE, ...DECLINED].flatMap((r) => [r.path, `/v1${r
  * Does a requested path match a served pattern? Same segment count, and every segment agrees.
  *
  * **Segment counts, never prefixes**, and copied verbatim from
- * `market/src/indexerclient.test.ts:241-249` rather than written again. The version that shipped
+ * `market/src/indexerclient.test.ts` rather than written again. The version that shipped
  * first there matched by prefix and passed both of the dead paths it existed to catch.
  */
 function matches(requested: string, pattern: string): boolean {
@@ -187,7 +177,7 @@ function matches(requested: string, pattern: string): boolean {
  * `${...}` is exactly ONE segment.
  *
  * So a helper standing for two — a `${scope}` holding `chain/network` — produces a path one segment
- * short of every pattern and is refused rather than guessed at. `market/src/indexerclient.test.ts:251-259`
+ * short of every pattern and is refused rather than guessed at. `market/src/indexerclient.test.ts`
  * records why that is deliberate: a checker that accepts a path whose shape it cannot see would
  * have passed the defect it exists to catch.
  */
@@ -231,17 +221,25 @@ describe('the client calls only routes it has cited', () => {
     ])
   })
 
-  it('cites a line for every route, in the doc comment as well as here', () => {
+  it('names every route in its own table, and says which file it read them from', () => {
+    // It used to require the client to repeat a LINE NUMBER for each route, which made three
+    // copies of one fact — the service, the tables here and the client's prose — of which two live
+    // in a repository that never sees micro-indexer change. The METHOD and the PATH are what this
+    // client actually depends on; the checks further down prove they are really served.
     for (const route of [...SURFACE, ...DECLINED]) {
       assert.ok(
-        client.includes(`indexer/src/server.ts:${route.line}`),
-        `${route.method} ${route.path} has no table citation in src/lib/indexer.ts`,
+        client.includes(route.path.startsWith('/v1') ? route.path : `/v1${route.path}`),
+        `${route.method} ${route.path} is not written down in src/lib/indexer.ts`,
       )
     }
+    assert.ok(
+      client.includes('indexer/src/server.ts'),
+      'src/lib/indexer.ts no longer says which service source its surface was read from',
+    )
   })
 
   it('writes every scope segment out, with no helper standing for chain/network', () => {
-    // The defect `market/src/indexerclient.test.ts:328-341` measures: a four-segment
+    // The defect `market/src/indexerclient.test.ts` measures: a four-segment
     // `/transactions/${scope}/${hash}/confirmations` matches `/transactions/:chain/:network/:hash`,
     // a DIFFERENT route, so a shape check reports it fine. Asserted positively: every path this
     // client sends carries `seg(scope.chain)/${seg(scope.network)` adjacently.
@@ -254,7 +252,7 @@ describe('the client calls only routes it has cited', () => {
 
 describe('the shape check can say no', () => {
   it('refuses every dead path this estate has actually shipped, including served PREFIXES', () => {
-    // Copied from `market/src/indexerclient.test.ts:309-319`, plus this repository's own
+    // Copied from `market/src/indexerclient.test.ts`, plus this repository's own
     // near-misses. The first entry is the exact path `micro-mint` shipped, and it BEGINS with
     // `/v1/chains/`, which the indexer really does serve. A prefix test calls it fine.
     const dead = [
@@ -292,7 +290,7 @@ describe('the shape check can say no', () => {
 
   it('the collapsed-scope form matches a DIFFERENT route, which is why it is banned', () => {
     // Measured rather than asserted in prose, because it is the strongest argument for writing
-    // every segment out. Same measurement as market/src/indexerclient.test.ts:336-345.
+    // every segment out. Same measurement as market/src/indexerclient.test.ts.
     assert.equal(
       BOTH_SPELLINGS.some((r) =>
         matches(placeholder('/v1/transactions/${scope}/${hash}/confirmations'), r),
@@ -333,7 +331,7 @@ describe('the cited lines are the lines that register the routes', () => {
     // the life of that service and, before this route, nothing in the estate could produce one —
     // it was supplied in exactly one place, a test. So every reconciliation compared the ledger
     // against the ledger and reported clean, on the one asset the check exists for. This route is
-    // the independent side, and `indexer/src/server.ts:556-581` is the whole argument for it.
+    // the independent side, and `indexer/src/server.ts` is the whole argument for it.
     //
     // (Stated without a `ledger/…:line` citation on purpose: this repository's CI does not check
     // micro-ledger out, and a citation nothing verifies is the thing `test/citations.test.ts`
@@ -344,14 +342,35 @@ describe('the cited lines are the lines that register the routes', () => {
     assert.equal(entries.length, 10, `expected the indexer's ten DOMAIN entries, found ${entries.length}`)
   })
 
+  /**
+   * The `DOMAIN` entry for a route, found by SEARCHING for it rather than by citing a line — and
+   * it yields the HANDLER NAME, which is what every gate check below is anchored on.
+   *
+   * The tables above used to carry two line numbers per route, one for the entry and one for the
+   * handler, and those line numbers are why this repository kept turning red for edits made in a
+   * different one: `micro-indexer` f9344de inserted the custody total and its header, everything
+   * below it moved, and every citation here pointed somewhere else while the routes themselves
+   * were untouched. Nothing runs this suite when that service changes, so it surfaced at a release.
+   *
+   * Searching costs one pass over a file already in memory and cannot go stale. Reading the
+   * handler NAME out of the entry is also strictly stronger than a second line number: it proves
+   * the route and the handler this bundle reasons about are the pair the service actually wired
+   * together, which two independently-maintained line numbers never did.
+   */
+  const domainEntry = (method: string, path: string): string | null => {
+    const re = new RegExp(`^\\s{2}\\['${method}',\\s*'${path.replace(/[/:]/g, '\\$&')}',\\s*(\\w+)\\]`)
+    for (const l of lines) {
+      const m = re.exec(l)
+      if (m?.[1]) return m[1]
+    }
+    return null
+  }
+
   for (const route of [...SURFACE, ...DECLINED]) {
-    it(`${route.method} ${route.path} is registered at indexer/src/server.ts:${route.line}`, () => {
-      // 1-indexed citation, 0-indexed array.
-      const line = lines[route.line - 1] ?? ''
-      assert.match(
-        line,
-        new RegExp(`\\['${route.method}',\\s*'${route.path.replace(/[/:]/g, '\\$&')}'`),
-        `indexer/src/server.ts:${route.line} is:\n  ${line.trim()}`,
+    it(`${route.method} ${route.path} is registered in indexer/src/server.ts`, () => {
+      assert.ok(
+        domainEntry(route.method, route.path) !== null,
+        `${route.method} ${route.path} is not in micro-indexer's DOMAIN table at all`,
       )
     })
   }
@@ -374,15 +393,17 @@ describe('the cited lines are the lines that register the routes', () => {
 
   it('BOTH spellings really are mounted, which is what makes the /v1 form safe', () => {
     // The client uses `/v1` throughout. That is only correct while PREFIXES contains it — and
-    // `market/src/indexerclient.test.ts:29-32` records that a previous reader believed the
+    // `market/src/indexerclient.test.ts` records that a previous reader believed the
     // opposite and wrote it down.
     assert.match(server, /const PREFIXES: readonly string\[\] = \['\/v1', ''\]/)
-    // Line 144, as the client cites.
-    assert.match(lines[143] ?? '', /\['\/v1', ''\]/, `indexer/src/server.ts:144 is: ${lines[143]}`)
-    // And the loop that mounts them, at :416-418.
-    assert.match(lines[415] ?? '', /for \(const prefix of PREFIXES\)/)
-    assert.match(lines[416] ?? '', /for \(const \[method, path, handler\] of DOMAIN\)/)
-    assert.match(lines[417] ?? '', /built\.push\(route\(method, `\$\{prefix\}\$\{path\}`, handler\)\)/)
+    // And the loop that mounts them — the three statements found and read IN ORDER rather than at
+    // lines 416, 417 and 418. Consecutive is the property that matters: a `for` over PREFIXES that
+    // did not contain the push would mount nothing, while all three lines still existed somewhere
+    // in the file and three independent line pins would all pass.
+    const at = lines.findIndex((l) => /for \(const prefix of PREFIXES\)/.test(l))
+    assert.ok(at >= 0, 'buildRoutes no longer loops over PREFIXES; the /v1 form is not mounted')
+    assert.match(lines[at + 1] ?? '', /for \(const \[method, path, handler\] of DOMAIN\)/)
+    assert.match(lines[at + 2] ?? '', /built\.push\(route\(method, `\$\{prefix\}\$\{path\}`, handler\)\)/)
   })
 
   /**
@@ -394,8 +415,11 @@ describe('the cited lines are the lines that register the routes', () => {
    * the next handler's `authorise` call as this one's — which is exactly the failure
    * `micro-trade-web` documents its own `bodyOf` guarding against.
    */
-  const bodyOf = (line: number): string => {
-    const start = line - 1
+  const bodyOf = (method: string, path: string): string => {
+    const handler = domainEntry(method, path)
+    assert.ok(handler, `${method} ${path} is not in micro-indexer's DOMAIN table`)
+    const start = lines.findIndex((l) => new RegExp(`^async function ${handler}\\(`).test(l))
+    assert.ok(start >= 0, `${handler} is declared nowhere in indexer/src/server.ts`)
     let end = lines.length
     for (let i = start + 1; i < lines.length; i++) {
       if (/^async function /.test(lines[i] ?? '') || /^\/\* -+ parameters/.test(lines[i] ?? '')) {
@@ -408,11 +432,11 @@ describe('the cited lines are the lines that register the routes', () => {
 
   it('every route this app calls opens with the gate this app believes, and no other', () => {
     for (const route of [...SURFACE, ...DECLINED]) {
-      const body = bodyOf(route.handler)
+      const body = bodyOf(route.method, route.path)
       assert.match(
         body,
         /^async function \w+\(ctx: RequestContext, deps: ServerDeps\)/,
-        `indexer/src/server.ts:${route.handler} is not a handler declaration: ${lines[route.handler - 1]}`,
+        `${route.method} ${route.path}: what DOMAIN names as its handler is not a handler declaration`,
       )
       if (route.gate === 'authoriseRead') {
         assert.match(
@@ -466,7 +490,7 @@ describe('the cited lines are the lines that register the routes', () => {
     assert.equal(reads.length, 7, 'the surface table no longer covers all seven read routes')
     for (const route of reads) {
       assert.match(
-        bodyOf(route.handler),
+        bodyOf(route.method, route.path),
         /await authoriseRead\(ctx, deps\)/,
         `${route.method} ${route.path} no longer reaches authoriseRead — a public explorer cannot read it`,
       )
@@ -497,7 +521,7 @@ describe('the cited lines are the lines that register the routes', () => {
     // would have caught it. That line is why the third bucket is named here rather than folded in.
     const handlers = [...SURFACE, ...DECLINED]
     assert.equal(handlers.length, 10, 'the tables no longer cover all ten domain routes')
-    const bodies = new Map(handlers.map((r) => [r, bodyOf(r.handler)] as const))
+    const bodies = new Map(handlers.map((r) => [r, bodyOf(r.method, r.path)] as const))
     const anonymous = handlers.filter((r) => /await authoriseRead\(ctx, deps\)/.test(bodies.get(r) ?? ''))
     const readScoped = handlers.filter((r) => /await authorise\(ctx, deps, READ_SCOPE\)/.test(bodies.get(r) ?? ''))
     const gated = handlers.filter((r) => /await authorise\(ctx, deps, WRITE_SCOPE\)/.test(bodies.get(r) ?? ''))
@@ -562,26 +586,32 @@ describe('the cited lines are the lines that register the routes', () => {
     assert.match(client, /indexer:write/, 'the client no longer names the scope the writes take')
   })
 
-  it('the three cited line ranges are the functions this repository says they are', () => {
-    // `:792-801`, `:803-821` and `:763-791` appear verbatim across src/lib/indexer.ts,
-    // src/lib/auth.tsx, src/app.tsx and four more files, where a reader is invited to go and check
-    // them. A range that has drifted onto the wrong function is a citation that reads as verified.
+  it('the two authorisation helpers are the functions this repository says they are', () => {
+    // These two used to be cited as `:792-801` and `:763-791`, and those ranges appeared verbatim
+    // across src/lib/indexer.ts, src/lib/auth.tsx, src/app.tsx and four more files, inviting a
+    // reader to go and check them.
     //
-    // They were `:727-736`, `:738-756` and `:698-726` until `micro-indexer` f9344de inserted the
-    // custody total and its header above them. Every one of those citations still named a line
-    // that EXISTED, which is why the repository-wide existence sweep stayed green and only this
-    // check — which reads what is AT the line — could tell.
-    assert.match(lines[791] ?? '', /^async function authoriseRead\(/, `:792 is: ${lines[791]}`)
-    assert.match(lines[800] ?? '', /^\}/, `:801 is: ${lines[800]}`)
-    assert.match(lines[802] ?? '', /^async function authorise\(/, `:803 is: ${lines[802]}`)
-    assert.match(lines[820] ?? '', /^\}/, `:821 is: ${lines[820]}`)
-    // …and the doc comment the reasoning lives in.
-    assert.match(lines[762] ?? '', /^\/\*\*/, `:763 is: ${lines[762]}`)
-    assert.match(lines[790] ?? '', /^\s+\*\//, `:791 is: ${lines[790]}`)
-    assert.match(
-      lines.slice(762, 791).join('\n'),
-      /Reads are ANONYMOUS, because what they return is already public/,
-      'the doc comment at :763-791 is no longer the one explaining the anonymous reads',
+    // They were `:727-736` and `:698-726` before `micro-indexer` f9344de inserted the custody
+    // total and its header above them. Every one of those citations still named a line that
+    // EXISTED, so the repository-wide existence sweep stayed green and only this check could tell
+    // — and it could only tell AFTER somebody happened to run it, which for a sibling service is
+    // during a release. That is the entire argument for citing the FILE and the SYMBOL: the symbol
+    // moves with the code, so there is nothing left to go stale.
+    const readAt = lines.findIndex((l) => /^async function authoriseRead\(/.test(l))
+    assert.ok(readAt >= 0, 'authoriseRead is gone from indexer/src/server.ts')
+    const gateAt = lines.findIndex((l) => /^async function authorise\(/.test(l))
+    assert.ok(gateAt >= 0, 'authorise is gone from indexer/src/server.ts')
+    assert.ok(gateAt > readAt, 'authoriseRead no longer precedes authorise; the citations describe an order')
+    // …and the doc comment the reasoning lives in, which must sit above the ANONYMOUS one rather
+    // than merely somewhere in the file. `lines.slice(0, readAt)` is everything before it, so the
+    // last occurrence is the header of that function.
+    const above = lines.slice(0, readAt).join('\n')
+    const sentence = /Reads are ANONYMOUS, because what they return is already public/
+    assert.match(above, sentence, 'the doc comment explaining the anonymous reads is no longer above authoriseRead')
+    assert.doesNotMatch(
+      lines.slice(readAt).join('\n'),
+      sentence,
+      'that explanation now appears below authoriseRead too; the citation would be ambiguous',
     )
   })
 
@@ -635,27 +665,43 @@ describe('the cited lines are the lines that register the routes', () => {
 
   it('confirmation counts against the WALKED HEAD, as CONFIRMATIONS_AGAINST claims', () => {
     assert.equal(CONFIRMATIONS_AGAINST.confirmations, 'walked-head')
-    // `indexer/src/reads.ts:461-464`.
-    const cited = readsLines.slice(451, 455).join('\n')
-    assert.match(cited, /confirmationsAt\(record\.headHeight, record\.blockHeight\)/, cited)
+    // Searched for, not sliced out of lines 452 to 455. The claim is that this expression is in
+    // `indexer/src/reads.ts` EXACTLY ONCE — one read counts against the walked head — and a slice
+    // could only ever say it was at a position micro-indexer is free to change.
+    const walked = [...reads.matchAll(/confirmationsAt\(record\.headHeight, record\.blockHeight\)/g)]
+    assert.equal(walked.length, 1, `expected one count against the walked head, found ${walked.length}`)
   })
 
   it('block, transaction and activity count against the CLAIMED TIP, as it claims', () => {
     assert.equal(CONFIRMATIONS_AGAINST.block, 'claimed-tip')
     assert.equal(CONFIRMATIONS_AGAINST.transaction, 'claimed-tip')
     assert.equal(CONFIRMATIONS_AGAINST.activity, 'claimed-tip')
-    // Each cited line, individually — this is the claim every "vs claimed tip" label rests on.
-    assert.match(readsLines[578] ?? '', /confirmationsAt\(tipHeight, record\.height\)/, `:579 is: ${readsLines[578]}`)
-    assert.match(readsLines[426] ?? '', /confirmationsAt\(tipHeight, record\.blockHeight\)/, `:427 is: ${readsLines[426]}`)
-    assert.match(readsLines[364] ?? '', /confirmationsAt\(tipHeight, item\.blockHeight\)/, `:365 is: ${readsLines[364]}`)
-    // …and that `tipHeight` in each really is the checkpoint's, not the head's.
-    assert.match(readsLines[350] ?? '', /checkpoint\?\.tipHeight \?\? null/, `:351 is: ${readsLines[350]}`)
-    assert.match(readsLines[407] ?? '', /checkpoint\?\.tipHeight \?\? null/, `:408 is: ${readsLines[407]}`)
-    assert.match(readsLines[567] ?? '', /checkpoint\?\.tipHeight \?\? null/, `:568 is: ${readsLines[567]}`)
+    // Each of the three, found rather than cited — this is the claim every "vs claimed tip" label
+    // on this surface rests on. The three used to be lines 579, 427 and 365 of a file micro-indexer
+    // edits freely; when it inserted the custody total, all three moved and this went red for a
+    // change that touched none of them.
+    for (const expr of [
+      /confirmationsAt\(tipHeight, record\.height\)/,
+      /confirmationsAt\(tipHeight, record\.blockHeight\)/,
+      /confirmationsAt\(tipHeight, item\.blockHeight\)/,
+    ]) {
+      assert.match(reads, expr, `indexer/src/reads.ts no longer counts against the claimed tip with ${expr.source}`)
+    }
+    // …and that `tipHeight` really is the checkpoint's everywhere, not the head's. Asserted over
+    // EVERY assignment in the file rather than at three cited lines: a read re-pointed at the
+    // walked head would make the "vs claimed tip" label on that panel a lie, and a line pin can
+    // only ever notice it at the three positions somebody happened to write down.
+    const assignments = [...reads.matchAll(/const tipHeight = ([^\n]+)/g)].map((m) => (m[1] ?? '').trim())
+    assert.ok(assignments.length >= 3, `expected at least three tipHeight reads, found ${assignments.length}`)
+    assert.deepEqual(
+      [...new Set(assignments)],
+      ['checkpoint?.tipHeight ?? null'],
+      'a tipHeight in indexer/src/reads.ts no longer comes from the checkpoint',
+    )
   })
 
   it('the rule that scopes the two is where this repository cites it', () => {
-    // `indexer/src/reads.ts:18-30`, quoted on this surface and in four comments here.
+    // `indexer/src/reads.ts`, quoted on this surface and in four comments here.
     const cited = readsLines.slice(17, 30).join('\n')
     assert.match(cited, /Confirmations are counted against the stored canonical HEAD/)
     assert.match(cited, /never against/)
@@ -684,8 +730,6 @@ describe('the cited lines are the lines that register the routes', () => {
     assert.ok(declared, 'CHAIN_IDS is gone from indexer/src/chains.ts')
     const upstream = (declared[1] ?? '').split(',').map((s) => s.trim().replace(/'/g, '')).filter(Boolean)
     assert.deepEqual([...CHAIN_IDS], upstream)
-    // Cited at :52.
-    assert.match(chains.split('\n')[51] ?? '', /CHAIN_IDS/)
   })
 
   it('the two networks are the two the service runs', () => {
@@ -693,7 +737,6 @@ describe('the cited lines are the lines that register the routes', () => {
     assert.ok(declared, 'NETWORKS is gone from indexer/src/chains.ts')
     const upstream = (declared[1] ?? '').split(',').map((s) => s.trim().replace(/'/g, '')).filter(Boolean)
     assert.deepEqual([...NETWORKS], upstream)
-    assert.match(chains.split('\n')[53] ?? '', /NETWORKS/)
   })
 
   it('BEING ON THE CHAIN LIST IS NOT BEING INDEXED, and the client must not conflate them', () => {
@@ -711,7 +754,7 @@ describe('the cited lines are the lines that register the routes', () => {
   })
 
   it('shard is still not a chain slug upstream', () => {
-    // SHARD is RETIRED (`contracts/packages/chain/src/index.ts:58`), not merely absent from the
+    // SHARD is RETIRED (`contracts/packages/chain/src/index.ts`), not merely absent from the
     // chain list, and this bundle no longer explains its absence anywhere a reader can see —
     // `test/retired-assets.test.ts` is what keeps it out. This assertion stays only as the
     // upstream half: an indexer that started accepting the slug would be advertising an endpoint
@@ -723,9 +766,11 @@ describe('the cited lines are the lines that register the routes', () => {
     // Both halves now AGREE: micro-ui corrected the registry's `explorer` devPort from 8080 to
     // 4008, which is the number this file reads out of the service. test/hosts.test.ts pins the
     // registry side, so whichever moves first fails and names the other.
+    // ONE assertion, on the expression. There used to be a second one requiring 4008 to appear at
+    // line 364 of `indexer/src/env.ts`, and it is the reason this suite was red: micro-indexer
+    // moved the line to 363, the default was unchanged, and nothing in this repository was wrong.
+    // A line number is a claim about a position in a file this repository does not own; the
+    // expression is the claim actually worth making.
     assert.match(env, /port\(source, 'PORT', 4008\)/, 'the indexer no longer defaults PORT to 4008')
-    // 1-indexed citation, 0-indexed array — the same convention as the route pins above. The
-    // secrets-guard work in micro-indexer moved this line from 364 to 363.
-    assert.match(env.split('\n')[362] ?? '', /4008/, `indexer/src/env.ts:363 is: ${env.split('\n')[362]}`)
   })
 })

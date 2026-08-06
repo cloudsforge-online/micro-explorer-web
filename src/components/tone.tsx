@@ -36,7 +36,7 @@ export function Fact({ label, children }: { label: string; children: ReactNode }
  * A value that may be absent, where absence is a real answer rather than a rendering problem.
  *
  * `missing` is the SENTENCE, not a dash. `confirmations` is null "whenever there is nothing honest
- * to count: pending, dropped, or reorged away" (`indexer/src/reads.ts:209`), and rendering that as
+ * to count: pending, dropped, or reorged away" (`indexer/src/reads.ts`), and rendering that as
  * `0` would be a claim about depth that the service explicitly declined to make.
  */
 export function Maybe({ value, missing }: { value: string | null; missing: string }) {
@@ -61,16 +61,16 @@ export function Hex({ value, short = false }: { value: string; short?: boolean }
  * ══════════════════════════════════════════════════════════════════════════════════════════════
  * THE COMPONENT THIS WHOLE SURFACE TURNS ON.
  *
- * `micro-indexer` counts confirmations two different ways and `indexer/src/reads.ts:18-30` scopes
+ * `micro-indexer` counts confirmations two different ways and `indexer/src/reads.ts` scopes
  * which is which. `confirmation` counts against the stored canonical HEAD — "what this service has
  * actually walked and would have detected a reorg in". `block`, `transaction` and `activity` count
  * against `checkpoint.tipHeight` — "what a provider last claimed" — at
- * `indexer/src/reads.ts:579`, `:415-418` and `:353-356`. The same block therefore has two honest
+ * `indexer/src/reads.ts`, in each of the three read paths. The same block therefore has two honest
  * depths, and the second can exceed the first by the current lag.
  *
  * So a number on its own is not a fact on this surface. Every count rendered by this app goes
  * through here and carries `head`, and the word "final" appears nowhere in this bundle: a
- * confirmation depth is a probability, and `indexer/src/reads.ts:12-13` says the reason a depth is
+ * confirmation depth is a probability, and `indexer/src/reads.ts` says the reason a depth is
  * computed at read time rather than stored is that "a crediting decision taken against a stale one
  * is the failure the depth exists to prevent".
  * ══════════════════════════════════════════════════════════════════════════════════════════════

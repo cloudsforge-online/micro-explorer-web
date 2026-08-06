@@ -3,7 +3,7 @@
  *
  * The one that matters most is the third: a confirmation count on this API is measured against one
  * of two different heads, and `depthWording` is where that becomes a sentence a reader can act on.
- * `micro-indexer` scopes the split at `indexer/src/reads.ts:18-30`, and `test/indexer.test.ts`
+ * `micro-indexer` scopes the split at `indexer/src/reads.ts`, and `test/indexer.test.ts`
  * checks the split against the real source. This file checks the words.
  */
 import assert from 'node:assert/strict'
@@ -35,7 +35,7 @@ describe('amounts are never divided, and never parsed', () => {
 
   it('survives a value no JavaScript number could hold', () => {
     // A uint256 maximum. `Number()` on this loses everything below the 16th digit, which is why
-    // the service puts it on the wire as a string (`indexer/src/reads.ts:8-10`).
+    // the service puts it on the wire as a string (`indexer/src/reads.ts`).
     const max = '115792089237316195423570985008687907853269984665640564039457584007913129639935'
     assert.equal(units(max).replace(/ /g, ''), max)
   })
@@ -159,7 +159,7 @@ describe('a chain state is a word, a glyph and only then a tone', () => {
 describe('a reverted transaction is not a pending one', () => {
   it('reads as bad rather than as something to wait for', () => {
     // "An EVM transaction that reverted is mined, sits in a block, and accumulates depth exactly
-    // like one that worked" (`indexer/src/reads.ts:467-471`). A reader who takes depth alone as
+    // like one that worked" (`indexer/src/reads.ts`). A reader who takes depth alone as
     // success reads the wrong answer, so the word has to carry it.
     const tone = transactionTone('failed')
     assert.equal(tone.word, 'Reverted')
@@ -185,13 +185,13 @@ describe('a reverted transaction is not a pending one', () => {
 describe('a CONFLICTED movement is not an orphaned one', () => {
   /*
    * The distinction this surface got wrong. `activityTone` was typed `'included' | 'orphaned'`
-   * and cited `indexer/src/reads.ts:118` for the claim that those were the only two — a sentence
+   * and cited `indexer/src/reads.ts` for the claim that those were the only two — a sentence
    * that was true when it was written. The service then added `conflicted` to the union and to
-   * the CHECK constraint behind it (`indexer/src/migrations.ts:453-455`), and because the old
+   * the CHECK constraint behind it (`indexer/src/migrations.ts`), and because the old
    * function was a ternary on `included`, every conflicted movement fell through to the orphaned
    * branch and was labelled "Orphaned" on the address page.
    *
-   * That is not a cosmetic mislabel. `indexer/src/reads.ts:118-123` states the consequence: an
+   * That is not a cosmetic mislabel. `indexer/src/reads.ts` states the consequence: an
    * orphaned movement may be re-mined, a conflicted one cannot, because the coins behind it are
    * already spent by a different canonical transaction. A reader told "Orphaned" waits.
    */
@@ -228,7 +228,7 @@ describe('a CONFLICTED movement is not an orphaned one', () => {
 
 describe('a withheld balance explains itself in a sentence', () => {
   it('covers all four reasons the service can give', () => {
-    // `indexer/src/reads.ts:264`. Each is a different action for the reader, which is why none of
+    // `indexer/src/reads.ts`. Each is a different action for the reader, which is why none of
     // them is rendered as a code alone.
     for (const reason of ['nothing_indexed', 'coverage_incomplete', 'chain_halted', 'negative']) {
       const sentence = unavailableReason(reason)
@@ -251,7 +251,7 @@ describe('a withheld balance explains itself in a sentence', () => {
 
 describe('a token fault is never "there is no token here"', () => {
   it('covers all five faults', () => {
-    // `indexer/src/tokenstate.ts:136-141`. The split between these and `token_not_found` is the
+    // `indexer/src/tokenstate.ts`. The split between these and `token_not_found` is the
     // defect micro-market and micro-mint each spent an outage on.
     for (const code of [
       'family_not_supported',

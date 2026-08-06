@@ -9,9 +9,9 @@
  *
  * There is no `ProtectedRoute` in this repository, and there must not be one. Every
  * `micro-indexer` route this app calls is anonymous: `authoriseRead` returns `null` for a caller
- * with no token and lets the handler run (`indexer/src/server.ts:792-801`). A gate here would
+ * with no token and lets the handler run (`indexer/src/server.ts`). A gate here would
  * demand a session for facts anyone can read off a public chain —
- * `docs/ecosystem/15-monetisation-model.md:50`: "A public chain whose explorer is paywalled is not
+ * `docs/ecosystem/15-monetisation-model.md`: "A public chain whose explorer is paywalled is not
  * a public chain."
  *
  * So every route renders for everybody, every panel calls the real route with no bearer attached,
@@ -20,7 +20,7 @@
  *
  * ── The scope is two path segments, everywhere ────────────────────────────────────────────────
  *
- * `:chain/:network`, never a combined segment. `market/src/indexerclient.test.ts:328-341` measures
+ * `:chain/:network`, never a combined segment. `market/src/indexerclient.test.ts` measures
  * why: a helper standing for both collapses a path by one segment, and a path one segment short of
  * the route it means can silently match a DIFFERENT route. The same discipline applies to this
  * app's own addresses so that `/tx/ember/testnet/0x…` cannot be confused with anything else.

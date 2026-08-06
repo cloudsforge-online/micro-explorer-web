@@ -12,8 +12,8 @@ the stub API **on one origin**.
 ## The origin trap — read this first
 
 `cloudsforgeHosts()` resolves `explorer` to `http://localhost:8080` in development
-(`ui/packages/ui/src/surfaces.ts:443`), and `resolveApiBase` returns `''` only when the page origin
-matches (`src/lib/hosts.ts:108-120`).
+(`ui/packages/ui/src/surfaces.ts`), and `resolveApiBase` returns `''` only when the page origin
+matches (`src/lib/hosts.ts`).
 
 * Serve on **port 8080**, and load the page from **`http://localhost:8080`**, not `127.0.0.1`.
 * `127.0.0.1` is a *different origin* from `localhost`. Every `/v1` call then goes cross-origin,

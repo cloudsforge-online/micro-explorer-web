@@ -8,13 +8,13 @@
   'network' — NOT 'explorer', and this was checked rather than assumed.
 
   tokens.css has no `[data-cf-product='explorer']` block. It has `[data-cf-product='network']` at
-  `ui/packages/ui/src/tokens.css:340`, carrying #d6412f — which is the exact accent the registry
-  gives this surface (`ui/packages/ui/src/surfaces.ts:444`), because an explorer is part of Forge
-  Network rather than a brand of its own (`brand/plan.ts:50-62`).
+  `ui/packages/ui/src/tokens.css`, carrying #d6412f — which is the exact accent the registry
+  gives this surface (`ui/packages/ui/src/surfaces.ts`), because an explorer is part of Forge
+  Network rather than a brand of its own (`brand/plan.ts`).
 
   Setting 'explorer' here would have fallen through to the company ember in complete silence.
   platform/apps/admin/index.html did exactly that for as long as nobody looked, and tokens.css says
-  so at `:389-396` — "a silent fallthrough is a latent bug, so every key an app may set is
+  so — "a silent fallthrough is a latent bug, so every key an app may set is
   declared". `explorer` is the key that is still missing one; reported to micro-ui, and
   test/brand-chrome.test.ts asserts that the selector this file names really exists.
 
@@ -27,7 +27,7 @@
 
   It does NOT change which accent block applies. `network` above still names
   `[data-cf-product='network']`, which in 1.1 carries a `-dark` and a `-light` hex
-  (`ui/packages/ui/src/tokens.css:840-848`) and lets the scheme pick between them. So this surface
+  (`ui/packages/ui/src/tokens.css`) and lets the scheme pick between them. So this surface
   is served in a light environment for the first time without a single colour being chosen here.
 -->
 <html lang="en-GB" data-cf-product="network" data-cf-substrate="warm" data-cf-scheme="auto">
@@ -98,9 +98,9 @@
       byte-identical — test/brand-chrome.test.ts compares the bytes in both directions.
 
       THERE IS NO MARK AND NO WORDMARK, AND THAT IS A DECISION. `explorer` carries `markId: null` in
-      the registry (`ui/packages/ui/src/surfaces.ts:446`) and brand/assets/explorer/ deliberately
+      the registry (`ui/packages/ui/src/surfaces.ts`) and brand/assets/explorer/ deliberately
       holds favicons and an og card only — the two artefacts a separate hostname needs, because
-      "a browser tab and a shared link inherit nothing" (`brand/plan.ts:50-62`). Nothing here links
+      "a browser tab and a shared link inherit nothing" (`brand/plan.ts`). Nothing here links
       a mark, nothing in src renders one, and the test asserts the absence so that generating one
       later is a decision rather than a reflex.
 

@@ -27,8 +27,8 @@
  *
  * It was invented by micro-mint-web as `--cf-status-crit`, and this file's warning against it was
  * right when it was written. @cloudsforge/ui 1.1 declares a real severity ramp — `--cf-critical`,
- * `--cf-critical-text` and `--cf-critical-ink` (`ui/packages/ui/src/tokens.css:360-362`) — and
- * `--cf-success`/`--cf-danger` are now ALIASES of the text steps of that ramp (`:390-391`). So the
+ * `--cf-critical-text` and `--cf-critical-ink` (`ui/packages/ui/src/tokens.css`) — and
+ * `--cf-success`/`--cf-danger` are now ALIASES of the text steps of that ramp. So the
  * three names this file uses are still correct and still what it should use; what changed is that
  * "never --cf-critical" became a false claim, and `test/tokens.test.ts` went red saying so, which
  * is exactly the job that test was given.
@@ -241,7 +241,7 @@ body {
 /*
  * There was a `.wt-state--refused` rule here, styling the panel this surface showed when the chain
  * index would not answer an anonymous read. The reads are anonymous now
- * (indexer/src/server.ts:773-782), the component is deleted, and a rule for a class nothing renders
+ * (indexer/src/server.ts), the component is deleted, and a rule for a class nothing renders
  * is the kind of dead weight that gets copied into the next repository.
  */
 
@@ -417,7 +417,7 @@ body {
  * `--cf-accent-text`, and this one is a real correction rather than a precaution.
  *
  * `--cf-accent` on this surface resolves to `#d6412f`, which tokens.css measures at 3.11:1 — "the
- * worst in the set" (`ui/packages/ui/src/tokens.css:844`). That clears the 3:1 graphical floor a
+ * worst in the set" (`ui/packages/ui/src/tokens.css`). That clears the 3:1 graphical floor a
  * border needs and fails the 4.5:1 floor type needs, and this glyph is type: it is the ▲ on the
  * one note this whole surface turns on, the sentence saying a depth is a probability rather than a
  * proof. `--cf-accent-text` is the 4.55:1 step of the same hue. The BORDER above stays
@@ -487,7 +487,7 @@ body {
 
 /* The border keeps the mark step and the word takes the text step. `--cf-success` and
    `--cf-danger` are already aliases of `--cf-good-text` and `--cf-critical-text`
-   (`ui/packages/ui/src/tokens.css:390-391`), so only the warn pair had two names to separate. */
+   (`ui/packages/ui/src/tokens.css`), so only the warn pair had two names to separate. */
 .ex-badge--warn {
   border-color: var(--cf-warn);
   color: var(--cf-warn-text);
@@ -524,7 +524,7 @@ body {
  *
  * A confirmation count with no head named is the ambiguity this whole surface exists to remove:
  * `micro-indexer` counts one way for its decision reads and another for its record reads
- * (reads.ts:18-30), and the same block honestly has two depths.
+ * (reads.ts), and the same block honestly has two depths.
  */
 .ex-depth__head {
   padding: 0.05rem 0.35rem;
@@ -603,7 +603,7 @@ body {
 /*
  * A withheld balance gets a panel, not a dash.
  *
- * `indexer/src/reads.ts:231-265` withholds `balances` rather than returning zero, and the reason it
+ * `indexer/src/reads.ts` withholds `balances` rather than returning zero, and the reason it
  * gives is the whole value of the answer. A layout that reduced that to an em dash would discard
  * precisely the field the API was designed to carry.
  */

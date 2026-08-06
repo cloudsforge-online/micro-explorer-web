@@ -2,19 +2,19 @@
  * One chain's state: how far this index has walked, how far behind it is, and every reorg it has
  * recorded.
  *
- * `GET /v1/chains/:chain/:network/status` — `indexer/src/server.ts:164`, handler at `:426`.
+ * `GET /v1/chains/:chain/:network/status` — `indexer/src/server.ts`, handler `chainStatus`.
  *
  * ══════════════════════════════════════════════════════════════════════════════════════════════
  * THE TWO HEIGHTS ARE RENDERED SIDE BY SIDE, ALWAYS, AND NEITHER IS CALLED "THE HEIGHT".
  *
  * `indexedHeight` is the highest canonical block this service has walked and would have detected a
- * reorg in. `tipHeight` is what a provider last claimed. `indexer/src/reads.ts:24-27` says the
+ * reorg in. `tipHeight` is what a provider last claimed. `indexer/src/reads.ts` says the
  * difference in one sentence: "Counting against blocks nobody here has looked at over-reports
  * depth, and over-reporting depth credits early."
  *
  * This is the only page in the app that can show `lagBlocks`, which is exactly that difference
- * (`indexer/src/reads.ts:315-316`), and it is null rather than zero when no tip has ever been
- * observed — "a lag of zero would be a lie, not a default" (`indexer/src/reads.ts:86`).
+ * (`indexer/src/reads.ts`), and it is null rather than zero when no tip has ever been
+ * observed — "a lag of zero would be a lie, not a default" (`indexer/src/reads.ts`).
  * ══════════════════════════════════════════════════════════════════════════════════════════════
  */
 import { useCallback } from 'react'
@@ -54,7 +54,7 @@ export function ChainPage() {
   if (resource.state === 'loading') return <Loading label={`Reading ${scopeLabel(scope)}`} />
   if (resource.error) {
     // `unknown_chain` and `unknown_network` are 404s that mean "this estate does not run that",
-    // which is a fact rather than a fault (`indexer/src/server.ts:667-670`).
+    // which is a fact rather than a fault (`indexer/src/server.ts`).
     if (resource.error.code === 'unknown_chain' || resource.error.code === 'unknown_network') {
       return <UnknownScope chain={params['chain']} network={params['network']} />
     }
@@ -89,7 +89,7 @@ export function ChainPage() {
           <strong>This index has stopped vouching for this chain.</strong> A reorg past the alarm
           depth of {count(status.reorgAlarmDepth)} was detected, so holdings questions are refused
           outright rather than answered from a history it cannot stand behind
-          (<code className="cf-num">indexer/src/reads.ts:538-541</code>).
+          (<code className="cf-num">indexer/src/reads.ts</code>).
           {status.haltReason ? ` The recorded reason: ${status.haltReason}` : ''}
         </Note>
       )}
@@ -142,7 +142,7 @@ export function ChainPage() {
         walked; the second is what a provider said. A confirmation count taken against the second —
         which is what a block or a transaction record on this explorer carries — can be larger than
         the number of blocks anybody here has looked at, by exactly the lag above
-        (<code className="cf-num">indexer/src/reads.ts:24-27</code>).
+        (<code className="cf-num">indexer/src/reads.ts</code>).
       </Note>
 
       <h2 className="ex-section__title">What this chain calls confirmed</h2>
@@ -167,7 +167,7 @@ export function ChainPage() {
         Both numbers come from <code className="cf-num">@cloudsforge/contracts-chain</code> and
         travel with the answer rather than being held by any consumer — the package is exact-pinned
         precisely because four services disagreeing about a depth is money credited at the wrong one
-        (<code className="cf-num">indexer/src/chains.ts:1-10</code>).
+        (<code className="cf-num">indexer/src/chains.ts</code>).
       </Note>
 
       <h2 className="ex-section__title">Providers</h2>
@@ -175,7 +175,7 @@ export function ChainPage() {
         <p className="ex-absent">
           No provider health has been recorded for this scope. A configured chain with no provider
           is a service that reports healthy and indexes nothing, which this estate treats as a
-          configuration error (<code className="cf-num">indexer/src/env.ts:18-21</code>).
+          configuration error (<code className="cf-num">indexer/src/env.ts</code>).
         </p>
       ) : (
         <div className="ex-tablewrap">
@@ -223,7 +223,7 @@ export function ChainPage() {
       {status.recentReorgs.length === 0 ? (
         <p className="ex-absent">
           None recorded. That is not a claim that none happened — it is the five most recent this
-          service has detected (<code className="cf-num">indexer/src/reads.ts:299</code>), and a
+          service has detected (<code className="cf-num">indexer/src/reads.ts</code>), and a
           service that has walked nothing has detected nothing.
         </p>
       ) : (
@@ -284,7 +284,7 @@ export function ChainPage() {
       )}
       <Note>
         A reorg retracts blocks, transactions and movements together, in one statement
-        (<code className="cf-num">indexer/src/reads.ts:28-30</code>), so a read taken during one
+        (<code className="cf-num">indexer/src/reads.ts</code>), so a read taken during one
         sees all of it or none of it. That is why the counts above move as a set.
       </Note>
     </div>

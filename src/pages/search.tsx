@@ -37,8 +37,8 @@
  * ── The classification is still the SERVICE's rules, not this app's ───────────────────────────
  *
  * `guessKind` in `src/lib/routes.ts` uses the same three shapes the indexer validates against:
- * `/^\d{1,15}$/` for a height (`indexer/src/server.ts:602`), `EVM_HASH`
- * (`indexer/src/server.ts:675`) and `EVM_ADDRESS` (`indexer/src/server.ts:674`). Sending somebody
+ * `/^\d{1,15}$/` for a height (`indexer/src/server.ts`), `EVM_HASH`
+ * (`indexer/src/server.ts`) and `EVM_ADDRESS` (`indexer/src/server.ts`). Sending somebody
  * to a page the service would answer 400 for would be this app inventing a surface again.
  * ══════════════════════════════════════════════════════════════════════════════════════════════
  */
@@ -271,22 +271,22 @@ export function SearchPage() {
         <li>
           <strong>A block or a transaction record</strong> carries a confirmation count measured
           against the tip a provider last claimed (<code className="cf-num">
-            indexer/src/reads.ts:579
+            indexer/src/reads.ts
           </code>
-          , <code className="cf-num">:415-418</code>), which can be ahead of what this index has
+          ), which can be ahead of what this index has
           actually walked.
         </li>
         <li>
           <strong>The confirmations page of a transaction</strong> is the only answer counted
           against the block this index has walked (<code className="cf-num">
-            indexer/src/reads.ts:451-454
+            indexer/src/reads.ts
           </code>
           ), and it is the only one this explorer will describe as a depth worth acting on.
         </li>
         <li>
           <strong>An address&rsquo;s token holdings</strong> may be withheld entirely rather than
           shown as zero, and the reason is always given
-          (<code className="cf-num">indexer/src/reads.ts:231-265</code>). A balance derived from
+          (<code className="cf-num">indexer/src/reads.ts</code>). A balance derived from
           movements is only a balance if the movements are all of them.
         </li>
       </ul>

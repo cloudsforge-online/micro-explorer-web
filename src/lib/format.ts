@@ -5,25 +5,25 @@
  * FOUR RULES. THE FIRST TWO ARE THIS ESTATE'S; THE LAST TWO ARE THIS SURFACE'S.
  *
  * **1. Never render a null as a zero.** `confirmations` is null "whenever there is nothing honest
- * to count: pending, dropped, or reorged away" (`indexer/src/reads.ts:209`), and `balances` is
+ * to count: pending, dropped, or reorged away" (`indexer/src/reads.ts`), and `balances` is
  * ABSENT rather than zero whenever the coverage cannot support one
- * (`indexer/src/reads.ts:259-264`). A nought in either place is a claim the service refused to
+ * (`indexer/src/reads.ts`). A nought in either place is a claim the service refused to
  * make.
  *
  * **2. Never colour alone.** The estate's reserved status hues sit ΔE 4.6 apart under protanopia
  * (measured in micro-ui). Every state below carries a word and a glyph, and the tone is third.
  *
  * **3. NEVER SAY "FINAL", AND SAY WHICH HEAD A DEPTH WAS COUNTED AGAINST.** `micro-indexer`
- * measures confirmations two different ways and `indexer/src/reads.ts:18-30` scopes which is
+ * measures confirmations two different ways and `indexer/src/reads.ts` scopes which is
  * which: `confirmation` and `tokenBalances` count against the stored canonical HEAD, and `block`,
  * `transaction` and `activity` count against `checkpoint.tipHeight` — what a provider last
  * claimed. The second can exceed the first by the current lag. See `CONFIRMATIONS_AGAINST` in
  * `src/lib/indexer.ts`; `depthWording` below is where that becomes a sentence.
  *
  * **4. Never divide an amount.** Amounts arrive as decimal strings because a `bigint` does not
- * survive `JSON.stringify` and a `Number` loses the low digits (`indexer/src/reads.ts:8-10`).
+ * survive `JSON.stringify` and a `Number` loses the low digits (`indexer/src/reads.ts`).
  * Nothing in this file calls `Number` on one. A token amount arrives with `amountFormatted: null`
- * on purpose (`indexer/src/reads.ts:374-381`) and is rendered as raw units, labelled as raw.
+ * on purpose (`indexer/src/reads.ts`) and is rendered as raw units, labelled as raw.
  * ══════════════════════════════════════════════════════════════════════════════════════════════
  */
 import type { HeadKind } from './indexer.ts'
@@ -148,7 +148,7 @@ export const NOT_FINAL =
  * Whether a chain is being followed, halted, or lagging.
  *
  * `halted` is not a degraded state — it is this service saying it has stopped vouching for the
- * chain after a reorg past the alarm depth (`indexer/src/reads.ts:538-541`). It outranks lag.
+ * chain after a reorg past the alarm depth (`indexer/src/reads.ts`). It outranks lag.
  */
 export function chainTone(status: {
   halted: boolean
@@ -185,7 +185,7 @@ export function chainTone(status: {
   return { word: 'Following', glyph: '●', tone: 'good', meaning: 'Walking the chain at the tip' }
 }
 
-/** `indexer/src/reads.ts:63` — the three provider states, unchanged. */
+/** `indexer/src/reads.ts` — the three provider states, unchanged. */
 export function providerTone(state: 'healthy' | 'degraded' | 'down'): Tone {
   if (state === 'healthy') {
     return { word: 'Healthy', glyph: '●', tone: 'good', meaning: 'Answering' }
@@ -198,11 +198,11 @@ export function providerTone(state: 'healthy' | 'degraded' | 'down'): Tone {
 
 /**
  * A transaction's chain status — `pending`, `success`, `failed`, `dropped` or `orphaned`
- * (`indexer/src/migrations.ts:191`).
+ * (`indexer/src/migrations.ts`).
  *
  * `failed` is `bad` rather than `warn`, and that distinction is load-bearing: an EVM transaction
  * that reverted "is mined, sits in a block, and accumulates depth exactly like one that worked"
- * (`indexer/src/reads.ts:467-471`), so a reader who takes depth alone as success reads the wrong
+ * (`indexer/src/reads.ts`), so a reader who takes depth alone as success reads the wrong
  * answer. `orphaned` is not a failure of the transaction at all — the chain changed underneath it.
  */
 export function transactionTone(status: string): Tone {
@@ -235,12 +235,12 @@ export function transactionTone(status: string): Tone {
 }
 
 /**
- * `indexer/src/reads.ts:124` — activity is `included`, `orphaned` or `conflicted`.
+ * `indexer/src/reads.ts` — activity is `included`, `orphaned` or `conflicted`.
  *
  * **`conflicted` is not a spelling of `orphaned`, and this used to render it as one.** The
  * citation above said "included or orphaned and nothing else"; the service widened the union and
- * the constraint behind it (`indexer/src/migrations.ts:453-455`) and this file went on believing the
- * sentence. The difference is the whole point of the field, and `indexer/src/reads.ts:118-123`
+ * the constraint behind it (`indexer/src/migrations.ts`) and this file went on believing the
+ * sentence. The difference is the whole point of the field, and `indexer/src/reads.ts`
  * states it: an `orphaned` movement may still be re-mined, a `conflicted` one cannot, because the
  * coins behind it have already been spent by a different canonical transaction. Showing the
  * second as the first tells a reader to wait for a confirmation that is never coming.
@@ -271,7 +271,7 @@ export function activityTone(status: 'included' | 'orphaned' | 'conflicted'): To
 }
 
 /**
- * Why a balance was withheld — `indexer/src/reads.ts:264`.
+ * Why a balance was withheld — `indexer/src/reads.ts`.
  *
  * Each is a full sentence rather than a code, because the whole point of the field is that a
  * consumer must act differently for each, and a reader cannot act on `coverage_incomplete`.
@@ -292,7 +292,7 @@ export function unavailableReason(reason: string): string {
 }
 
 /**
- * The five reasons a token observation could not be made — `indexer/src/tokenstate.ts:136-141`.
+ * The five reasons a token observation could not be made — `indexer/src/tokenstate.ts`.
  *
  * Kept separate from "there is no token there", which is a 404 `token_not_found` and a real answer.
  * That split is the defect `micro-market` and `micro-mint` both spent an outage on.

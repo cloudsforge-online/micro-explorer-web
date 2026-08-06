@@ -9,21 +9,21 @@
  *
  * Every other frontend in the estate is a client of a service that shares its hostname: trade-web
  * calls `trade`, mint-web calls `mint`. This one calls `micro-indexer`, and the surface registry
- * has **no `indexer` entry** (`ui/packages/ui/src/surfaces.ts` declares `SurfaceKey` at `:23-38`
+ * has **no `indexer` entry** (`ui/packages/ui/src/surfaces.ts` declares `SurfaceKey`
  * and `indexer` is not among them). `CloudsForgeHosts` is `Record<SurfaceKey, string>`
- * (`ui/packages/ui/src/index.tsx:121`), so there is no key to ask for.
+ * (`ui/packages/ui/src/index.tsx`), so there is no key to ask for.
  *
- * The registry key that exists is `explorer` (`ui/packages/ui/src/surfaces.ts:504-529`), and the
+ * The registry key that exists is `explorer` (`ui/packages/ui/src/surfaces.ts`), and the
  * production arrangement it describes is the right one: nginx serves this bundle at
  * `explorer.<apex>` and the indexer serves `/v1/...` behind the same hostname, exactly as
  * `trade.<apex>` is shared. So `apiBase()` is `''` in production and every request is relative.
  *
  * ── The dev port disagreement, reported and then fixed upstream ────────────────────────────────
  *
- * The registry now gives `explorer` **devPort 4008** (`ui/packages/ui/src/surfaces.ts:709`) — the
- * port `micro-indexer` binds (`indexer/src/env.ts:363`, `indexer/.env.example:9`,
+ * The registry now gives `explorer` **devPort 4008** (`ui/packages/ui/src/surfaces.ts`) — the
+ * port `micro-indexer` binds (`indexer/src/env.ts`, `indexer/.env.example`,
  * `indexer/Dockerfile:91`). It used to say 8080, which is this bundle's OWN container port
- * (`Dockerfile:67`, `nginx.conf:29`): the registry told a frontend to ask itself for chain data,
+ * (`Dockerfile:67`, `nginx.conf`): the registry told a frontend to ask itself for chain data,
  * and under `pnpm dev` an indexer started from its own example environment was never consulted.
  * This repository reported it rather than papering over it with a literal, micro-ui corrected it
  * and pinned the value against the service, and the pins in test/hosts.test.ts flipped with it.
@@ -33,9 +33,9 @@ import { cloudsforgeHosts, type CloudsForgeHosts, type SurfaceKey } from '@cloud
 /**
  * The surface this application IS.
  *
- * `ui/packages/ui/src/surfaces.ts:504-529` registers `explorer` as a `service` with
+ * `ui/packages/ui/src/surfaces.ts` registers `explorer` as a `service` with
  * `inSwitcher: false`, subdomain `explorer`, accent `#d6412f`, glyph `▦` and **`markId: null`**.
- * The null is a decision rather than a gap: `brand/plan.ts:50-62` explains that an explorer is
+ * The null is a decision rather than a gap: `brand/plan.ts` explains that an explorer is
  * part of Forge Network and must not claim a mark of its own, and `brand/assets/explorer/`
  * therefore holds favicons and an og card and nothing else. Nothing in this bundle renders a mark
  * or a wordmark, and no chrome here is designed around one.
@@ -46,11 +46,11 @@ export const PRODUCT: SurfaceKey = 'explorer'
  * The accent block this page's `<html>` names.
  *
  * `explorer` has **no `[data-cf-product='explorer']` block** in `ui/packages/ui/src/tokens.css`;
- * `network`'s is at `:340-345` and carries `#d6412f`, which is the exact accent the registry gives
- * `explorer` (`ui/packages/ui/src/surfaces.ts:524`). So `network` is the correct selector and it
+ * `network`'s block carries `#d6412f`, which is the exact accent the registry gives
+ * `explorer` (`ui/packages/ui/src/surfaces.ts`). So `network` is the correct selector and it
  * is set statically in index.html.
  *
- * That the explorer has no block of its own is worth stating, because tokens.css says at `:389-396`
+ * That the explorer has no block of its own is worth stating, because tokens.css says
  * that "every key an app may set is declared" — precisely so a surface cannot fall through to the
  * company ember in silence, which is what `admin` did. `status` was given an explicit block on
  * that rule and `explorer` was not. Reported to micro-ui; `test/brand-chrome.test.ts` asserts the
@@ -63,7 +63,7 @@ export const ACCENT_SURFACE = 'network'
  * The sentence a search result carries, declared ONCE.
  *
  * `surfaceMeta()` would otherwise compose one from the registry blurb — "Blocks, transactions and
- * addresses" plus the company line (`ui/packages/ui/src/seo.ts:104`) — and that is a fine
+ * addresses" plus the company line (`ui/packages/ui/src/seo.ts`) — and that is a fine
  * description of a block explorer and a poor description of THIS one. What distinguishes this
  * surface is the thing it refuses to say: every depth is reported with the head it was measured
  * against, and nothing is called final. `src/lib/format.ts` exports `NOT_FINAL` so that claim

@@ -5,7 +5,7 @@
  * ══════════════════════════════════════════════════════════════════════════════════════════════
  * WHY THIS FILE EXISTS ALONGSIDE `browser-stubs.ts`, WHICH SAYS THE OPPOSITE
  *
- * `test/browser-stubs.ts:4-8` states the estate's position: "There is no DOM in this suite on
+ * `test/browser-stubs.ts` states the estate's position: "There is no DOM in this suite on
  * purpose: jsdom is a second browser implementation to keep current, it disagrees with real ones
  * in exactly the places that matter, and a test that renders a component in it proves the
  * component renders in jsdom."
@@ -42,7 +42,7 @@
  *
  * ── The failure this harness is built to make impossible ──────────────────────────────────────
  *
- * `stack/infra/beacon/src/journeys/web.js:43-52` records it: "domcontentloaded fires before a SPA
+ * `stack/infra/beacon/src/journeys/web.js` records it: "domcontentloaded fires before a SPA
  * has mounted anything ... A networkidle wait is not enough either — a bundle that 404s leaves
  * the network perfectly idle." Its answer was to assert the rendered body was longer than forty
  * characters and to collect console errors and failed requests.
@@ -454,7 +454,8 @@ export async function mount(element: ReactElement, options: MountOptions = {}): 
   const { act } = React as unknown as { act: (fn: () => Promise<void> | void) => Promise<void> }
 
   // There was a `globalThis.React` here, and it is gone. It existed because `@cloudsforge/ui`
-  // named `src/index.tsx` as its entry point, so `link:` handed its raw TSX to THIS repository's
+  // named `ui/packages/ui/src/index.tsx` as its entry point, so `link:` handed its raw TSX to
+  // THIS repository's
   // loader, which compiled it under a tsconfig that did not `include` it and therefore fell back
   // to the CLASSIC JSX transform — `React.createElement` emitted into a module importing no
   // React. The entry points now name a committed `dist` (`ui/packages/ui/package.json`), so the
@@ -635,7 +636,7 @@ export async function mount(element: ReactElement, options: MountOptions = {}): 
         noise,
         [],
         `${context} produced console errors, which the legacy harness treated as a failure ` +
-          `(stack/infra/beacon/src/journeys/web.js:53): ${noise.join(' | ')}`,
+          `(stack/infra/beacon/src/journeys/web.js): ${noise.join(' | ')}`,
       )
     },
     async unmount() {
@@ -661,7 +662,7 @@ export async function mount(element: ReactElement, options: MountOptions = {}): 
 /**
  * The assertion that makes every scenario below worth running.
  *
- * Forty characters, from `stack/infra/beacon/src/journeys/web.js:48-52`, and for the reason given
+ * Forty characters, from `stack/infra/beacon/src/journeys/web.js`, and for the reason given
  * there: a bundle that fails to mount produces an empty body and a perfectly idle network, so a
  * smoke test that waits for the network and then asserts nothing goes green against a blank page.
  */

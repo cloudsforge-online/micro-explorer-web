@@ -1,9 +1,20 @@
 /**
- * EVERY `path:line` IN THIS REPOSITORY NAMES A LINE THAT EXISTS.
+ * EVERY CITATION IN THIS REPOSITORY NAMES A FILE THAT EXISTS, AND NAMES NO LINE IN IT.
  *
- * `test/indexer.test.ts` proves the ROUTE citations are exactly right — it reads the line each
- * route is registered at and matches its `DOMAIN` entry, then reads each handler and checks the
- * scope it asks for. That is the strong check, and it covers seven routes plus two declined ones.
+ * It used to require a line, and requiring one is what this file is now the record of. A line
+ * number names a position in a file that a DIFFERENT repository owns and is free to edit:
+ * micro-indexer inserted the custody total and its header, everything below it moved, and every
+ * citation here broke without a single thing this bundle depends on having changed. Nothing runs
+ * this suite when that service changes, so it surfaced at the worst possible moment, during a
+ * release. Seven of nineteen CI failures across the estate on 2026-08-06 were that one shape.
+ *
+ * What a citation is for is telling a reader WHERE to look. The file does that. Where the exact
+ * place matters the prose names the SYMBOL — `authoriseRead`, `chainStatus`, `CHAIN_IDS` — which
+ * moves with the code.
+ *
+ * `test/indexer.test.ts` proves the ROUTE citations are exactly right — it finds each route in the
+ * service's `DOMAIN` table by searching for it, reads the handler that entry names, and checks the
+ * scope it asks for. That is the strong check, and it covers seven routes plus three declined.
  * This repository carries hundreds of other citations: into `indexer/src/reads.ts`,
  * `indexer/src/tokenstate.ts`, `indexer/src/store.ts`, `indexer/src/chains.ts`, `identity`,
  * `ui/packages/ui/src/surfaces.ts`, `brand/plan.ts` and `market/src/indexerclient.test.ts`.
@@ -20,7 +31,7 @@
  */
 import { block, cite } from '@cloudsforge/ui/cite'
 import assert from 'node:assert/strict'
-import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { extname, join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, it } from 'node:test'
@@ -36,7 +47,7 @@ const here = fileURLToPath(new URL('..', import.meta.url))
  *
  * The estate checks each `cloudsforge-<name>` out as `<name>`, while the prose cites some of them
  * by their GitHub name, `micro-<name>`. Both spellings resolve to the same directory; see
- * `org/tools/registry.ts:8-11`, which applies that substitution once for the whole programme.
+ * `org/tools/registry.ts`, which applies that substitution once for the whole programme.
  */
 const SIBLINGS: readonly string[] = [
   // The service this bundle is a client of. 268 citations, and `test/indexer.test.ts` checks the
@@ -48,7 +59,7 @@ const SIBLINGS: readonly string[] = [
   'market',
   'brand',
   'identity',
-  // `docs/ecosystem/15-monetisation-model.md:50` — "A public chain whose explorer is paywalled is
+  // `docs/ecosystem/15-monetisation-model.md` — "A public chain whose explorer is paywalled is
   // not a public chain", the estate's own position on the finding this repository is built around.
   // Worth checking rather than quoting from memory.
   'docs',
@@ -60,7 +71,7 @@ const SIBLINGS: readonly string[] = [
   'org',
   // ── The devPort table, and the reason it is cited across five repositories ──────────────────
   //
-  // `micro-trade-web/src/lib/hosts.ts:16-17` names `admin` and `emberkin` as disagreeing with the
+  // `micro-trade-web/src/lib/hosts.ts` names `admin` and `emberkin` as disagreeing with the
   // registry, in the present tense. Both were corrected in micro-ui afterwards. Copying that
   // sentence into a new repository would have carried a FIXED defect forward as a live one —
   // which is the exact failure this whole sweep exists to catch, arriving by the route it always
@@ -117,15 +128,31 @@ function sourceFiles(dir: string): string[] {
   return out
 }
 
-/** A citation: a repository-relative path, a colon, and one line number or a range. */
-const CITATION = /\b((?:[a-z0-9_.-]+\/)+[A-Za-z0-9_.-]+\.(?:ts|tsx|css|yml|sol|md))\/?:(\d+)(?:-(\d+))?/g
+/**
+ * A citation: a repository-relative path to a file. NO LINE NUMBER — see the header.
+ *
+ * The lookbehind matters. Without it the sweep also matches the tail of a path this code ASSEMBLES
+ * — the `${indexerRoot}/...` reads in `test/indexer.test.ts` — and reports the tail of one as a
+ * citation to a file this repository does not have. That is a false accusation, and a checker that
+ * makes them is one a reader learns to ignore.
+ */
+const CITATION = /(?<![\w/])((?:[a-z0-9_.-]+\/)+[A-Za-z0-9_.-]+\.(?:ts|tsx|css|yml|sol|md))\b/g
 
 interface Citation {
   readonly from: string
   readonly path: string
-  readonly first: number
-  readonly last: number
 }
+
+/**
+ * Directories inside THIS repository that a citation may be rooted at.
+ *
+ * Without this the sweep matches every relative import (`lib/indexer.ts`), every package specifier
+ * (`@cloudsforge/ui/tokens.css`) and every URL that happens to end in a source extension, then
+ * reports all of them as citations to files that do not exist. A citation is rooted either at a
+ * sibling repository or at the top of this one; anything else is a module reference, which
+ * TypeScript already resolves and does not need a second, worse checker.
+ */
+const LOCAL_ROOTS: readonly string[] = ['src', 'test', 'public', 'scripts', '.github']
 
 function collect(): Citation[] {
   const out: Citation[] = []
@@ -133,8 +160,9 @@ function collect(): Citation[] {
     const text = readFileSync(file, 'utf8')
     for (const m of text.matchAll(CITATION)) {
       const path = m[1] ?? ''
-      const first = Number(m[2])
-      out.push({ from: relative(here, file), path, first, last: m[3] ? Number(m[3]) : first })
+      const head = path.split('/')[0] ?? ''
+      if (!SIBLINGS.includes(head) && !LOCAL_ROOTS.includes(head)) continue
+      out.push({ from: relative(here, file), path })
     }
   }
   return out
@@ -156,7 +184,7 @@ function resolve(path: string): string | null {
 
 const CITATIONS = collect()
 
-describe('every citation names a line that exists', () => {
+describe('every citation names a file that exists', () => {
   it('finds citations at all, so this cannot pass on an empty sweep', () => {
     // A regex that stopped matching would make this whole file a no-op that reads as a guarantee.
     assert.ok(CITATIONS.length >= 150, `found only ${CITATIONS.length} citations`)
@@ -180,23 +208,28 @@ describe('every citation names a line that exists', () => {
     )
   })
 
-  it('names a line INSIDE that file', () => {
-    const broken: string[] = []
-    for (const c of CITATIONS) {
-      const file = resolve(c.path)
-      if (file === null) continue
-      if (!statSync(file).isFile()) continue
-      const lines = readFileSync(file, 'utf8').split('\n').length
-      if (c.first < 1 || c.last > lines || c.last < c.first) {
-        broken.push(`${c.from} cites ${c.path}:${c.first}-${c.last}, but that file has ${lines} lines`)
+  it('carries no line numbers, because a line number in another repository cannot be kept true', () => {
+    // The rule, enforced rather than described. This test replaces one that checked each cited
+    // line was IN RANGE — which passed for every wrong citation micro-indexer's insertion created,
+    // because a line that moved by fourteen still exists. Only a check that read what was AT the
+    // line could tell, and the estate has one of those per repository at best.
+    //
+    // Cite the file and, if a reader needs the exact place, name the symbol.
+    const withLines: string[] = []
+    for (const file of sourceFiles(here)) {
+      const text = readFileSync(file, 'utf8')
+      for (const m of text.matchAll(
+        /\b((?:[a-z0-9_.-]+\/)+[A-Za-z0-9_.-]+\.(?:ts|tsx|css|yml|sol|md)):(\d+)/g,
+      )) {
+        withLines.push(`${relative(here, file)} cites ${m[1]}:${m[2]} — cite the file or the symbol`)
       }
     }
-    assert.deepEqual(broken, [])
+    assert.deepEqual(withLines, [])
   })
 
   it('the registry citations land on the line that carries the named key, not merely a line', (t) => {
     // THE SWEEP ABOVE ONLY PROVES A LINE EXISTS, and that is not enough: when micro-ui's explorer
-    // entry gained a long comment, this repository's citations to surfaces.ts:443/:444/:446 all
+    // entry gained a long comment, this repository's citations to surfaces.ts/:444/:446 all
     // resolved to lines INSIDE that comment — real lines, wrong lines — and the suite stayed
     // green. A citation that resolves but points at prose reads as verified while verifying
     // nothing, which is worse than a citation that fails.
