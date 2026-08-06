@@ -18,10 +18,28 @@
  *
  * The names that DO exist and are used below:
  *   borders   --cf-line, --cf-line-strong          (never --cf-border)
- *   states    --cf-success, --cf-warn, --cf-danger (never --cf-status-*, never --cf-critical)
+ *   states    --cf-success, --cf-warn, --cf-danger (never --cf-status-*)
  *   radii     --cf-radius-sm, --cf-radius, --cf-radius-lg (never --cf-radius-md)
  *   spacing   --cf-space-3xs … --cf-space-3xl      (never --cf-space-1..5)
  *   type      --cf-font-sans, --cf-font-mono, --cf-font-display (never --cf-font)
+ *
+ * ── `--cf-critical` USED TO BE ON THE "NEVER" LIST AND IS NOW REAL ────────────────────────────
+ *
+ * It was invented by micro-mint-web as `--cf-status-crit`, and this file's warning against it was
+ * right when it was written. @cloudsforge/ui 1.1 declares a real severity ramp — `--cf-critical`,
+ * `--cf-critical-text` and `--cf-critical-ink` (`ui/packages/ui/src/tokens.css:360-362`) — and
+ * `--cf-success`/`--cf-danger` are now ALIASES of the text steps of that ramp (`:390-391`). So the
+ * three names this file uses are still correct and still what it should use; what changed is that
+ * "never --cf-critical" became a false claim, and `test/tokens.test.ts` went red saying so, which
+ * is exactly the job that test was given.
+ *
+ * ── MARK STEP AND TEXT STEP ARE DIFFERENT TOKENS ──────────────────────────────────────────────
+ *
+ * 1.1's second change here. `--cf-accent` and `--cf-warn` are validated at 3:1, the floor for a
+ * border, a fill, an outline or a stroke; `--cf-accent-text` and `--cf-warn-text` are the 4.5:1
+ * step for type. On this surface that is not academic: `--cf-accent` is `#d6412f` at 3.11:1, and
+ * it was being used as a glyph colour. Every `color:` below names a `-text` step; every
+ * `border-color`, `border-top-color` and `border-bottom-color` keeps the mark step.
  *
  * A `var(--undefined, #hex)` is not a repair either: it is a hard-coded colour wearing a token's
  * clothes, and it stops following the substrate the moment somebody switches the ash ramp. There
@@ -63,31 +81,34 @@
   box-sizing: border-box;
 }
 
+/*
+ * `color-scheme: dark` WAS DECLARED HERE, AND IT HAD TO GO.
+ *
+ * It was correct while the design system was dark-only. It is not correct now: `index.html`
+ * carries `data-cf-scheme="auto"`, and tokens.css sets `color-scheme: light` on
+ * `[data-cf-scheme='auto']` inside a `prefers-color-scheme: light` query. `color-scheme` is an
+ * INHERITED property, so a declaration on `body` beats an inherited one from `<html>` for the body
+ * and everything under it — which is the whole page. A reader on a light system would have got the
+ * light palette with every native control still drawn dark: the chain `<select>` and the paste box
+ * on the front page, the scrollbars, and the focus rings the browser draws for them.
+ *
+ * There is nothing to replace it with. The scheme is the token layer's decision now, taken once on
+ * `<html>` for the whole estate, and a surface that restates it is a surface that can disagree
+ * with it.
+ */
 body {
   margin: 0;
   background: var(--cf-bg);
   color: var(--cf-fg);
   font-family: var(--cf-font-sans);
-  /* The bar is dark on every surface; the page follows the substrate. */
-  color-scheme: dark;
 }
 
 /* ---- the frame -------------------------------------------------------- */
 
-.ex-skip {
-  position: absolute;
-  left: -9999px;
-  top: 0;
-  z-index: 100;
-  padding: var(--cf-space-sm) var(--cf-space-lg);
-  background: var(--cf-accent);
-  color: var(--cf-accent-ink);
-  border-radius: 0 0 var(--cf-radius) 0;
-}
-
-.ex-skip:focus {
-  left: 0;
-}
+/* `.ex-skip` was here. It is gone with the markup it styled: the skip link is `SkipLink` from
+   @cloudsforge/ui now, which brings `.cf-skip` and — more to the point — targets a `<main>` that
+   carries `tabIndex={-1}`, which the local one did not. A rule left behind after its element is
+   deleted is dead weight the next reader has to prove is dead. */
 
 .ex-subnav {
   position: sticky;
@@ -375,8 +396,13 @@ body {
   border-color: var(--cf-warn);
 }
 
+/* `--cf-warn-text`, not `--cf-warn`. The two are the same hex on both schemes today, and naming
+   the text step anyway is the point: the mark step is validated at 3:1, which is the floor for a
+   border or a fill, and a glyph is type. If the mark step is ever re-derived — as the accent's
+   was, and it moved by a whole hue step — this glyph follows the text floor rather than the fill
+   floor without anybody having to notice. */
 .ex-note--warn .ex-note__icon {
-  color: var(--cf-warn);
+  color: var(--cf-warn-text);
 }
 
 /*
@@ -387,8 +413,18 @@ body {
   border-color: var(--cf-accent);
 }
 
+/*
+ * `--cf-accent-text`, and this one is a real correction rather than a precaution.
+ *
+ * `--cf-accent` on this surface resolves to `#d6412f`, which tokens.css measures at 3.11:1 — "the
+ * worst in the set" (`ui/packages/ui/src/tokens.css:844`). That clears the 3:1 graphical floor a
+ * border needs and fails the 4.5:1 floor type needs, and this glyph is type: it is the ▲ on the
+ * one note this whole surface turns on, the sentence saying a depth is a probability rather than a
+ * proof. `--cf-accent-text` is the 4.55:1 step of the same hue. The BORDER above stays
+ * `--cf-accent`, because a border is exactly what the mark step is validated for.
+ */
 .ex-note--depth .ex-note__icon {
-  color: var(--cf-accent);
+  color: var(--cf-accent-text);
 }
 
 .ex-note--depth strong {
@@ -449,9 +485,12 @@ body {
   color: var(--cf-success);
 }
 
+/* The border keeps the mark step and the word takes the text step. `--cf-success` and
+   `--cf-danger` are already aliases of `--cf-good-text` and `--cf-critical-text`
+   (`ui/packages/ui/src/tokens.css:390-391`), so only the warn pair had two names to separate. */
 .ex-badge--warn {
   border-color: var(--cf-warn);
-  color: var(--cf-warn);
+  color: var(--cf-warn-text);
 }
 
 .ex-badge--bad {

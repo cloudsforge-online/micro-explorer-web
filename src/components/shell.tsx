@@ -18,12 +18,14 @@
  * the six products and the operator tools, and this app is not among them. That is correct: the
  * explorer is reached from Forge Network, not chosen from a product list.
  */
-import { CloudsForgeBar } from '@cloudsforge/ui'
+import { useEffect } from 'react'
+import { CloudsForgeBar, CookieBanner, MainRegion, SkipLink } from '@cloudsforge/ui'
+import { applyHead, surfaceMeta } from '@cloudsforge/ui/seo'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
-import { PRODUCT } from '../lib/hosts.ts'
+import { PRODUCT, SURFACE_DESCRIPTION } from '../lib/hosts.ts'
 import { isNetwork, type Network } from '../lib/indexer.ts'
 import { deploymentNetwork, siblingExplorer } from '../lib/network.ts'
-import { NAV } from '../lib/routes.ts'
+import { NAV, ROUTES } from '../lib/routes.ts'
 import { useSession } from '../lib/auth.tsx'
 
 /**
@@ -53,11 +55,18 @@ export function AppShell({ unregistered = false }: { unregistered?: boolean }) {
 
   return (
     <>
-      {/* Skip link first in the DOM: a transaction page is a long list of facts and a keyboard
-          user should not have to tab the navigation to reach it. */}
-      <a className="ex-skip" href="#main">
-        Skip to the page
-      </a>
+      {/*
+        Skip link first in the DOM, and it is the SHARED one now.
+
+        The reason is the same as before — a transaction page is a long list of facts and a
+        keyboard reader should not tab the company bar and the section navigation to reach it —
+        but the local `.ex-skip` anchor was only half the pattern. It pointed at `#main`, and the
+        `<main id="main">` below carried no `tabIndex={-1}`; a `<main>` is not focusable by
+        default, so in Chrome and Safari following the link SCROLLED the page, left focus on the
+        link itself, and sent the next Tab back into the bar. `MainRegion` below is the half that
+        was missing, and it sets the id and the tabindex together so they cannot disagree.
+      */}
+      <SkipLink>Skip to the page</SkipLink>
       <CloudsForgeBar
         current={PRODUCT}
         account={account}
@@ -98,7 +107,14 @@ export function AppShell({ unregistered = false }: { unregistered?: boolean }) {
           </p>
         </div>
       </nav>
-      <main className="ex-main" id="main">
+      <DocumentMeta />
+      {/*
+        `MainRegion` rather than a hand-written `<main>`: it sets `id={MAIN_ID}` — `cf-main` — and
+        `tabIndex={-1}` together, which is the pair the skip link needs and the pair this file used
+        to get half right. Nothing else in this app referenced the old `main` id, and the shared
+        `SkipLink` composes its href from the same constant.
+      */}
+      <MainRegion className="ex-main">
         {/*
           Not fatal, so not a refusal — this is a public reference surface and nothing here is a
           security boundary. But not silent either. `cloudsforgeHosts()` derives the apex by
@@ -162,7 +178,90 @@ export function AppShell({ unregistered = false }: { unregistered?: boolean }) {
           Nothing replaces it. A surface that works needs no notice saying so.
         */}
         <Outlet />
-      </main>
+      </MainRegion>
+
+      {/*
+        Last in the document, and therefore last in the tab order. That is deliberate: the banner
+        is a dialog and is explicitly NOT modal, so a reader who came here to check whether a
+        transaction they are waiting on has been walked yet can read the answer and decide about
+        analytics afterwards. A consent banner that traps focus is the coercion the regulation is
+        about.
+
+        It renders nothing at all until it knows the reader has not already answered, and nothing
+        on an origin where analytics would not report anyway — which is every local stack.
+
+        IT PERSISTS ONE KEY AND ONLY ONE: `cf.consent.analytics`, the record of the reader's own
+        decision, which is the textbook Art. 5(3) "strictly necessary" exemption because without it
+        the banner cannot stop asking. That is worth naming here rather than leaving implicit,
+        because this surface deliberately has NOWHERE to persist a network or a chain — see the
+        header of `src/lib/network.ts` — and a reader of this file should be able to see that the
+        banner did not quietly open one.
+      */}
+      <CookieBanner />
     </>
   )
+}
+
+/**
+ * Keep `document.title`, the description, the Open Graph tags and the canonical link in step with
+ * the address.
+ *
+ * A component in the shell rather than a hook each page calls, because the failure mode of the
+ * second shape is the page that forgets — and on this surface that would be worse than a wrong
+ * title. A block explorer's addresses are pasted into chat and support tickets constantly, so a
+ * stale `og:url` left over from the previous navigation is a shared link that opens something
+ * other than what the sharer was looking at.
+ *
+ * ── What this does NOT replace ────────────────────────────────────────────────────────────────
+ *
+ * The static tags in `index.html`. They are what a link-preview fetcher gets — the ones used by
+ * chat clients generally do not execute JavaScript — so the shell keeps its own title, description
+ * and og card, and this is the layer a browser and the crawlers that do execute JavaScript see.
+ * That trade is inherited rather than introduced; it is written down at the top of
+ * `@cloudsforge/ui/seo`.
+ *
+ * ── Where the words come from ─────────────────────────────────────────────────────────────────
+ *
+ * `surfaceMeta('explorer', …)` — the REGISTRY key, not the accent key. `index.html` names
+ * `data-cf-product="network"` because tokens.css has no `explorer` accent block to name
+ * (`src/lib/hosts.ts:60`); the registry, by contrast, has a real `explorer` row with this
+ * surface's own name and blurb, and that is the row a title and a description come from. The two
+ * keys are different questions and it would be a mistake to answer both with one constant.
+ *
+ * The page name is read off `ROUTES` — the same declaration the navigation, the router and
+ * nginx's enumerated locations all derive from — rather than typed a fifth time. Two kinds of
+ * route get the surface name alone instead:
+ *
+ *   * the INDEX, whose `ROUTES` label is `Search`. That label's job is a tab in the section
+ *     navigation, where it sits beside `Chains` and has to say what the tab does. As a `<title>`
+ *     it would make the front door read `Search — Network Explorer`, which disagrees with the
+ *     `<title>` in `index.html` that a link-preview fetcher gets, and `test/seo.test.ts` asserts
+ *     the two agree rather than leaving it to be noticed in a shared link;
+ *   * the four record routes, whose label is `null` on purpose. `/tx/<chain>/<network>/<hash>` is
+ *     one transaction, and the shell cannot know anything about it worth putting in a title.
+ *     "Transaction" would be a heading pretending to be an identity, identical for every
+ *     transaction there has ever been.
+ */
+function DocumentMeta() {
+  const { pathname } = useLocation()
+
+  useEffect(() => {
+    const segment = pathname.split('/')[1] ?? ''
+    // `segment !== ''` excludes the index; `label` is null on the four record routes. Both fall
+    // through to the surface name, which is what `surfaceMeta` returns when no title is given.
+    const label =
+      segment === '' ? null : (ROUTES.find((route) => route.path === segment)?.label ?? null)
+    applyHead(
+      surfaceMeta(PRODUCT, {
+        ...(label === null ? {} : { title: label }),
+        // NOT the registry-composed one. See `SURFACE_DESCRIPTION` in src/lib/hosts.ts: the blurb
+        // describes a block explorer, and what distinguishes this one is what it declines to say.
+        description: SURFACE_DESCRIPTION,
+        path: pathname,
+      }),
+      window.location.origin,
+    )
+  }, [pathname])
+
+  return null
 }

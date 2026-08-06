@@ -100,11 +100,38 @@ describe('the stylesheet declares a base layer', () => {
     )
   })
 
-  it('declares the dark color-scheme, so form controls and scrollbars follow', () => {
-    assert.match(
+  it('declares NO color-scheme, because that is the token layer’s decision now', () => {
+    /*
+     * ══════════════════════════════════════════════════════════════════════════════════════════
+     * THIS ASSERTION USED TO BE ITS OWN OPPOSITE, AND THE REVERSAL IS THE POINT.
+     *
+     * It required `color-scheme: dark` on `body`, and that was right while @cloudsforge/ui was
+     * dark-only: without it the browser drew light form controls and light scrollbars on a dark
+     * page, which on this surface means the chain `<select>` and the paste box on the front page.
+     *
+     * 1.1 has a light scheme, `index.html` carries `data-cf-scheme="auto"`, and tokens.css sets
+     * `color-scheme: light` on `[data-cf-scheme='auto']` inside a `prefers-color-scheme: light`
+     * query. `color-scheme` is an INHERITED property, so a declaration on `body` beats the
+     * inherited one from `<html>` for the body and every descendant — the whole page. Keeping this
+     * line would have served a reader on a light system the light palette with every native
+     * control still drawn dark, which is the original defect with the schemes swapped.
+     *
+     * So the rule is not "declare dark" and it is not "declare light". It is that a surface does
+     * not declare this at all: the scheme is decided once, on `<html>`, for the whole estate, and
+     * a surface that restates it is a surface that can disagree with it.
+     * ══════════════════════════════════════════════════════════════════════════════════════════
+     */
+    assert.doesNotMatch(
       body,
-      /(^|[;{\s])color-scheme\s*:\s*dark/,
-      'the `body` rule does not set `color-scheme: dark`; native widgets render light on a dark page.',
+      /(^|[;{\s])color-scheme\s*:/,
+      'the `body` rule declares color-scheme, overriding the scheme tokens.css resolves on <html>.',
+    )
+    // The whole stylesheet, not only the body rule: any selector matching an ancestor of the page
+    // content wins the same way, so a `:root` or `html` rule here would be the same defect.
+    assert.doesNotMatch(
+      CSS,
+      /(^|[;{\s])color-scheme\s*:/,
+      'src/styles.css declares color-scheme somewhere; the token layer owns it.',
     )
   })
 

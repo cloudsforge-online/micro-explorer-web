@@ -132,11 +132,30 @@ describe('the stylesheet names only tokens that exist', () => {
       }
     })
 
-    it('the four names the brief warned about are not tokens, and the real ones are', () => {
-      // Asserted in both directions so a reader can see which is which without opening tokens.css.
-      for (const wrong of ['--cf-border', '--cf-critical', '--cf-warning', '--cf-font']) {
+    it('the names the brief warned about are not tokens, and the real ones are', () => {
+      /*
+       * `--cf-critical` WAS ON THIS LIST AND HAS BEEN TAKEN OFF IT, DELIBERATELY.
+       *
+       * It was invented by micro-mint-web as `--cf-status-crit` and the warning against it was
+       * true when it was written. @cloudsforge/ui 1.1 declares a real severity ramp —
+       * `--cf-critical`, `--cf-critical-text`, `--cf-critical-ink` (`tokens.css:360-362`) — and
+       * makes `--cf-success` and `--cf-danger` aliases of the TEXT steps of it (`:390-391`). So
+       * this test went red saying "this comment is wrong", which is exactly the job it was given:
+       * an absence pinned in both directions fails when the absence ends.
+       *
+       * The three names src/styles.css uses are unchanged and still correct. What changed is the
+       * claim in that file's header, which now records the ramp instead of denying it.
+       */
+      for (const wrong of ['--cf-border', '--cf-warning', '--cf-font']) {
         assert.ok(!defined.has(wrong), `${wrong} is defined after all; this comment is wrong`)
       }
+      // The other half of the reversal: the ramp really is there, with a mark step and a text step
+      // per level, which is what src/styles.css now distinguishes between.
+      for (const level of ['good', 'warn', 'critical']) {
+        assert.ok(defined.has(`--cf-${level}`), `--cf-${level} is missing; the ramp is incomplete`)
+        assert.ok(defined.has(`--cf-${level}-text`), `--cf-${level}-text is missing`)
+      }
+      assert.ok(defined.has('--cf-accent-text'), '--cf-accent-text is missing; type has no step')
       for (const right of [
         '--cf-line',
         '--cf-line-strong',

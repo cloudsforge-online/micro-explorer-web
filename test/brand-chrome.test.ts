@@ -214,8 +214,21 @@ test('the accent selector this page names really exists, and "explorer" would NO
     readFileSync(surfaces, 'utf8'),
   )
   assert.ok(entry, 'the explorer entry has gone from the surface registry')
-  const network = /\[data-cf-product='network'\] \{\s*--cf-accent: (#[0-9a-fA-F]{6});/.exec(css)
+  // `--cf-accent-dark`, not `--cf-accent`. @cloudsforge/ui 1.1 gave the system a light scheme, so
+  // each product block now declares a `-dark` and a `-light` hex and the PUBLIC `--cf-accent` is
+  // mapped to whichever the scheme resolves (`tokens.css:983-989`, and the light mapping at
+  // `:1116`). The dark one is the value to compare, because it is the hue this estate has always
+  // served and the one the registry's single `accent` field records. This assertion went red on
+  // the rename rather than passing on a stale name, which is what it is for.
+  const network = /\[data-cf-product='network'\] \{\s*--cf-accent-dark: (#[0-9a-fA-F]{6});/.exec(css)
   assert.ok(network, "network's accent block has gone")
+  // And the block really does carry a separate TEXT step, which is what src/styles.css moved the
+  // depth-note glyph onto. `#d6412f` is 3.11:1 — a border colour, not a type colour.
+  assert.match(
+    css,
+    /\[data-cf-product='network'\] \{[^}]*--cf-accent-text-dark: #[0-9a-fA-F]{6};/,
+    'network has no accent text step; the glyph on the depth note is below the type floor',
+  )
   assert.equal(
     entry[1],
     network[1],

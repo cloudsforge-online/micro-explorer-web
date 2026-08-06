@@ -59,6 +59,30 @@ export const PRODUCT: SurfaceKey = 'explorer'
  */
 export const ACCENT_SURFACE = 'network'
 
+/**
+ * The sentence a search result carries, declared ONCE.
+ *
+ * `surfaceMeta()` would otherwise compose one from the registry blurb — "Blocks, transactions and
+ * addresses" plus the company line (`ui/packages/ui/src/seo.ts:104`) — and that is a fine
+ * description of a block explorer and a poor description of THIS one. What distinguishes this
+ * surface is the thing it refuses to say: every depth is reported with the head it was measured
+ * against, and nothing is called final. `src/lib/format.ts` exports `NOT_FINAL` so that claim
+ * cannot drift into six paraphrases across six screens; this is the same discipline applied to the
+ * one string a reader sees BEFORE they arrive, which is the place an over-claim does the most
+ * damage because there is no page around it to qualify it.
+ *
+ * It is here rather than only in `index.html` because the two would otherwise be independent
+ * copies of one sentence, and this estate has been bitten by exactly that: `site/index.html`'s
+ * title drifted from its application's, the suite stayed green, and every search result carried a
+ * sentence the owner had asked to have removed. `test/seo.test.ts` reads the meta tag out of
+ * `index.html` and compares it with this constant byte for byte, so the copy in the shell — which
+ * is what a link-preview fetcher gets, because those generally do not execute JavaScript — cannot
+ * drift from the copy a crawler that does execute JavaScript ends up with.
+ */
+export const SURFACE_DESCRIPTION =
+  'Blocks, transactions, addresses and chain state on the CloudsForge networks. Every depth is ' +
+  'shown with the head it was measured against, and nothing here is called final.'
+
 /** The name reported to the observability ingest and shown in error copy. */
 export const APP_NAME = 'explorer-web'
 

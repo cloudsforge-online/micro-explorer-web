@@ -19,18 +19,69 @@
   test/brand-chrome.test.ts asserts that the selector this file names really exists.
 
   'warm' is the ash ramp every product frontend in the estate uses.
+
+  data-cf-scheme is the THIRD of the three attributes, added with @cloudsforge/ui 1.1. `auto`
+  follows the reader's operating system; `light` and `dark` force one. It is set here, statically,
+  for exactly the reason the other two are — a page that paints before the attribute lands flashes
+  one palette and then changes to the other.
+
+  It does NOT change which accent block applies. `network` above still names
+  `[data-cf-product='network']`, which in 1.1 carries a `-dark` and a `-light` hex
+  (`ui/packages/ui/src/tokens.css:840-848`) and lets the scheme pick between them. So this surface
+  is served in a light environment for the first time without a single colour being chosen here.
 -->
-<html lang="en-GB" data-cf-product="network" data-cf-substrate="warm">
+<html lang="en-GB" data-cf-product="network" data-cf-substrate="warm" data-cf-scheme="auto">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="colour-scheme" content="dark" />
+    <!--
+      `color-scheme`, spelled the way the standard spells it.
+
+      This was `colour-scheme` — correct English, and INERT. It is not a registered meta name, so
+      no browser has ever read it, and the declaration meant to tell the browser which form
+      controls and scrollbars to draw did nothing at all. On this surface that is not cosmetic:
+      the front page IS a form — a chain `<select>` and the paste box every reader types a hash
+      into — and both were drawn with light chrome on a dark page in every browser that honours
+      the real name.
+
+      Both schemes are declared rather than only `dark`, because `data-cf-scheme="auto"` above
+      means the token layer now resolves whichever palette the reader's system asks for. Declaring
+      only `dark` would leave the chrome the browser draws disagreeing with the page around it —
+      which is the same defect as before, in the other direction.
+    -->
+    <meta name="color-scheme" content="dark light" />
     <!--
       The build that produced this bundle. Stamped by the Dockerfile, read by src/lib/obs.ts, and
       the reason an error report can be pinned to the deploy that introduced it. It is an identity
       rather than a configuration: it names the artefact, it does not tell it where it is running.
     -->
     <meta name="cf-release" content="dev" />
+    <!--
+      THE GOOGLE ANALYTICS MEASUREMENT ID, AND NOT THE GOOGLE ANALYTICS TAG.
+      ────────────────────────────────────────────────────────────────────────────────────────
+      There is deliberately no third-party analytics `<script src=…>` in this file, and there must
+      never be one — the tag's own domain is not even spelled out here, so a grep for it over this
+      file returns nothing and the absence is checkable rather than asserted. The stock snippet
+      fetches that script and sets `_ga` on load, before any banner has been drawn, let alone
+      answered; under ePrivacy Art. 5(3) an analytics cookie set before consent is a violation that
+      a banner underneath it does not cure. `@cloudsforge/ui/consent` injects the tag from exactly
+      one place: the Accept button in `CookieBanner`. See the header of that module.
+
+      It matters here for a reason particular to a block explorer. The addresses on this surface
+      ARE the reader's data: `/tx/<chain>/<network>/<hash>` names one transaction, and a page view
+      reported with its path attached tells a third party which transaction a given browser looked
+      up. So the gate in front of the tag is not a formality on this surface; it is the difference
+      between counting readers and describing them.
+
+      It is a meta tag rather than a build-time variable because test/no-build-time-config.test.ts
+      greps for those and fails the build — an artefact with an environment frozen into it is not
+      the artefact that passed CI. (That test greps this file too, which is why the prefix it looks
+      for is not written out here.) It is the same mechanism `cf-release` above already uses, and
+      the ID is an identity rather than a configuration: it names the property, it does not tell
+      the bundle where it is running. An absent or empty value means analytics is simply off, which
+      is what a local `pnpm dev` gets.
+    -->
+    <meta name="cf-analytics" content="G-NB8DNLTKZQ" />
 
     <!--
       The description says what the surface is AND what it will not claim, in the same sentence,
