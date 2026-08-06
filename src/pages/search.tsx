@@ -109,9 +109,16 @@ export function SearchPage() {
         <h1 className="ex-page__title">Network Explorer</h1>
       </header>
       <p className="ex-page__lede">
-        Blocks, transactions, addresses and the state of each chain, read from the CloudsForge chain
-        index. Every page says how deep a thing is and what that depth was measured against; none of
-        them says a thing is final.
+        Look up any block, transaction or address on the chains CloudsForge follows, and see what a
+        contract reports about its own supply and authorities. Depth is always printed with the head
+        it was measured against, so you can tell a number this service has verified for itself from
+        one it took on a provider&rsquo;s word.
+      </p>
+      <p className="ex-page__lede">
+        Ember, the Forge Network chain, runs an execution engine built here from the ground up and
+        held to the vectors the Ethereum project publishes — state transitions, the virtual machine,
+        transaction encoding, the trie and RLP, all passing at Shanghai. Anything you read on these
+        pages you can reproduce against your own node.
       </p>
 
       <form className="ex-search" onSubmit={submit}>
@@ -147,7 +154,7 @@ export function SearchPage() {
           </p>
         </div>
         <label className="ex-field ex-field--grow">
-          <span className="ex-field__label">Block height, transaction hash, or address</span>
+          <span className="ex-field__label">Paste a block height, a transaction hash or an address</span>
           <input
             className="cf-input cf-input--mono"
             value={term}
@@ -169,22 +176,23 @@ export function SearchPage() {
       {/* What this deployment can and cannot answer, said BEFORE the reader commits rather than
           after. `role="status"` so it is announced when it narrows. */}
       <p className="ex-guess" role="status">
-        {resource.state === 'loading' && <>Asking the chain index which chains it serves…</>}
+        {resource.state === 'loading' && <>Finding out which chains this deployment follows…</>}
         {resource.error && (
           <>
-            The chain index could not be reached, so this page cannot say which chains it serves.
-            Nothing here is searchable until it answers.
+            The chain index is not answering, so this page cannot tell you which chains it follows.
+            Searching stays switched off until it does — offering a lookup that would fail is worse
+            than saying nothing.
           </>
         )}
         {resource.data && servedChains.length === 0 && (
           <>
-            This deployment is not indexing any chain, so there is nothing to look up. That is the
-            index reporting its own configuration, not a failure of this page.
+            No chain is being followed here, so there is nothing to search. The index told us that
+            about itself; this page is working correctly and has nothing to offer.
           </>
         )}
         {resource.data && servedChains.length > 0 && (
           <>
-            This explorer serves <strong>{network}</strong> and indexes{' '}
+            You are on <strong>{network}</strong>, and the chains walked here are{' '}
             {servedChains.map((id, i) => (
               <span key={id}>
                 {i > 0 && (i === servedChains.length - 1 ? ' and ' : ', ')}
@@ -201,7 +209,7 @@ export function SearchPage() {
                   </span>
                 ))}{' '}
                 {absentChains.length === 1 ? 'is' : 'are'} not supported here and cannot be
-                searched. <Link to="/chains">The chains page</Link> says what each one answers.
+                searched. <Link to="/chains">The chains page</Link> sets out where each one stands.
               </>
             )}
           </>
@@ -217,7 +225,7 @@ export function SearchPage() {
         <p className="ex-guess" role="status">
           {guess.kind === 'height' && (
             <>
-              That is a block height. It will be read on{' '}
+              Reads as a block height, and will be fetched from{' '}
               <code className="cf-num">
                 {chain}/{network}
               </code>
@@ -226,7 +234,7 @@ export function SearchPage() {
           )}
           {guess.kind === 'hash' && (
             <>
-              That is a 32-byte hash, so it will be looked up as a transaction on{' '}
+              Thirty-two bytes, so it will be treated as a transaction hash on{' '}
               <code className="cf-num">
                 {chain}/{network}
               </code>
@@ -235,23 +243,24 @@ export function SearchPage() {
           )}
           {guess.kind === 'address' && (
             <>
-              That is a 20-byte address. Its activity will be read on{' '}
+              Twenty bytes, so it will be treated as an account address on{' '}
               <code className="cf-num">
                 {chain}/{network}
               </code>
               {/* A router Link, not an anchor: an anchor here would take the full-page-load path
                   for an address this bundle already owns. */}
-              . If it is a contract,{' '}
-              <Link to={linkTo.token(chain, network, guess.value)}>read it as a token</Link> instead.
+. Where the address belongs to a token contract, you can also{' '}
+              <Link to={linkTo.token(chain, network, guess.value)}>ask it for its supply and
+              authorities</Link>.
             </>
           )}
           {guess.kind === 'unknown' && (
             <>
-              That is not one of the three shapes this explorer can recognise: a decimal height of
+              This matches none of the three forms the box can classify: a plain decimal height of
               up to fifteen digits, a <code className="cf-num">0x</code> hash of 64 hex characters,
-              or a <code className="cf-num">0x</code> address of 40. Bitcoin, Solana and XRP
-              addresses are base58 or bech32 and are not checked by shape anywhere in this estate
-              yet, so paste one into the address page directly.
+              or a <code className="cf-num">0x</code> address of 40. Bitcoin, Solana and XRP write
+              their addresses in base58 or bech32, which nothing in this estate can recognise by
+              shape, so go to the address page and put one straight in the path.
             </>
           )}
         </p>
@@ -259,35 +268,34 @@ export function SearchPage() {
 
       {sibling && (
         <Note>
-          Looking for the {other} network? It is a separate deployment with its own index, at{' '}
+          After the {other} network? It runs as its own deployment with its own index, at{' '}
           {/* A real anchor: a different origin, which a router Link cannot reach. */}
-          <a href={sibling}>{sibling.replace('https://', '')}</a>. Nothing on this page reads it,
-          and no selection you make here follows you there.
+          <a href={sibling}>{sibling.replace('https://', '')}</a>. Nothing here reads it, and whatever
+          you type into this box stays on this side.
         </Note>
       )}
 
-      <h2 className="ex-section__title">What each page will and will not tell you</h2>
+      <h2 className="ex-section__title">How to read a depth on this site</h2>
       <ul className="ex-plainlist">
         <li>
-          <strong>A block or a transaction record</strong> carries a confirmation count measured
-          against the tip a provider last claimed (<code className="cf-num">
+          <strong>On a block, or in a transaction&rsquo;s record,</strong> the count is measured
+          from the tip an upstream provider last reported (<code className="cf-num">
             indexer/src/reads.ts
           </code>
-          ), which can be ahead of what this index has
-          actually walked.
+          ). That figure can sit above the highest block anybody here has actually read.
         </li>
         <li>
-          <strong>The confirmations page of a transaction</strong> is the only answer counted
-          against the block this index has walked (<code className="cf-num">
+          <strong>At the top of a transaction,</strong> the verdict is counted from the highest
+          block this service has walked itself (<code className="cf-num">
             indexer/src/reads.ts
           </code>
-          ), and it is the only one this explorer will describe as a depth worth acting on.
+          ). It is the smaller number, and the one to weigh before acting on money.
         </li>
         <li>
-          <strong>An address&rsquo;s token holdings</strong> may be withheld entirely rather than
-          shown as zero, and the reason is always given
-          (<code className="cf-num">indexer/src/reads.ts</code>). A balance derived from
-          movements is only a balance if the movements are all of them.
+          <strong>Token holdings for an address</strong> are held back altogether, with the reason
+          named, whenever the record behind them has a hole in it
+          (<code className="cf-num">indexer/src/reads.ts</code>). Adding up part of the
+          movements would produce a figure that looks like a balance and is not one.
         </li>
       </ul>
     </div>

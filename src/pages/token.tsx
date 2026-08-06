@@ -67,13 +67,13 @@ export function TokenPage() {
   const resource = useResource<TokenObservation>(
     load,
     () => 1,
-    'The chain index could not be reached.',
+    'The chain index is not answering.',
     [scope?.chain, scope?.network, address],
   )
 
   if (!scope) return <UnknownScope chain={params['chain']} network={params['network']} />
 
-  if (resource.state === 'loading') return <Loading label="Asking the chain about this contract" />
+  if (resource.state === 'loading') return <Loading label="Putting the questions to the contract" />
   if (resource.error) {
     const code = resource.error.code ?? ''
 
@@ -82,14 +82,14 @@ export function TokenPage() {
       return (
         <div className="ex-page">
           <header className="ex-page__head">
-            <h1 className="ex-page__title">The chain could not be asked</h1>
+            <h1 className="ex-page__title">The contract could not be reached</h1>
           </header>
           <p className="ex-page__hash">
             <code className="cf-num ex-hex">{address}</code>
           </p>
           <div className="ex-withheld" role="alert">
             <p className="ex-withheld__title">
-              <span aria-hidden="true">▲</span> This is not an answer about the contract.
+              <span aria-hidden="true">▲</span> Nothing below is a statement about this contract.
             </p>
             <p className="ex-withheld__why">{tokenFaultReason(code)}</p>
             <dl className="ex-facts ex-facts--tight">
@@ -100,22 +100,23 @@ export function TokenPage() {
                 <span className="cf-num">{count(resource.error.status ?? null)}</span>
                 <span className="ex-dim">
                   {resource.error.status === 501
-                    ? ' — permanent for this build'
-                    : ' — try again once the index has caught up'}
+                    ? ' — this build will never be able to answer'
+                    : ' — worth another go once the reading catches up'}
                 </span>
               </Fact>
             </dl>
             <p className="ex-withheld__note">
-              &ldquo;I could not ask the chain&rdquo; and &ldquo;there is no token at that
-              address&rdquo; are different answers, and a consumer that cannot tell them apart
-              renders the second when it means the first
-              (<code className="cf-num">indexer/src/server.ts</code>). This page does not.
+&ldquo;The question could not be put&rdquo; and &ldquo;the answer is no&rdquo; are separate
+              outcomes, and software that runs them together ends up telling people a token does not
+              exist when the truth is that nobody managed to look
+              (<code className="cf-num">indexer/src/server.ts</code>). This page keeps them
+              apart.
             </p>
           </div>
           {resource.error.status !== 501 && (
             <div className="ex-stepper">
               <button type="button" className="cf-btn" onClick={resource.reload}>
-                Ask again
+Try the contract again
               </button>
             </div>
           )}
@@ -129,8 +130,8 @@ export function TokenPage() {
     if (code === 'bad_address') {
       return (
         <Missing
-          title="That is not an address for this chain"
-          hint="A contract address is an address, and it is normalised exactly as one — so the EIP-55 checksum form every wallet displays is accepted. This one is not a 20-byte hex address at all."
+          title="That is not shaped like an address on this chain"
+          hint="A contract lives at an ordinary address and is treated as one, so the mixed-case checksum form your wallet shows is perfectly welcome. What you gave is not twenty bytes of hex in any form."
           notice={resource.error}
         />
       )
@@ -138,11 +139,12 @@ export function TokenPage() {
     if (code === 'token_not_found') {
       return (
         <Missing
-          title="No token at that address"
+          title="Nothing answers as a token there"
           hint={
-            'This index asked the chain and found no contract answering totalSupply() there, at ' +
-            'the block it has walked. A contract deployed above that block reads the same way — ' +
-            'which is honest rather than wrong. The chain page shows how far it has walked.'
+            'The question was put to the chain, at the highest block read here, and no contract ' +
+            'at that address replied to a request for its total supply. A contract deployed in a ' +
+            'more recent block than this service has reached gives exactly the same answer. The ' +
+            'chain page shows how far the reading has got.'
           }
           notice={resource.error}
         />
@@ -151,8 +153,8 @@ export function TokenPage() {
     if (resource.error.status === 404) {
       return (
         <Missing
-          title="Not answered"
-          hint="The chain index does not serve the path this page asked for."
+          title="No answer came back"
+          hint="This page requested an address the chain index does not serve, which is a fault on our side rather than anything to do with your contract."
           notice={resource.error}
         />
       )
@@ -161,7 +163,7 @@ export function TokenPage() {
   }
 
   const token = resource.data
-  if (!token) return <Loading label="Asking the chain about this contract" />
+  if (!token) return <Loading label="Putting the questions to the contract" />
 
   return (
     <div className="ex-page">
@@ -174,7 +176,7 @@ export function TokenPage() {
       </p>
       <p className="ex-page__lede">
         <Link to={linkTo.address(token.chain, token.network, token.contractAddress)}>
-          See what has moved in and out of this address
+          Everything that has moved through this address
         </Link>
         {' · '}
         <Link className="cf-num" to={linkTo.chain(token.chain, token.network)}>
@@ -184,101 +186,103 @@ export function TokenPage() {
 
       {token.halted && (
         <Note tone="warn">
-          This index has stopped vouching for this chain after a reorg past the alarm depth. The
-          observation below was still made at a block it walked, but the chain it walked may not be
-          the chain that now exists.
+A rewrite deeper than the alarm threshold has stopped this service standing behind this
+          chain. What follows was still measured at a block it read, but the sequence of blocks it
+          read may no longer be the sequence the network agrees on.
         </Note>
       )}
 
-      <h2 className="ex-section__title">Supply</h2>
+      <h2 className="ex-section__title">How many exist</h2>
       <dl className="ex-facts">
-        <Fact label="Total supply (smallest units)">
+        <Fact label="In existence, in the smallest unit">
           {token.totalSupply === null ? (
-            <span className="ex-absent">the contract does not report one</span>
+            <span className="ex-absent">the contract will not say</span>
           ) : (
             <span className="cf-num">{units(token.totalSupply)}</span>
           )}
         </Fact>
-        <Fact label="Cap (smallest units)">
+        <Fact label="Ceiling, in the smallest unit">
           {token.cap === null ? (
-            <span className="ex-absent">uncapped, or the contract implements no cap</span>
+            <span className="ex-absent">no ceiling, or none that this contract implements</span>
           ) : (
             <span className="cf-num">{units(token.cap)}</span>
           )}
         </Fact>
-        <Fact label="Decimals">
+        <Fact label="Decimal places">
           {token.decimals === null ? (
-            <span className="ex-absent">the contract does not report one</span>
+            <span className="ex-absent">the contract will not say</span>
           ) : (
             <span className="cf-num">{count(token.decimals)}</span>
           )}
         </Fact>
       </dl>
       <Note>
-        Both figures are the contract&rsquo;s own smallest units and are printed undivided. Null
-        means the contract does not implement the method, which is a different statement from zero —
-        an uncapped token and a token with a cap of nought are not the same token.
+Both figures come from the contract in its own smallest unit and are printed undivided. Where
+        a line says the contract will not say, the method it would have answered does not exist —
+        which is not the same as nought. A token with no ceiling and a token whose ceiling is zero
+        are very different things.
       </Note>
 
-      <h2 className="ex-section__title">Authorities</h2>
+      <h2 className="ex-section__title">Who can do what to it</h2>
       <dl className="ex-facts">
         <Fact label="Owner">
           {token.owner === null ? (
-            <span className="ex-absent">the contract implements no owner()</span>
+            <span className="ex-absent">this contract has no owner role at all</span>
           ) : (
             <Link className="cf-num ex-hex" to={linkTo.address(token.chain, token.network, token.owner)}>
               {token.owner}
             </Link>
           )}
         </Fact>
-        <Fact label="Can the supply still grow?">
+        <Fact label="Can more be created?">
           {token.mintAuthority === null ? (
-            <span className="ex-absent">this index cannot tell from the contract</span>
+            <span className="ex-absent">the contract did not answer the question</span>
           ) : token.mintAuthority ? (
-            <strong>Yes — something can still mint.</strong>
+            <strong>Yes — a key exists that can issue more.</strong>
           ) : (
-            'No — nothing can increase the supply.'
+            'No — the number in existence cannot go up.'
           )}
         </Fact>
-        <Fact label="Paused">
+        <Fact label="Are transfers frozen?">
           {token.paused === null ? (
-            <span className="ex-absent">the contract implements no pause</span>
+            <span className="ex-absent">this contract has no freeze switch</span>
           ) : token.paused ? (
-            <strong>Yes — transfers are paused.</strong>
+            <strong>Yes — nobody can move this token right now.</strong>
           ) : (
-            'No'
+            'No — it is moving freely between holders.'
           )}
         </Fact>
       </dl>
       <Note tone="warn">
-        &ldquo;This index cannot tell&rdquo; is not the same as &ldquo;no&rdquo;. A null mint
-        authority means the contract did not answer a question this index knows how to ask — it is
-        not evidence that the supply is fixed, and nothing on this page should be read as that
-        assurance.
+&ldquo;The contract did not answer&rdquo; is a gap in what we know, not a no. Where the
+        minting line reads that way, a question this service knows how to ask went unanswered. Treat
+        it as unknown. Nothing on this page is grounds for concluding that the supply is beyond
+        anyone's reach.
       </Note>
 
-      <h2 className="ex-section__title">When this was true</h2>
+      <h2 className="ex-section__title">The moment this was true</h2>
       <dl className="ex-facts">
-        <Fact label="Observed at block">
+        <Fact label="Measured at block">
           <Link className="cf-num" to={linkTo.block(token.chain, token.network, token.observedAtBlock)}>
             {count(token.observedAtBlock)}
           </Link>
         </Fact>
-        <Fact label="Block hash proved at that height">
+        <Fact label="Hash proved at that height">
           <code className="cf-num ex-hex">{token.observedAtBlockHash}</code>
         </Fact>
-        <Fact label="Tip a provider claimed">
+        <Fact label="Top of the chain, per the provider">
           {token.tipHeight === null ? (
-            <span className="ex-absent">none observed</span>
+            <span className="ex-absent">none reported</span>
           ) : (
             <span className="cf-num">{count(token.tipHeight)}</span>
           )}
         </Fact>
       </dl>
       <Note>
-        The whole answer is as at the block above — the stored canonical head, not the claimed tip.
-        The tip is shown so staleness can be judged, and is never what the observation was made
-        against (<code className="cf-num">indexer/src/tokenstate.ts</code>).
+Everything above was true at that block, which is the highest one this service has read for
+        itself rather than a provider's report of where the chain ends. The provider's figure sits
+        beside it only so you can judge how out of date the reading might be
+        (<code className="cf-num">indexer/src/tokenstate.ts</code>).
       </Note>
     </div>
   )

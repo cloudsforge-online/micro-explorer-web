@@ -82,8 +82,8 @@ describe('a null is never a zero', () => {
 
 describe('which head a depth was counted against', () => {
   it('says so, in words, for both kinds', () => {
-    assert.match(depthWording('walked-head'), /this indexer has walked/)
-    assert.match(depthWording('claimed-tip'), /a provider last claimed/)
+    assert.match(depthWording('walked-head'), /this indexer has walked for itself/)
+    assert.match(depthWording('claimed-tip'), /a provider last reported/)
     // The claimed-tip wording must carry the WARNING, not merely the fact. A reader who is told
     // only "against the tip" has not been told that the number may be larger than anything this
     // service has looked at.
@@ -91,8 +91,8 @@ describe('which head a depth was counted against', () => {
   })
 
   it('has a short form for a badge, and the two are distinguishable', () => {
-    assert.equal(depthLabel('walked-head'), 'vs walked head')
-    assert.equal(depthLabel('claimed-tip'), 'vs claimed tip')
+    assert.equal(depthLabel('walked-head'), 'from the block we read')
+    assert.equal(depthLabel('claimed-tip'), 'from the provider tip')
     assert.notEqual(depthLabel('walked-head'), depthLabel('claimed-tip'))
   })
 
@@ -102,7 +102,7 @@ describe('which head a depth was counted against', () => {
       assert.doesNotMatch(wording, /\bguarantee/i)
     }
     // And NOT_FINAL says the positive thing rather than only refusing.
-    assert.match(NOT_FINAL, /probability, not a proof/)
+    assert.match(NOT_FINAL, /not a proof that one cannot happen/)
   })
 })
 
@@ -117,7 +117,7 @@ describe('a chain state is a word, a glyph and only then a tone', () => {
 
   it('nothing indexed is its own state, not a lag of zero', () => {
     const tone = chainTone({ ...base, indexedHeight: null, lagBlocks: null })
-    assert.equal(tone.word, 'Nothing indexed')
+    assert.equal(tone.word, 'Nothing read')
   })
 
   it('lag is judged against the chain’s OWN alarm depth, not a number invented here', () => {
@@ -170,7 +170,7 @@ describe('a reverted transaction is not a pending one', () => {
   it('and an orphaned one is not a failure of the transaction', () => {
     const tone = transactionTone('orphaned')
     assert.equal(tone.tone, 'warn')
-    assert.match(tone.meaning, /no longer on the canonical chain/)
+    assert.match(tone.meaning, /no longer part of the accepted chain/)
   })
 
   it('an unrecognised status is rendered VERBATIM rather than guessed at', () => {
@@ -198,7 +198,7 @@ describe('a CONFLICTED movement is not an orphaned one', () => {
   it('says the coins were spent elsewhere, and does not say the reorg word', () => {
     const tone = activityTone('conflicted')
     assert.equal(tone.word, 'Conflicted')
-    assert.match(tone.meaning, /cannot be re-mined/)
+    assert.match(tone.meaning, /this one cannot/)
     assert.doesNotMatch(tone.meaning, /reorg/i)
   })
 
@@ -241,7 +241,7 @@ describe('a withheld balance explains itself in a sentence', () => {
     for (const reason of ['nothing_indexed', 'coverage_incomplete', 'chain_halted', 'negative']) {
       assert.doesNotMatch(unavailableReason(reason), /\bis zero\b/)
     }
-    assert.match(unavailableReason('negative'), /rather than clamped/)
+    assert.match(unavailableReason('negative'), /rounding it up to nought would hide the fault/)
   })
 
   it('an unknown reason says it is unknown rather than picking the nearest', () => {

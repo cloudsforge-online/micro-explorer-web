@@ -25,19 +25,19 @@ export function UnknownScope({
   return (
     <div className="ex-page">
       <header className="ex-page__head">
-        <h1 className="ex-page__title">No such chain here</h1>
+        <h1 className="ex-page__title">That chain is not run here</h1>
       </header>
       <p className="ex-page__lede">
-        This estate does not run{' '}
+CloudsForge operates no{' '}
         <code className="cf-num">
           {chain ?? '(no chain)'}/{network ?? '(no network)'}
         </code>
-        . That is not a malformed address — it names a resource that does not exist, which is the
-        same judgement the chain index makes
-        (<code className="cf-num">indexer/src/server.ts</code>).
+. There is nothing wrong with the way the address is written; it
+        simply names something that does not exist, and the chain index behind this page takes the
+        same view (<code className="cf-num">indexer/src/server.ts</code>).
       </p>
 
-      <h2 className="ex-section__title">The ones that do exist</h2>
+      <h2 className="ex-section__title">The combinations that do exist</h2>
       <ul className="ex-scopes">
         {CHAIN_IDS.map((c) => (
           <li key={c} className="ex-scope">

@@ -142,7 +142,7 @@ describe('the UI offers exactly what the index says it serves', () => {
         button.hasAttribute('disabled'),
         'a lookup was offered on a deployment that indexes nothing',
       )
-      assert.match(s.text(), /not indexing any chain/i)
+      assert.match(s.text(), /no chain is being followed here/i)
       s.clean('no served chain')
     })
   })
@@ -150,7 +150,7 @@ describe('the UI offers exactly what the index says it serves', () => {
   it('the chains page separates what is indexed from what is not supported', async () => {
     await withScreen(h(App), { url: `${HOST}/chains`, routes: routesFor(['ember']) }, async (s) => {
       await s.settle(20)
-      s.before(/Indexed here/, /Not supported by this deployment/, 'what works comes first')
+      s.before(/Walked by this deployment/, /Not available on this deployment/, 'what works comes first')
       // The tension the owner has to be able to see: custody hands out deposit addresses for
       // chains this explorer cannot display, so a user can deposit an asset and then fail to find
       // it here. Absence of a page must not read as absence of funds.
@@ -185,7 +185,7 @@ describe('the UI offers exactly what the index says it serves', () => {
       async (s) => {
         await s.settle(20)
         assert.match(s.text(), /Could not be read/)
-        assert.match(s.text(), /not a statement about those chains/)
+        assert.match(s.text(), /says nothing whatever about those\s+chains/)
         s.clean('one scope failed', /503/)
       },
     )

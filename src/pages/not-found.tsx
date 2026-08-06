@@ -17,20 +17,20 @@ export function NotFoundPage() {
   return (
     <div className="ex-page">
       <header className="ex-page__head">
-        <h1 className="ex-page__title">No such page</h1>
+        <h1 className="ex-page__title">No page lives at this address</h1>
       </header>
       <p className="ex-page__lede">
-        This explorer does not serve that address. The server answered 404 as well as this page
-        saying so, which is deliberate: a page that says &ldquo;not found&rdquo; under a 200 is a
-        page that lies to everything except a human being.
+Nothing in the explorer answers there. The server sent a 404 alongside this screen, on
+        purpose: an address that reports success while showing an apology is honest with the person
+        reading it and misleading to every crawler, monitor and script that also looked.
       </p>
-      <h2 className="ex-section__title">The addresses it does serve</h2>
+      <h2 className="ex-section__title">What you can reach from here</h2>
       <ul className="ex-plainlist">
         <li>
-          <Link to="/">/</Link> — search by height, hash or address
+          <Link to="/">/</Link> — look something up by height, hash or address
         </li>
         <li>
-          <Link to="/chains">/chains</Link> — every chain and network, and{' '}
+          <Link to="/chains">/chains</Link> — how far each chain has been read, and{' '}
           <code className="cf-num">/chains/&lt;chain&gt;/&lt;network&gt;</code> for one
         </li>
         <li>

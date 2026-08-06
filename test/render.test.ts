@@ -109,7 +109,7 @@ describe('nothing on this surface claims finality', () => {
   it('the sentence used instead is one string, not six paraphrases', () => {
     // The same discipline micro-trade-web applies to MODELLED. Six softer wordings across six
     // screens is how a careful claim becomes a marketing one, one edit at a time.
-    assert.match(NOT_FINAL, /never says a thing is final/)
+    assert.match(NOT_FINAL, /names the block it was measured from/)
     assert.equal(
       [...read('src/lib/format.ts').matchAll(/export const NOT_FINAL/g)].length,
       1,
@@ -288,6 +288,6 @@ describe('a 404 that is an answer does not look like a 404 that is our fault', (
     // `micro-market` collapsed.
     const source = read('src/pages/transaction.tsx')
     assert.match(source, /code === 'transaction_not_found'/)
-    assert.match(source, /which is not the same as unconfirmed/i)
+    assert.match(source, /a different thing from not yet deep enough/i)
   })
 })

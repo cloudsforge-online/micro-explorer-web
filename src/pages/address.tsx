@@ -67,7 +67,7 @@ export function AddressPage() {
   const activity = useResource<ActivityPage>(
     loadActivity,
     (page) => page.items.length,
-    'The chain index could not be reached.',
+    'The chain index is not answering.',
     [scope?.chain, scope?.network, address, cursor],
   )
 
@@ -81,7 +81,7 @@ export function AddressPage() {
   const holdings = useResource<TokenBalancesView>(
     loadHoldings,
     () => 1,
-    'The chain index could not be reached.',
+    'The chain index is not answering.',
     [scope?.chain, scope?.network, address],
   )
 
@@ -101,23 +101,24 @@ export function AddressPage() {
         <code className="cf-num ex-hex">{address}</code>
       </p>
       <p className="ex-page__lede">
-        If this address is a contract,{' '}
+        Everything this address has sent or received that the index has walked past, and what it
+        holds in tokens. Where the address is a token contract rather than somebody&rsquo;s account,{' '}
         <Link to={linkTo.token(scope.chain, scope.network, address)}>
-          read its supply and authorities
+          ask the contract about its own supply and authorities
         </Link>{' '}
         instead.
       </p>
 
-      <h2 className="ex-section__title">Token holdings</h2>
+      <h2 className="ex-section__title">Tokens held</h2>
       <Holdings holdings={holdings} />
 
-      <h2 className="ex-section__title">Movements</h2>
+      <h2 className="ex-section__title">Money in and out</h2>
       <DepthNote>
-        Every depth in this table is counted against the tip a provider last claimed
-        (<code className="cf-num">indexer/src/reads.ts</code>), not against the highest
-        block this index has walked. The{' '}
-        <Link to={linkTo.chain(scope.chain, scope.network)}>chain page</Link> shows the gap between
-        the two.
+Depths in this table are measured from the top of the chain as an upstream provider last
+        reported it (<code className="cf-num">indexer/src/reads.ts</code>), not from the
+        highest block read here. The{' '}
+        <Link to={linkTo.chain(scope.chain, scope.network)}>chain page</Link> puts a number on the
+        difference.
       </DepthNote>
       <Activity
         activity={activity}
@@ -129,13 +130,13 @@ export function AddressPage() {
 }
 
 function Holdings({ holdings }: { holdings: ReturnType<typeof useResource<TokenBalancesView>> }) {
-  if (holdings.state === 'loading') return <Loading label="Reading holdings" />
+  if (holdings.state === 'loading') return <Loading label="Totting up token balances" />
   if (holdings.error) {
     if (holdings.error.code === 'bad_address') {
       return (
         <Missing
-          title="That is not an address for this chain"
-          hint="On Ember and the EVM chains an address is 0x followed by 40 hex characters. Bitcoin, Solana and XRP addresses are checked for a plausible length only, because the validator that would check them properly does not exist in this estate yet."
+          title="That is not shaped like an address on this chain"
+          hint="Ember and the other EVM chains write an address as 0x and 40 hex characters. Bitcoin, Solana and XRP get a length check and nothing more, because nothing in this estate can properly validate their formats and a half-right check would turn away good addresses."
           notice={holdings.error}
         />
       )
@@ -143,21 +144,21 @@ function Holdings({ holdings }: { holdings: ReturnType<typeof useResource<TokenB
     return <Failed notice={holdings.error} onRetry={holdings.reload} />
   }
   const h = holdings.data
-  if (!h) return <Loading label="Reading holdings" />
+  if (!h) return <Loading label="Totting up token balances" />
 
   // ── THE WITHHELD CASE. No number, and the reason as a sentence. ─────────────────────────────
   if (h.unavailable) {
     return (
       <div className="ex-withheld" role="status">
         <p className="ex-withheld__title">
-          <span aria-hidden="true">⊘</span> This index will not state a balance for this address.
+          <span aria-hidden="true">⊘</span> No balance is being given for this address.
         </p>
         <p className="ex-withheld__why">{unavailableReason(h.unavailable)}</p>
         <dl className="ex-facts ex-facts--tight">
           <Fact label="Reason code">
             <code className="cf-num ex-code">{h.unavailable}</code>
           </Fact>
-          <Fact label="Coverage held">
+          <Fact label="History held">
             {h.coverage.fromHeight === null || h.coverage.toHeight === null ? (
               <span className="ex-absent">none</span>
             ) : (
@@ -167,18 +168,19 @@ function Holdings({ holdings }: { holdings: ReturnType<typeof useResource<TokenB
               </span>
             )}
           </Fact>
-          <Fact label="Walked head">
+          <Fact label="Read up to">
             {h.indexedHeight === null ? (
-              <span className="ex-absent">nothing walked</span>
+              <span className="ex-absent">no blocks read</span>
             ) : (
               <span className="cf-num">{count(h.indexedHeight)}</span>
             )}
           </Fact>
         </dl>
         <p className="ex-withheld__note">
-          Withheld, not zero. A balance derived from movements is only a balance if the movements
-          are all of them, so an incomplete record produces no number at all rather than a plausible
-          one (<code className="cf-num">indexer/src/reads.ts</code>).
+Held back, which is not the same as nought. A balance built up from movements is only a
+          balance when every movement is present, so a record with a hole in it yields no figure at
+          all rather than a believable wrong one
+          (<code className="cf-num">indexer/src/reads.ts</code>).
         </p>
       </div>
     )
@@ -188,22 +190,22 @@ function Holdings({ holdings }: { holdings: ReturnType<typeof useResource<TokenB
   return (
     <>
       <dl className="ex-facts ex-facts--tight">
-        <Fact label="As at block">
+        <Fact label="Correct as at block">
           <span className="cf-num">{count(h.atBlock)}</span>
         </Fact>
-        <Fact label="Coverage">
+        <Fact label="History held">
           <span className="cf-num">
             {count(h.coverage.fromHeight)} – {count(h.coverage.toHeight)} ·{' '}
             {count(h.coverage.blocks)} blocks
           </span>
-          <span className="ex-dim"> · unbroken from genesis</span>
+          <span className="ex-dim"> · continuous from the first block</span>
         </Fact>
       </dl>
       {balances.length === 0 ? (
         <p className="ex-absent">
-          This address holds none of the tokens this index has seen move — and here that IS a
-          balance of zero rather than an absence, because the coverage runs unbroken from the
-          genesis block (<code className="cf-num">indexer/src/reads.ts</code>).
+This address holds none of the tokens seen moving on this chain. Here that genuinely means
+          nought rather than unknown, because the record behind it runs without a break from the very
+          first block (<code className="cf-num">indexer/src/reads.ts</code>).
         </p>
       ) : (
         <div className="ex-tablewrap">
@@ -211,7 +213,7 @@ function Holdings({ holdings }: { holdings: ReturnType<typeof useResource<TokenB
             <thead>
               <tr>
                 <th scope="col">Contract</th>
-                <th scope="col">Balance (smallest units)</th>
+                <th scope="col">Held, in the token&rsquo;s smallest unit</th>
               </tr>
             </thead>
             <tbody>
@@ -233,10 +235,10 @@ function Holdings({ holdings }: { holdings: ReturnType<typeof useResource<TokenB
         </div>
       )}
       <Note>
-        These are raw units. This index does not know a token&rsquo;s decimals — that is a call to
-        the contract and a fact a token registry would own — so it declines to scale them rather
-        than assuming eighteen, "which is how a six-decimal stablecoin gets displayed a million
-        times too small" (<code className="cf-num">indexer/src/reads.ts</code>).
+Undivided figures. How far a token subdivides is a question for the contract, and nothing in
+        this estate keeps a register of the answers, so the numbers are left as they came rather than
+        divided by a guess. Assuming eighteen places is how a stablecoin with six ends up on screen a
+        million times too small (<code className="cf-num">indexer/src/reads.ts</code>).
       </Note>
     </>
   )
@@ -251,13 +253,13 @@ function Activity({
   onCursor: (cursor: string | null) => void
   cursor: string | null
 }) {
-  if (activity.state === 'loading') return <Loading label="Reading movements" />
+  if (activity.state === 'loading') return <Loading label="Gathering what moved" />
   if (activity.error) {
     if (activity.error.code === 'bad_address') {
       return (
         <Missing
-          title="That is not an address for this chain"
-          hint="On Ember and the EVM chains an address is 0x followed by 40 hex characters."
+          title="That is not shaped like an address on this chain"
+          hint="Ember and the other EVM chains write an address as 0x and 40 hex characters."
           notice={activity.error}
         />
       )
@@ -265,13 +267,13 @@ function Activity({
     return <Failed notice={activity.error} onRetry={activity.reload} />
   }
   const page = activity.data
-  if (!page) return <Loading label="Reading movements" />
+  if (!page) return <Loading label="Gathering what moved" />
 
   if (activity.state === 'empty') {
     return (
       <Empty
-        title="No movement recorded for this address"
-        hint="That is a statement about what this index has walked, not about the chain. An index that started following at the tip has never seen anything that happened before it."
+        title="Nothing has moved through this address"
+        hint="More precisely, nothing has moved within the stretch of chain this service has read. A service that began following at the top of the chain has no knowledge of anything that happened before it started."
         {...(cursor
           ? {
               action: (
@@ -295,10 +297,10 @@ function Activity({
               <th scope="col">Amount</th>
               <th scope="col">Asset</th>
               <th scope="col">Block</th>
-              <th scope="col">Depth (vs claimed tip)</th>
-              <th scope="col">On chain</th>
+              <th scope="col">Depth, from the provider&rsquo;s tip</th>
+              <th scope="col">Standing</th>
               <th scope="col">Transaction</th>
-              <th scope="col">First seen</th>
+              <th scope="col">First noticed</th>
             </tr>
           </thead>
           <tbody>
@@ -360,19 +362,20 @@ function Activity({
       <nav className="ex-stepper" aria-label="Pages">
         {cursor && (
           <button type="button" className="cf-btn" onClick={() => onCursor(null)}>
-            ← First page
+← Back to the newest
           </button>
         )}
         {page.nextCursor && (
           <button type="button" className="cf-btn" onClick={() => onCursor(page.nextCursor)}>
-            Older →
+Further back →
           </button>
         )}
       </nav>
       <Note>
-        An orphaned movement is one a reorg retracted. It is listed rather than hidden, because a
-        page that quietly dropped it would make a reorg invisible on the one screen where somebody
-        is looking for their money — and it carries no depth, because there is none honest to count.
+An orphaned row is one the chain took back when it rewrote its own history. It stays on the
+        page rather than disappearing from it: quietly dropping it would hide a rewrite on the one
+        screen where somebody is looking for their money. It carries no depth because there is no
+        longer anything honest to measure it against.
       </Note>
     </>
   )

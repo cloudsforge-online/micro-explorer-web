@@ -69,7 +69,7 @@ export function TransactionPage() {
   const record = useResource<TransactionView>(
     loadRecord,
     () => 1,
-    'The chain index could not be reached.',
+    'The chain index is not answering.',
     [scope?.chain, scope?.network, hash],
   )
 
@@ -83,13 +83,13 @@ export function TransactionPage() {
   const verdict = useResource<ConfirmationView>(
     loadVerdict,
     () => 1,
-    'The chain index could not be reached.',
+    'The chain index is not answering.',
     [scope?.chain, scope?.network, hash],
   )
 
   if (!scope) return <UnknownScope chain={params['chain']} network={params['network']} />
 
-  if (record.state === 'loading') return <Loading label="Reading the transaction" />
+  if (record.state === 'loading') return <Loading label="Fetching the transaction" />
   if (record.error) {
     if (record.error.code === 'unknown_chain' || record.error.code === 'unknown_network') {
       return <UnknownScope chain={params['chain']} network={params['network']} />
@@ -97,8 +97,8 @@ export function TransactionPage() {
     if (record.error.code === 'bad_hash') {
       return (
         <Missing
-          title="That is not a transaction hash for this chain"
-          hint="On Ember and the EVM chains a hash is 0x followed by 64 hex characters. The other families are length-checked only, because the validator that would check them properly does not exist yet and a wrong one would reject valid hashes."
+          title="That is not shaped like a hash on this chain"
+          hint="Ember and the other EVM chains write a hash as 0x and 64 hex characters. Other chain families get a length check and nothing more: nothing here can properly validate their formats, and a half-right check would turn away perfectly good hashes."
           notice={record.error}
         />
       )
@@ -106,11 +106,12 @@ export function TransactionPage() {
     if (record.error.status === 404) {
       return (
         <Missing
-          title="This index has never seen that transaction"
+          title="No record of that transaction here"
           hint={
-            'That is an answer about this index, not about the chain. A transaction it has not ' +
-            'walked to yet, one on a scope it does not follow, and one that never existed all ' +
-            'read the same way here — the chain page shows how far it has walked.'
+            'This says what CloudsForge holds, not what the chain holds. One that this service ' +
+            'has yet to reach, one on a chain it does not follow, and one that was never ' +
+            'broadcast at all are indistinguishable from where you are standing. The chain page ' +
+            'shows how far the reading has got, which narrows it down.'
           }
           notice={record.error}
         />
@@ -119,7 +120,7 @@ export function TransactionPage() {
     return <Failed notice={record.error} onRetry={record.reload} />
   }
   const tx = record.data
-  if (!tx) return <Loading label="Reading the transaction" />
+  if (!tx) return <Loading label="Fetching the transaction" />
 
   const tone = transactionTone(tx.status)
 
@@ -140,28 +141,28 @@ export function TransactionPage() {
 
       {/* The verdict comes FIRST, because it is the only answer on this page anybody should act
           on, and because a reader who scrolls no further has still been told the honest thing. */}
-      <h2 className="ex-section__title">Has it reached its depth?</h2>
+      <h2 className="ex-section__title">Is it deep enough to act on?</h2>
       <Verdict verdict={verdict} chain={tx.chain} network={tx.network} />
 
       <DepthNote>
-        The depth above is counted against the highest block this index has walked
-        (<code className="cf-num">indexer/src/reads.ts</code>). The one in the record below
-        is counted against the tip a provider claimed
-        (<code className="cf-num">indexer/src/reads.ts</code>). When they disagree, the
-        first is the smaller and the honest one.
+The depth above is measured from the highest block this service has read for itself
+        (<code className="cf-num">indexer/src/reads.ts</code>); the one further down is
+        measured from a provider's report of where the chain ends
+        (<code className="cf-num">indexer/src/reads.ts</code>). Where they part company, the
+        first is the smaller figure and the one to trust.
       </DepthNote>
 
-      <h2 className="ex-section__title">What the chain said</h2>
+      <h2 className="ex-section__title">What the chain recorded</h2>
       <dl className="ex-facts">
-        <Fact label="Status">
+        <Fact label="Outcome">
           <StateBadge tone={tone} />
         </Fact>
-        <Fact label="Depth (record)">
+        <Fact label="Depth, from the provider&rsquo;s tip">
           <Depth confirmations={tx.confirmations} head={CONFIRMATIONS_AGAINST.transaction} />
         </Fact>
         <Fact label="Block">
           {tx.blockHeight === null ? (
-            <span className="ex-absent">not in a block</span>
+            <span className="ex-absent">not in a block yet</span>
           ) : (
             <Link className="cf-num" to={linkTo.block(tx.chain, tx.network, tx.blockHeight)}>
               {count(tx.blockHeight)}
@@ -191,7 +192,7 @@ export function TransactionPage() {
               {tx.to}
             </Link>
           ) : (
-            <span className="ex-absent">— (a contract creation, or a form with no recipient)</span>
+            <span className="ex-absent">nobody — this either creates a contract or has no recipient by design</span>
           )}
         </Fact>
         <Fact label="Value (smallest units)">
@@ -200,41 +201,41 @@ export function TransactionPage() {
         <Fact label="Fee (smallest units)">
           <span className="cf-num">{units(tx.fee)}</span>
         </Fact>
-        <Fact label="Nonce or sequence">
+        <Fact label="Sender&rsquo;s counter, or nonce">
           {tx.nonceOrSequence === null ? (
-            <span className="ex-absent">this family has none</span>
+            <span className="ex-absent">chains of this kind keep no such counter</span>
           ) : (
             <span className="cf-num">{count(tx.nonceOrSequence)}</span>
           )}
         </Fact>
-        <Fact label="First seen by this index">{timestamp(tx.firstSeenAt)}</Fact>
+        <Fact label="First noticed here">{timestamp(tx.firstSeenAt)}</Fact>
         <Fact label="URN">
           <code className="cf-num ex-hex">{tx.txUrn}</code>
         </Fact>
       </dl>
       <Note>
-        Amounts are shown in the chain&rsquo;s smallest units and are never divided here. They
-        arrive as decimal strings because a <code className="cf-num">bigint</code> does not survive{' '}
-        <code className="cf-num">JSON.stringify</code> and a JSON number loses the low digits of any
-        eighteen-decimal value above about nine whole units
+Amounts stay in the chain's smallest unit and are never divided on this page. They travel as
+        text rather than as numbers, because JSON cannot carry an integer that large: past roughly
+        nine whole coins, an eighteen-decimal amount starts losing its last digits
         (<code className="cf-num">indexer/src/reads.ts</code>).
       </Note>
 
       {tx.explorerUrl && (
         <p className="ex-page__lede">
-          A third-party explorer for this chain has its own page for this transaction:{' '}
+An explorer run by somebody else covers this chain too, and has its own page for this
+          transaction:{' '}
           <a href={tx.explorerUrl} rel="noreferrer noopener" target="_blank">
             {tx.explorerUrl}
           </a>
-          . It is offered because verifying a chain fact against a second source is the point of a
-          chain fact.
+. It is put here on purpose: a fact recorded on a public chain is worth
+          having precisely because you can check it somewhere other than with us.
         </p>
       )}
 
       <h2 className="ex-section__title">Logs ({count(tx.logs.length)})</h2>
       {tx.logs.length === 0 ? (
         <p className="ex-absent">
-          No logs recorded. On a non-EVM family there would be none to record.
+No logs stored for this one. Chains outside the EVM family do not produce them at all.
         </p>
       ) : (
         <div className="ex-tablewrap">
@@ -282,9 +283,10 @@ export function TransactionPage() {
         </div>
       )}
       <Note>
-        Log topics and data are shown raw. This explorer decodes nothing: an ABI is a fact a token
-        registry would own, and no service in this estate owns one — so a decoded transfer here
-        would be a guess wearing the clothes of a reading.
+Topics and data are printed exactly as they came off the chain. Turning them into readable
+        names needs a contract's interface description, and nothing in this estate keeps a register
+        of those, so nothing here is decoded. A guess dressed up as a translation would be worse than
+        the hex.
       </Note>
     </div>
   )
@@ -307,7 +309,7 @@ function Verdict({
   chain: string
   network: string
 }) {
-  if (verdict.state === 'loading') return <Loading label="Asking whether it has reached its depth" />
+  if (verdict.state === 'loading') return <Loading label="Working out how deep it is" />
 
   if (verdict.error) {
     // THE SPLIT. `transaction_not_found` is a fact about the chain index; a bare `not_found` is the
@@ -315,29 +317,29 @@ function Verdict({
     if (verdict.error.code === 'transaction_not_found') {
       return (
         <Missing
-          title="This index has never seen that transaction"
-          hint="Which is not the same as unconfirmed. It has no record to count depth against, so it declines to give one rather than reporting zero."
+          title="No record of that transaction here"
+          hint="Which is a different thing from not yet deep enough. With no record, there is nothing to measure a depth against, so none is offered — reporting nought would be a claim about the chain that nobody here is in a position to make."
           notice={verdict.error}
         />
       )
     }
     if (verdict.error.status === 404) {
-      return <Missing title="Not answered" hint="" notice={verdict.error} />
+      return <Missing title="No answer came back" hint="" notice={verdict.error} />
     }
     return <Failed notice={verdict.error} onRetry={verdict.reload} />
   }
 
   const v = verdict.data
-  if (!v) return <Loading label="Asking whether it has reached its depth" />
+  if (!v) return <Loading label="Working out how deep it is" />
 
   const reasons: string[] = []
-  if (!v.canonical) reasons.push('the block it names is not on the canonical chain')
-  if (v.status !== 'success') reasons.push(`the transaction did not succeed — it is "${v.status}"`)
-  if (v.halted) reasons.push('this index has stopped vouching for this chain after an alarming reorg')
-  if (v.confirmations === null) reasons.push('there is no depth to count')
+  if (!v.canonical) reasons.push('the block holding it is no longer part of the accepted chain')
+  if (v.status !== 'success') reasons.push(`it did not succeed on chain — the outcome was "${v.status}"`)
+  if (v.halted) reasons.push('a rewrite past the alarm threshold stopped this service standing behind the chain')
+  if (v.confirmations === null) reasons.push('there is nothing honest to measure a depth against')
   else if (v.confirmations < v.requiredConfirmations) {
     reasons.push(
-      `it is ${v.confirmations} of the ${v.requiredConfirmations} confirmations this chain requires`,
+      `it sits ${v.confirmations} blocks deep, and this chain is credited at ${v.requiredConfirmations}`,
     )
   }
 
@@ -348,8 +350,8 @@ function Verdict({
           {v.confirmed ? '●' : '○'}
         </span>
         {v.confirmed
-          ? 'Yes — it has reached the depth this chain publishes, on a block this index has walked.'
-          : 'No — not at the depth this chain publishes.'}
+          ? 'Yes. It is as deep as this chain asks for, in a block this service has read itself.'
+          : 'Not yet, by the depth this chain asks for.'}
       </p>
       {!v.confirmed && reasons.length > 0 && (
         <ul className="ex-verdict__why">
@@ -366,20 +368,20 @@ function Verdict({
             head={CONFIRMATIONS_AGAINST.confirmations}
           />
         </Fact>
-        <Fact label="On the canonical chain">{v.canonical ? 'yes' : 'no'}</Fact>
-        <Fact label="Chain halted">{v.halted ? 'yes' : 'no'}</Fact>
-        <Fact label="Counted against (walked head)">
+        <Fact label="Still on the accepted chain">{v.canonical ? 'yes' : 'no'}</Fact>
+        <Fact label="Reading of this chain stopped">{v.halted ? 'yes' : 'no'}</Fact>
+        <Fact label="Measured from block">
           {v.indexedHeight === null ? (
-            <span className="ex-absent">nothing walked</span>
+            <span className="ex-absent">none read</span>
           ) : (
             <Link className="cf-num" to={linkTo.block(chain, network, v.indexedHeight)}>
               {count(v.indexedHeight)}
             </Link>
           )}
         </Fact>
-        <Fact label="Tip a provider claimed">
+        <Fact label="Top of the chain, per the provider">
           {v.tipHeight === null ? (
-            <span className="ex-absent">none observed</span>
+            <span className="ex-absent">none reported</span>
           ) : (
             <span className="cf-num">{count(v.tipHeight)}</span>
           )}
@@ -392,8 +394,9 @@ function Verdict({
         grows until the rule means nothing. Saying the true thing positively needs no exemption.
       */}
       <p className="ex-verdict__note">
-        Reaching the required depth is the strongest statement this index makes about a
-        transaction, and it remains a statement about probability rather than a proof.
+Passing that depth is as much as this service will ever say for a transaction, and it stays a
+        statement about how unlikely a reversal has become rather than a proof that one cannot
+        happen.
       </p>
     </div>
   )

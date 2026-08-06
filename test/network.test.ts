@@ -212,10 +212,10 @@ describe('the same bundle, mounted on both real hostnames', () => {
         // Document order: the warning has to precede the denial, or it is an explanation of a
         // conclusion the reader has already drawn. The denial is the transaction page's own
         // `transaction_not_found` screen (`src/pages/transaction.tsx`).
-        assert.match(s.text(), /has never seen that transaction/, 'the denial did not render')
+        assert.match(s.text(), /no record of that transaction here/i, 'the denial did not render')
         s.before(
           /names the testnet network/,
-          /has never seen that transaction/,
+          /no record of that transaction here/i,
           'the warning must come first',
         )
       },

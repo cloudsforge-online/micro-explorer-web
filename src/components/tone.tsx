@@ -89,7 +89,7 @@ export function Depth({
     return (
       <span className="ex-depth ex-depth--none" title={depthWording(head)}>
         <span className="ex-absent">
-          no depth to count — this is not on the canonical chain, or not in a block yet
+nothing to measure — this is not in a block, or no longer on the accepted chain
         </span>
       </span>
     )
