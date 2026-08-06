@@ -219,16 +219,18 @@ CI both enforce it.
 The one build **argument** is `RELEASE`, stamped into a meta tag `src/lib/obs.ts` reads. It
 identifies the artefact; it does not configure it.
 
-### The devPort disagreement, reported rather than papered over
+### The devPort disagreement, reported and then fixed upstream
 
 | | Value | Read from |
 | --- | --- | --- |
-| Registry `explorer` devPort | **8080** | `ui/packages/ui/src/surfaces.ts:443` |
-| The port `micro-indexer` binds | **4008** | `indexer/src/env.ts:364`, `indexer/.env.example:9`, `indexer/Dockerfile:91` |
+| Registry `explorer` devPort | **4008** | `ui/packages/ui/src/surfaces.ts:709` |
+| The port `micro-indexer` binds | **4008** | `indexer/src/env.ts:363`, `indexer/.env.example:9`, `indexer/Dockerfile:91` |
 | This app's Vite dev server | 5189 | `vite.config.ts` — neither of the above |
 
-8080 is this bundle's own container port (nginx-unprivileged listens on it), not a port any API
-answers on. The registry has **no `indexer` entry at all** — `CloudsForgeHosts` is
+The registry **used to say 8080**, which is this bundle's own container port (nginx-unprivileged
+listens on it) and not a port any API answers on — so the registry told a frontend to ask itself for
+chain data. micro-ui corrected it to 4008 and the pins in `test/hosts.test.ts` flipped to the
+agreeing direction. The registry still has **no `indexer` entry at all** — `CloudsForgeHosts` is
 `Record<SurfaceKey, string>` (`ui/packages/ui/src/index.tsx:121`) — so `explorer` is the only key
 this bundle can ask for, and in production it is the right one because the SPA and the indexer share
 `explorer.<apex>`.
@@ -255,10 +257,11 @@ estate keeps finding in its own documents.
 | `emberkin` | 4100 (`ui/packages/ui/src/surfaces.ts:412`) | 4100 (`emberkin/src/env.ts:121`) | **agrees** — it said 3014 |
 | `create` | 4004 (`ui/packages/ui/src/surfaces.ts:219`) | 4000 (`mint/src/env.ts:251`) | still disagrees |
 | `trade` | 4006 (`ui/packages/ui/src/surfaces.ts:206`) | 4000 (`trade/src/env.ts:166`) | still disagrees |
-| `explorer` | 8080 (`ui/packages/ui/src/surfaces.ts:443`) | 4008 (`indexer/src/env.ts:364`) | still disagrees |
+| `explorer` | 4008 (`ui/packages/ui/src/surfaces.ts:709`) | 4008 (`indexer/src/env.ts:363`) | **agrees** — it said 8080 |
 
-Three live, not seven. `test/hosts.test.ts` pins every number in that table, so the day another is
-fixed this README fails rather than becoming the next stale inherited claim. Reported to micro-ui.
+Two live, not seven, and not the three this section used to claim: `explorer` was corrected upstream
+after that sentence was written. `test/hosts.test.ts` pins every number in that table, so the day
+another is fixed this README fails rather than becoming the next stale inherited claim.
 
 ## Brand
 

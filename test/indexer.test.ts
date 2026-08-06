@@ -720,9 +720,12 @@ describe('the cited lines are the lines that register the routes', () => {
   })
 
   it('the indexer still binds 4008, which the README and the hosts note both state', () => {
-    // Half of the devPort disagreement. The other half — the registry's 8080 — is pinned in
-    // test/hosts.test.ts, so whichever moves first fails and names the other.
+    // Both halves now AGREE: micro-ui corrected the registry's `explorer` devPort from 8080 to
+    // 4008, which is the number this file reads out of the service. test/hosts.test.ts pins the
+    // registry side, so whichever moves first fails and names the other.
     assert.match(env, /port\(source, 'PORT', 4008\)/, 'the indexer no longer defaults PORT to 4008')
-    assert.match(env.split('\n')[363] ?? '', /4008/, `indexer/src/env.ts:364 is: ${env.split('\n')[363]}`)
+    // 1-indexed citation, 0-indexed array — the same convention as the route pins above. The
+    // secrets-guard work in micro-indexer moved this line from 364 to 363.
+    assert.match(env.split('\n')[362] ?? '', /4008/, `indexer/src/env.ts:363 is: ${env.split('\n')[362]}`)
   })
 })

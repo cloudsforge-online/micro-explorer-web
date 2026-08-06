@@ -38,9 +38,9 @@ export default defineConfig({
   // 5189 IS A VITE PORT. IT IS NEITHER THE REGISTRY'S `explorer` ENTRY NOR THE INDEXER'S PORT,
   // Three numbers, all different, and each names a different thing.
   //
-  // The registry's devPort for `explorer` is **4008** (`ui/packages/ui/src/surfaces.ts:523`) —
+  // The registry's devPort for `explorer` is **4008** (`ui/packages/ui/src/surfaces.ts:709`) —
   // where `micro-indexer`, the API this bundle reads, answers on localhost
-  // (`indexer/src/env.ts:364`). It briefly said 8080, this bundle's own container port, which
+  // (`indexer/src/env.ts:363`). It briefly said 8080, this bundle's own container port, which
   // made the app ask itself for chain data; micro-ui corrected it and pinned it to the service.
   //
   // 8080 is the nginx-unprivileged container port (`nginx.conf:29`) — a fact about the IMAGE.
