@@ -34,7 +34,7 @@ CloudsForge operates no{' '}
         </code>
 . There is nothing wrong with the way the address is written; it
         simply names something that does not exist, and the chain index behind this page takes the
-        same view (<code className="cf-num">indexer/src/server.ts</code>).
+        same view.
       </p>
 
       <h2 className="ex-section__title">The combinations that do exist</h2>

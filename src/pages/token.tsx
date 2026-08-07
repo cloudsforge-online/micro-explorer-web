@@ -108,9 +108,7 @@ export function TokenPage() {
             <p className="ex-withheld__note">
 &ldquo;The question could not be put&rdquo; and &ldquo;the answer is no&rdquo; are separate
               outcomes, and software that runs them together ends up telling people a token does not
-              exist when the truth is that nobody managed to look
-              (<code className="cf-num">indexer/src/server.ts</code>). This page keeps them
-              apart.
+              exist when the truth is that nobody managed to look. This page keeps them apart.
             </p>
           </div>
           {resource.error.status !== 501 && (
@@ -281,8 +279,7 @@ Both figures come from the contract in its own smallest unit and are printed und
       <Note>
 Everything above was true at that block, which is the highest one this service has read for
         itself rather than a provider's report of where the chain ends. The provider's figure sits
-        beside it only so you can judge how out of date the reading might be
-        (<code className="cf-num">indexer/src/tokenstate.ts</code>).
+        beside it only so you can judge how out of date the reading might be.
       </Note>
     </div>
   )
