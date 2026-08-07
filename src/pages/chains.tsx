@@ -233,7 +233,7 @@ Two different questions sit behind those numbers and this page keeps them apart.
         highest block this service has read for itself and would have spotted a rewrite in. The other
         is whatever an upstream provider last said the top of the chain was. A depth taken from the
         second can be larger than the total number of blocks anybody here has examined, by precisely
-        the gap shown (<code className="cf-num">indexer/src/reads.ts</code>).
+        the gap shown.
       </Note>
     </div>
   )

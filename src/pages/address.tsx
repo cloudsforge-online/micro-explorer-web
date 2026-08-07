@@ -115,8 +115,7 @@ export function AddressPage() {
       <h2 className="ex-section__title">Money in and out</h2>
       <DepthNote>
 Depths in this table are measured from the top of the chain as an upstream provider last
-        reported it (<code className="cf-num">indexer/src/reads.ts</code>), not from the
-        highest block read here. The{' '}
+        reported it, not from the highest block read here. The{' '}
         <Link to={linkTo.chain(scope.chain, scope.network)}>chain page</Link> puts a number on the
         difference.
       </DepthNote>
@@ -179,8 +178,7 @@ function Holdings({ holdings }: { holdings: ReturnType<typeof useResource<TokenB
         <p className="ex-withheld__note">
 Held back, which is not the same as nought. A balance built up from movements is only a
           balance when every movement is present, so a record with a hole in it yields no figure at
-          all rather than a believable wrong one
-          (<code className="cf-num">indexer/src/reads.ts</code>).
+          all rather than a believable wrong one.
         </p>
       </div>
     )
@@ -205,7 +203,7 @@ Held back, which is not the same as nought. A balance built up from movements is
         <p className="ex-absent">
 This address holds none of the tokens seen moving on this chain. Here that genuinely means
           nought rather than unknown, because the record behind it runs without a break from the very
-          first block (<code className="cf-num">indexer/src/reads.ts</code>).
+          first block.
         </p>
       ) : (
         <div className="ex-tablewrap">
@@ -238,7 +236,7 @@ This address holds none of the tokens seen moving on this chain. Here that genui
 Undivided figures. How far a token subdivides is a question for the contract, and nothing in
         this estate keeps a register of the answers, so the numbers are left as they came rather than
         divided by a guess. Assuming eighteen places is how a stablecoin with six ends up on screen a
-        million times too small (<code className="cf-num">indexer/src/reads.ts</code>).
+        million times too small.
       </Note>
     </>
   )

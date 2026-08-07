@@ -102,8 +102,7 @@ export function BlockPage() {
 
       <DepthNote>
 The depth below is measured from the top of the chain as an upstream provider last reported
-        it (<code className="cf-num">indexer/src/reads.ts</code>), and that report can run
-        ahead of the highest block read here. The{' '}
+        it, and that report can run ahead of the highest block read here. The{' '}
         <Link to={linkTo.chain(block.chain, block.network)}>chain page</Link> puts a number on the
         difference.
       </DepthNote>
@@ -157,9 +156,8 @@ Not one transaction from this block has been stored here.
             <>
               {' '}
 The block&rsquo;s own header claims {count(block.txCount)}. The header has been read and the
-              contents have not, which is why the two figures disagree — one is counted from stored
-              rows (<code className="cf-num">indexer/src/store.ts</code>) and the other is what
-              the chain itself declared (<code className="cf-num">txCount</code>).
+              contents have not, which is why the two figures disagree — one is counted from the
+              transactions stored here, the other is what the chain itself declared in the header.
             </>
           )}
         </p>

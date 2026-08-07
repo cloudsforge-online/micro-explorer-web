@@ -145,10 +145,9 @@ export function TransactionPage() {
       <Verdict verdict={verdict} chain={tx.chain} network={tx.network} />
 
       <DepthNote>
-The depth above is measured from the highest block this service has read for itself
-        (<code className="cf-num">indexer/src/reads.ts</code>); the one further down is
-        measured from a provider's report of where the chain ends
-        (<code className="cf-num">indexer/src/reads.ts</code>). Where they part company, the
+The depth above is measured from the highest block this service has read for itself; the one
+        further down is measured from a provider's report of where the chain ends. Where they part
+        company, the
         first is the smaller figure and the one to trust.
       </DepthNote>
 
@@ -216,8 +215,7 @@ The depth above is measured from the highest block this service has read for its
       <Note>
 Amounts stay in the chain's smallest unit and are never divided on this page. They travel as
         text rather than as numbers, because JSON cannot carry an integer that large: past roughly
-        nine whole coins, an eighteen-decimal amount starts losing its last digits
-        (<code className="cf-num">indexer/src/reads.ts</code>).
+        nine whole coins, an eighteen-decimal amount starts losing its last digits.
       </Note>
 
       {tx.explorerUrl && (

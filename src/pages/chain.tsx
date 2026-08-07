@@ -89,8 +89,7 @@ export function ChainPage() {
           <strong>This service will no longer stand behind what it holds for this chain.</strong> A
           rewrite deeper than its alarm threshold of {count(status.reorgAlarmDepth)} blocks was
           detected. Rather than serve balances out of a history it can no longer defend, it turns
-          those questions away
-          (<code className="cf-num">indexer/src/reads.ts</code>).
+          those questions away.
           {status.haltReason ? ` The recorded reason: ${status.haltReason}` : ''}
         </Note>
       )}
@@ -142,8 +141,7 @@ export function ChainPage() {
 The two heights answer different questions. One is what this service has read for itself; the
         other is a provider's report. Depths printed on a block, or in the body of a transaction, are
         taken from the provider's figure, so they can exceed the number of blocks examined here by
-        precisely the shortfall above
-        (<code className="cf-num">indexer/src/reads.ts</code>).
+        precisely the shortfall above.
       </Note>
 
       <h2 className="ex-section__title">What counts as settled on this chain</h2>
@@ -168,8 +166,7 @@ The two heights answer different questions. One is what this service has read fo
 Those depths are published once, in <code className="cf-num">@cloudsforge/contracts-chain</code>,
         and ride along with every answer instead of being remembered separately by each service. The
         package version is pinned exactly, because four services holding four opinions about how deep
-        is deep enough means somebody's money is credited on the wrong one
-        (<code className="cf-num">indexer/src/chains.ts</code>).
+        is deep enough means somebody's money is credited on the wrong one.
       </Note>
 
       <h2 className="ex-section__title">Providers</h2>
@@ -177,8 +174,7 @@ Those depths are published once, in <code className="cf-num">@cloudsforge/contra
         <p className="ex-absent">
 Nothing has been recorded about any provider for this chain. A chain that is switched on with
           nowhere to read it from is a service that looks healthy and does no work, which CloudsForge
-          treats as a misconfiguration rather than a state to live with
-          (<code className="cf-num">indexer/src/env.ts</code>).
+          treats as a misconfiguration rather than a state to live with.
         </p>
       ) : (
         <div className="ex-tablewrap">
@@ -225,9 +221,8 @@ Nothing has been recorded about any provider for this chain. A chain that is swi
       <h2 className="ex-section__title">Rewrites of history, or reorgs, seen here</h2>
       {status.recentReorgs.length === 0 ? (
         <p className="ex-absent">
-Nothing on file. Read that as the five most recent this service has spotted for itself
-          (<code className="cf-num">indexer/src/reads.ts</code>) rather than as a statement that
-          the chain has never been rewritten — a service that has read nothing has spotted nothing.
+Nothing on file. Read that as the five most recent this service has spotted for itself,
+          rather than as a statement that the chain has never been rewritten — a service that has read nothing has spotted nothing.
         </p>
       ) : (
         <div className="ex-tablewrap">
@@ -287,8 +282,7 @@ Nothing on file. Read that as the five most recent this service has spotted for 
       )}
       <Note>
 A reorg is a chain rewriting its own recent history. When one happens, the blocks, the transactions in them and the balance movements
-        they carried are withdrawn in a single database statement
-        (<code className="cf-num">indexer/src/reads.ts</code>). Anyone reading mid-rewrite
+        they carried are withdrawn in a single database statement. Anyone reading mid-rewrite
         therefore sees the whole of it or none of it, which is why those three counts always move
         together.
       </Note>
