@@ -660,7 +660,7 @@ jobs:
             echo "::error::a page calls /v1 directly; every call goes through src/lib/indexer.ts, where it is cited"
             exit 1
           fi
-          echo "ok: ${cites} citations, and no uncited call site"
+          echo "ok: ${routes} routes, all in the one module, and no uncited call site"
 
       - name: The scope is always two path segments
         # A helper standing for `chain/network` hides a segment, and a path one segment short of the
