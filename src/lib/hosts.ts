@@ -80,8 +80,8 @@ export const ACCENT_SURFACE = 'network'
  * drift from the copy a crawler that does execute JavaScript ends up with.
  */
 export const SURFACE_DESCRIPTION =
-  'Blocks, transactions, addresses and chain state on the CloudsForge networks. Every depth is ' +
-  'shown with the head it was measured against, and nothing here is called final.'
+  'Look up any block, transaction or address on the CloudsForge networks. Every depth is shown ' +
+  'with the head it was measured against, and nothing is final.'
 
 /** The name reported to the observability ingest and shown in error copy. */
 export const APP_NAME = 'explorer-web'

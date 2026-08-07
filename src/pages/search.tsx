@@ -106,7 +106,13 @@ export function SearchPage() {
   return (
     <div className="ex-page">
       <header className="ex-page__head">
-        <h1 className="ex-page__title">Network Explorer</h1>
+        {/*
+          Not "Network Explorer". The wordmark is already in the header above this, and repeating
+          it as the page's only heading spends the one line a first-time reader is guaranteed to
+          read on a noun they can see two inches higher up. What this page does is answer a
+          question, and the heading is the question.
+        */}
+        <h1 className="ex-page__title">Look up a block, a transaction or an address</h1>
       </header>
       <p className="ex-page__lede">
         Look up any block, transaction or address on the chains CloudsForge follows, and see what a
