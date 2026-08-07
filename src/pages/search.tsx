@@ -268,34 +268,35 @@ export function SearchPage() {
 
       {sibling && (
         <Note>
-          After the {other} network? It runs as its own deployment with its own index, at{' '}
+          Looking for {other} instead? It runs as its own deployment with its own index, at{' '}
           {/* A real anchor: a different origin, which a router Link cannot reach. */}
           <a href={sibling}>{sibling.replace('https://', '')}</a>. Nothing here reads it, and whatever
           you type into this box stays on this side.
         </Note>
       )}
 
+      {/*
+        PROVENANCE, kept here rather than on the page. All three statements below are read off
+        `indexer/src/reads.ts`, and this page used to print that filename beside each of them in a
+        `<code>`. A reader looking up a transaction cannot open our source tree and would not want
+        to; the person who can is reading this file. The claims stay, the filename moves here.
+      */}
       <h2 className="ex-section__title">How to read a depth on this site</h2>
       <ul className="ex-plainlist">
         <li>
           <strong>On a block, or in a transaction&rsquo;s record,</strong> the count is measured
-          from the tip an upstream provider last reported (<code className="cf-num">
-            indexer/src/reads.ts
-          </code>
-          ). That figure can sit above the highest block anybody here has actually read.
+          from the tip an upstream provider last reported. That figure can sit above the highest
+          block anybody here has actually read.
         </li>
         <li>
           <strong>At the top of a transaction,</strong> the verdict is counted from the highest
-          block this service has walked itself (<code className="cf-num">
-            indexer/src/reads.ts
-          </code>
-          ). It is the smaller number, and the one to weigh before acting on money.
+          block this service has walked itself. It is the smaller number, and the one to weigh
+          before acting on money.
         </li>
         <li>
           <strong>Token holdings for an address</strong> are held back altogether, with the reason
-          named, whenever the record behind them has a hole in it
-          (<code className="cf-num">indexer/src/reads.ts</code>). Adding up part of the
-          movements would produce a figure that looks like a balance and is not one.
+          named, whenever the record behind them has a hole in it. Adding up part of the movements
+          would produce a figure that looks like a balance and is not one.
         </li>
       </ul>
     </div>
