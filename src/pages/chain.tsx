@@ -45,13 +45,13 @@ export function ChainPage() {
     // A status answer is never "empty": a chain with nothing indexed is a status worth reading, so
     // the count is 1 whenever there is a body at all.
     () => 1,
-    'The chain index could not be reached.',
+    'The chain index is not answering.',
     [scope?.chain, scope?.network],
   )
 
   if (!scope) return <UnknownScope chain={params['chain']} network={params['network']} />
 
-  if (resource.state === 'loading') return <Loading label={`Reading ${scopeLabel(scope)}`} />
+  if (resource.state === 'loading') return <Loading label={`Asking ${scopeLabel(scope)} where it stands`} />
   if (resource.error) {
     // `unknown_chain` and `unknown_network` are 404s that mean "this estate does not run that",
     // which is a fact rather than a fault (`indexer/src/server.ts`).
@@ -61,8 +61,8 @@ export function ChainPage() {
     if (resource.error.status === 404) {
       return (
         <Missing
-          title="No such chain here"
-          hint="This index does not serve that scope."
+          title="Nothing here follows that chain"
+          hint="The combination of chain and network in this address is not one this deployment reads."
           notice={resource.error}
         />
       )
@@ -70,7 +70,7 @@ export function ChainPage() {
     return <Failed notice={resource.error} onRetry={resource.reload} />
   }
   const status = resource.data
-  if (!status) return <Loading label={`Reading ${scopeLabel(scope)}`} />
+  if (!status) return <Loading label={`Asking ${scopeLabel(scope)} where it stands`} />
 
   const tone = chainTone(status)
   const seen = since(status.tipSeenAt)
@@ -86,19 +86,20 @@ export function ChainPage() {
 
       {status.halted && (
         <Note tone="warn">
-          <strong>This index has stopped vouching for this chain.</strong> A reorg past the alarm
-          depth of {count(status.reorgAlarmDepth)} was detected, so holdings questions are refused
-          outright rather than answered from a history it cannot stand behind
+          <strong>This service will no longer stand behind what it holds for this chain.</strong> A
+          rewrite deeper than its alarm threshold of {count(status.reorgAlarmDepth)} blocks was
+          detected. Rather than serve balances out of a history it can no longer defend, it turns
+          those questions away
           (<code className="cf-num">indexer/src/reads.ts</code>).
           {status.haltReason ? ` The recorded reason: ${status.haltReason}` : ''}
         </Note>
       )}
 
-      <h2 className="ex-section__title">Where this index has got to</h2>
+      <h2 className="ex-section__title">How much of it has been read</h2>
       <dl className="ex-facts">
-        <Fact label="Walked to (canonical head)">
+        <Fact label="Read up to (canonical head)">
           {status.indexedHeight === null ? (
-            <span className="ex-absent">nothing walked on this chain yet</span>
+            <span className="ex-absent">not a single block read on this chain</span>
           ) : (
             <Link className="cf-num" to={linkTo.block(status.chain, status.network, status.indexedHeight)}>
               {count(status.indexedHeight)}
@@ -112,14 +113,14 @@ export function ChainPage() {
             <span className="ex-absent">—</span>
           )}
         </Fact>
-        <Fact label="Tip a provider last claimed">
+        <Fact label="Top of the chain, per the provider">
           {status.tipHeight === null ? (
-            <span className="ex-absent">no tip has ever been observed</span>
+            <span className="ex-absent">no provider has ever reported one</span>
           ) : (
             <span className="cf-num">{count(status.tipHeight)}</span>
           )}
         </Fact>
-        <Fact label="Tip seen">
+        <Fact label="Last heard from a provider">
           {status.tipSeenAt ? (
             <>
               {timestamp(status.tipSeenAt)}
@@ -129,53 +130,55 @@ export function ChainPage() {
             <span className="ex-absent">never</span>
           )}
         </Fact>
-        <Fact label="Behind the claimed tip by">
+        <Fact label="Short of that by">
           {status.lagBlocks === null ? (
-            <span className="ex-absent">unknown — no tip has ever been observed</span>
+            <span className="ex-absent">unknowable — no provider has reported a top</span>
           ) : (
             <span className="cf-num">{count(status.lagBlocks)} blocks</span>
           )}
         </Fact>
       </dl>
       <Note>
-        Those two heights are different questions. The first is what this service has actually
-        walked; the second is what a provider said. A confirmation count taken against the second —
-        which is what a block or a transaction record on this explorer carries — can be larger than
-        the number of blocks anybody here has looked at, by exactly the lag above
+The two heights answer different questions. One is what this service has read for itself; the
+        other is a provider's report. Depths printed on a block, or in the body of a transaction, are
+        taken from the provider's figure, so they can exceed the number of blocks examined here by
+        precisely the shortfall above
         (<code className="cf-num">indexer/src/reads.ts</code>).
       </Note>
 
-      <h2 className="ex-section__title">What this chain calls confirmed</h2>
+      <h2 className="ex-section__title">What counts as settled on this chain</h2>
       <dl className="ex-facts">
-        <Fact label="Confirmations required">
+        <Fact label="Depth before CloudsForge credits">
           <span className="cf-num">{count(status.requiredConfirmations)}</span>
         </Fact>
-        <Fact label="Reorg alarm depth">
+        <Fact label="Rewrite depth that raises the alarm">
           <span className="cf-num">{count(status.reorgAlarmDepth)}</span>
         </Fact>
         <Fact label="Family">{status.family}</Fact>
         <Fact label="Asset">{status.asset}</Fact>
-        <Fact label="Declared chain id">
+        <Fact label="Chain id">
           {status.chainId === null ? (
-            <span className="ex-absent">this family publishes none</span>
+            <span className="ex-absent">chains of this kind do not have one</span>
           ) : (
             <span className="cf-num">{count(status.chainId)}</span>
           )}
         </Fact>
       </dl>
       <Note>
-        Both numbers come from <code className="cf-num">@cloudsforge/contracts-chain</code> and
-        travel with the answer rather than being held by any consumer — the package is exact-pinned
-        precisely because four services disagreeing about a depth is money credited at the wrong one
+Those depths are published once, in <code className="cf-num">@cloudsforge/contracts-chain</code>,
+        and ride along with every answer instead of being remembered separately by each service. The
+        package version is pinned exactly, because four services holding four opinions about how deep
+        is deep enough means somebody's money is credited on the wrong one
         (<code className="cf-num">indexer/src/chains.ts</code>).
       </Note>
 
       <h2 className="ex-section__title">Providers</h2>
       {status.providers.length === 0 ? (
         <p className="ex-absent">
-          No provider health has been recorded for this scope. A configured chain with no provider
-          is a service that reports healthy and indexes nothing, which this estate treats as a
-          configuration error (<code className="cf-num">indexer/src/env.ts</code>).
+Nothing has been recorded about any provider for this chain. A chain that is switched on with
+          nowhere to read it from is a service that looks healthy and does no work, which CloudsForge
+          treats as a misconfiguration rather than a state to live with
+          (<code className="cf-num">indexer/src/env.ts</code>).
         </p>
       ) : (
         <div className="ex-tablewrap">
@@ -219,12 +222,12 @@ export function ChainPage() {
         </div>
       )}
 
-      <h2 className="ex-section__title">Reorgs this index has recorded</h2>
+      <h2 className="ex-section__title">Rewrites of history, or reorgs, seen here</h2>
       {status.recentReorgs.length === 0 ? (
         <p className="ex-absent">
-          None recorded. That is not a claim that none happened — it is the five most recent this
-          service has detected (<code className="cf-num">indexer/src/reads.ts</code>), and a
-          service that has walked nothing has detected nothing.
+Nothing on file. Read that as the five most recent this service has spotted for itself
+          (<code className="cf-num">indexer/src/reads.ts</code>) rather than as a statement that
+          the chain has never been rewritten — a service that has read nothing has spotted nothing.
         </p>
       ) : (
         <div className="ex-tablewrap">
@@ -233,9 +236,9 @@ export function ChainPage() {
               <tr>
                 <th scope="col">Detected</th>
                 <th scope="col">Depth</th>
-                <th scope="col">Common ancestor</th>
-                <th scope="col">Retracted</th>
-                <th scope="col">Alarming</th>
+                <th scope="col">Last block both agreed on</th>
+                <th scope="col">Taken back</th>
+                <th scope="col">Past the alarm</th>
               </tr>
             </thead>
             <tbody>
@@ -262,7 +265,7 @@ export function ChainPage() {
                           word: 'Alarming',
                           glyph: '⊘',
                           tone: 'bad',
-                          meaning: 'Past the alarm depth: this service stopped vouching for the chain',
+                          meaning: 'Deeper than the alarm threshold, so this service stopped standing behind the chain',
                         }}
                       />
                     ) : (
@@ -271,7 +274,7 @@ export function ChainPage() {
                           word: 'Recorded',
                           glyph: '·',
                           tone: 'idle',
-                          meaning: 'Within the alarm depth: recorded, and the chain kept following',
+                          meaning: 'Shallower than the alarm threshold, so it was noted and the walk carried on',
                         }}
                       />
                     )}
@@ -283,9 +286,11 @@ export function ChainPage() {
         </div>
       )}
       <Note>
-        A reorg retracts blocks, transactions and movements together, in one statement
-        (<code className="cf-num">indexer/src/reads.ts</code>), so a read taken during one
-        sees all of it or none of it. That is why the counts above move as a set.
+A reorg is a chain rewriting its own recent history. When one happens, the blocks, the transactions in them and the balance movements
+        they carried are withdrawn in a single database statement
+        (<code className="cf-num">indexer/src/reads.ts</code>). Anyone reading mid-rewrite
+        therefore sees the whole of it or none of it, which is why those three counts always move
+        together.
       </Note>
     </div>
   )

@@ -77,7 +77,7 @@ import { linkTo } from '../lib/routes.ts'
  * `ltc` with no description at all. That is the drift the chain-id test had been red about.
  */
 const ABOUT: Readonly<Record<string, string>> = {
-  ember: 'EMBER — the Forge Network chain, proof of work',
+  ember: 'EMBER — the Forge Network chain, secured by proof of work',
   eth: 'ETH — Ethereum',
   btc: 'BTC — Bitcoin',
   sol: 'SOL — Solana',
@@ -112,21 +112,32 @@ export function ChainsPage() {
         <h1 className="ex-page__title">Chains</h1>
       </header>
       <p className="ex-page__lede">
-        This explorer serves the <strong>{network}</strong> network, and this page is every chain it
-        can be asked about on it — which of them this deployment has actually walked, how far, and
-        how far that leaves it behind the tip a provider last claimed.
+        You are on the <strong>{network}</strong> network. Below is every chain that can be named in
+        an address here, sorted by whether this deployment has actually read any of it: how many
+        blocks it has walked through itself, and how far short of the tip an upstream provider
+        reports that leaves it.
+      </p>
+      <p className="ex-page__lede">
+        Ember is the chain CloudsForge runs. Its execution engine was written here and is checked
+        against the vectors the Ethereum project publishes for state transitions, the virtual
+        machine, transaction encoding, the trie and RLP, passing all of them at Shanghai — so a
+        contract that behaves a certain way on Ethereum behaves that way here, and you can verify
+        that yourself rather than take it on trust. Its coin is mined with proof of work, and the
+        Forge Network site will do that in a browser tab, paying a key that is generated in the page
+        and never sent anywhere.
       </p>
 
-      {resource.state === 'loading' && <Loading label="Reading every chain" />}
+      {resource.state === 'loading' && <Loading label="Asking each chain where it stands" />}
       {resource.error && <Failed notice={resource.error} onRetry={resource.reload} />}
 
       {resource.data && (
         <>
-          <h2 className="ex-section__title">Indexed here</h2>
+          <h2 className="ex-section__title">Walked by this deployment</h2>
           {served.length === 0 ? (
             <p className="ex-page__lede ex-absent">
-              This deployment is not indexing any chain right now. Nothing below can be looked up
-              until it is, and the explorer will not pretend otherwise.
+              Not one chain is being read here at the moment, so nothing listed below can be looked
+              up. That is what the index says about itself, and this page passes it on rather than
+              dressing it up.
             </p>
           ) : (
             <ul className="ex-scopes">
@@ -148,30 +159,30 @@ export function ChainsPage() {
 
           {absent.length > 0 && (
             <>
-              <h2 className="ex-section__title">Not supported by this deployment</h2>
+              <h2 className="ex-section__title">Not available on this deployment</h2>
               <p className="ex-page__lede">
                 {/*
                   Said once, as a fact about the deployment, rather than once per card as a
                   disappointment. These are not offered anywhere on this surface: there is no tab
                   for them, and the search box will not send a paste to one.
                 */}
-                No index has been configured for{' '}
+                Nothing has been set up to read{' '}
                 {absent.map((offer, i) => (
                   <span key={offer.chain}>
                     {i > 0 && (i === absent.length - 1 ? ' or ' : ', ')}
                     <code className="cf-num">{offer.chain}</code>
                   </span>
                 ))}{' '}
-                on {network}, so this explorer cannot show a block, a transaction or an address on
-                any of them. They are listed because the chain index knows the chains exist, not
-                because anything here can answer about one.
+                on {network}. No block, transaction or address on any of them can be shown to you
+                here. They appear in this list because the software recognises the names, which is
+                not the same as being able to answer a question about one.
               </p>
               <Note>
-                <strong>Deposits are a different service and are not affected by this.</strong>{' '}
-                Custody issues deposit addresses for several of the chains above, so it is possible
-                to deposit an asset this explorer cannot display. The deposit is credited by the
-                chain index the wallet reads, not by this page; a chain missing here means the
-                public explorer has no view of it, not that funds are lost.
+                <strong>Paying money in is handled elsewhere and is unaffected.</strong> CloudsForge
+                custody hands out deposit addresses on several of the chains above, so you can quite
+                properly deposit an asset that this page cannot draw. Your wallet credits the deposit
+                from its own reading of the chain. A chain missing from this list means the public
+                explorer has no window onto it — nothing more.
               </Note>
             </>
           )}
@@ -185,14 +196,15 @@ export function ChainsPage() {
                   did not answer, which says nothing at all about the chain — folding it into
                   "not supported" would report an outage as a policy.
                 */}
-                The chain index did not answer for{' '}
+                No answer came back about{' '}
                 {unreachable.map((offer, i) => (
                   <span key={offer.chain}>
                     {i > 0 && ', '}
                     <code className="cf-num">{offer.chain}</code>
                   </span>
                 ))}
-                . That is this service failing to reply, not a statement about those chains.
+                . That is our own service falling silent, and says nothing whatever about those
+                chains.
                 {unreachable[0]?.error?.requestId && (
                   <>
                     {' '}
@@ -207,21 +219,21 @@ export function ChainsPage() {
 
       {sibling && (
         <p className="ex-page__lede">
-          The {network === 'mainnet' ? 'testnet' : 'mainnet'} network is a different deployment with
-          its own index, on its own hostname:{' '}
+          The {network === 'mainnet' ? 'testnet' : 'mainnet'} network runs as a separate deployment
+          with a separate index, under a hostname of its own:{' '}
           {/* A real anchor, not a router Link: it is a different origin. */}
-          <a href={`${sibling}/chains`}>{sibling.replace('https://', '')}</a>. This one never shows
-          it, because the two indexes share nothing and a row from the wrong one is a number that
-          means nothing here.
+          <a href={`${sibling}/chains`}>{sibling.replace('https://', '')}</a>. It is never mixed into this page: the two indexes have
+          nothing in common, and a height borrowed from the wrong one is a figure that means
+          nothing.
         </p>
       )}
 
       <Note>
-        &ldquo;Walked&rdquo; and &ldquo;claimed&rdquo; are different questions and this page never
-        collapses them. The first is the highest canonical block this index has actually read and
-        would have detected a reorg in; the second is what a provider said the tip was. A depth
-        counted against the second can exceed the number of blocks anybody here has looked at, by
-        exactly the lag shown (<code className="cf-num">indexer/src/reads.ts</code>).
+Two different questions sit behind those numbers and this page keeps them apart. One is the
+        highest block this service has read for itself and would have spotted a rewrite in. The other
+        is whatever an upstream provider last said the top of the chain was. A depth taken from the
+        second can be larger than the total number of blocks anybody here has examined, by precisely
+        the gap shown (<code className="cf-num">indexer/src/reads.ts</code>).
       </Note>
     </div>
   )
@@ -238,29 +250,29 @@ function ScopeLine({ status }: { status: ChainStatus }) {
   if (status.indexedHeight === null) {
     return (
       <p className="ex-scope__state ex-absent">
-        Configured, but no block has been walked yet.{' '}
+        Set up, but not a single block read so far.{' '}
         {status.tipHeight === null
-          ? 'No tip has been observed for it either.'
-          : `A provider has claimed a tip of ${count(status.tipHeight)}.`}
+          ? 'No upstream provider has reported a tip for it either.'
+          : `An upstream provider puts the top of the chain at ${count(status.tipHeight)}.`}
       </p>
     )
   }
 
   return (
     <p className="ex-scope__state">
-      <StateBadge tone={chainTone(status)} /> <span className="ex-dim">walked to</span>{' '}
+      <StateBadge tone={chainTone(status)} /> <span className="ex-dim">read up to</span>{' '}
       <span className="cf-num">{count(status.indexedHeight)}</span>
       {status.tipHeight !== null && (
         <>
           {' '}
-          <span className="ex-dim">· claimed tip</span>{' '}
+          <span className="ex-dim">· provider reports</span>{' '}
           <span className="cf-num">{count(status.tipHeight)}</span>
         </>
       )}
       {status.lagBlocks !== null && (
         <>
           {' '}
-          <span className="ex-dim">· behind by</span>{' '}
+          <span className="ex-dim">· short by</span>{' '}
           <span className="cf-num">{count(status.lagBlocks)}</span>
         </>
       )}
@@ -268,7 +280,7 @@ function ScopeLine({ status }: { status: ChainStatus }) {
         <>
           {' '}
           <span className="ex-absent">
-            · halted{status.haltReason ? `: ${status.haltReason}` : ''}
+            · stopped{status.haltReason ? `: ${status.haltReason}` : ''}
           </span>
         </>
       )}

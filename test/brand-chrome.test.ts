@@ -220,6 +220,13 @@ test('the accent selector this page names really exists, and "explorer" would NO
   // variant chosen for contrast on a light ground, and it is not what the registry records.
   const network = /\[data-cf-product='network'\] \{\s*--cf-accent-dark: (#[0-9a-fA-F]{6});/.exec(css)
   assert.ok(network, "network's accent block has gone")
+  // And the block really does carry a separate TEXT step, which is what src/styles.css moved the
+  // depth-note glyph onto. `#d6412f` is 3.11:1 — a border colour, not a type colour.
+  assert.match(
+    css,
+    /\[data-cf-product='network'\] \{[^}]*--cf-accent-text-dark: #[0-9a-fA-F]{6};/,
+    'network has no accent text step; the glyph on the depth note is below the type floor',
+  )
   assert.equal(
     entry[1],
     network[1],

@@ -122,13 +122,13 @@ export function abbreviate(value: string, keep = 8): string {
  */
 export function depthWording(head: HeadKind): string {
   return head === 'walked-head'
-    ? 'counted against the highest block this indexer has walked'
-    : 'counted against the tip a provider last claimed, which may be ahead of what this indexer has walked'
+    ? 'measured from the highest block this indexer has walked for itself'
+    : 'measured from the top of the chain as a provider last reported it, which may be ahead of what this indexer has walked'
 }
 
 /** The short label for the same fact, for a table header or a badge title. */
 export function depthLabel(head: HeadKind): string {
-  return head === 'walked-head' ? 'vs walked head' : 'vs claimed tip'
+  return head === 'walked-head' ? 'from the block we read' : 'from the provider tip'
 }
 
 /**
@@ -139,8 +139,8 @@ export function depthLabel(head: HeadKind): string {
  * that prints a confirmation count.
  */
 export const NOT_FINAL =
-  'Depth is a probability, not a proof. This page shows how deep a thing is and what that depth ' +
-  'was measured against; it never says a thing is final.'
+  'A depth measures how unlikely a reversal has become. It is not a proof that one cannot happen, ' +
+  'so every count here names the block it was measured from.'
 
 /* ══════════════════════════════ states ══════════════════════════════ */
 
@@ -161,15 +161,15 @@ export function chainTone(status: {
       word: 'Halted',
       glyph: '⊘',
       tone: 'bad',
-      meaning: 'A reorg past the alarm depth stopped this service vouching for the chain',
+      meaning: 'A rewrite past the alarm threshold stopped this service standing behind the chain',
     }
   }
   if (status.indexedHeight === null) {
     return {
-      word: 'Nothing indexed',
+      word: 'Nothing read',
       glyph: '○',
       tone: 'idle',
-      meaning: 'This service has walked no block on this chain yet',
+      meaning: 'Not a single block of this chain has been read here',
     }
   }
   // The alarm depth is the estate's own measure of "how far back a rewrite is still plausible", so
@@ -179,21 +179,21 @@ export function chainTone(status: {
       word: 'Lagging',
       glyph: '▲',
       tone: 'warn',
-      meaning: `Behind the claimed tip by more than the reorg alarm depth (${status.reorgAlarmDepth})`,
+      meaning: `Short of the provider's tip by more than the alarm threshold of ${status.reorgAlarmDepth} blocks`,
     }
   }
-  return { word: 'Following', glyph: '●', tone: 'good', meaning: 'Walking the chain at the tip' }
+  return { word: 'Following', glyph: '●', tone: 'good', meaning: 'Keeping pace with the top of the chain' }
 }
 
 /** `indexer/src/reads.ts` — the three provider states, unchanged. */
 export function providerTone(state: 'healthy' | 'degraded' | 'down'): Tone {
   if (state === 'healthy') {
-    return { word: 'Healthy', glyph: '●', tone: 'good', meaning: 'Answering' }
+    return { word: 'Healthy', glyph: '●', tone: 'good', meaning: 'Answering promptly' }
   }
   if (state === 'degraded') {
-    return { word: 'Degraded', glyph: '▲', tone: 'warn', meaning: 'Failing some calls, or slow' }
+    return { word: 'Degraded', glyph: '▲', tone: 'warn', meaning: 'Slow, or dropping some of what it is asked' }
   }
-  return { word: 'Down', glyph: '⊘', tone: 'bad', meaning: 'Not answering' }
+  return { word: 'Down', glyph: '⊘', tone: 'bad', meaning: 'Not answering at all' }
 }
 
 /**
@@ -208,29 +208,29 @@ export function providerTone(state: 'healthy' | 'degraded' | 'down'): Tone {
 export function transactionTone(status: string): Tone {
   switch (status) {
     case 'success':
-      return { word: 'Succeeded', glyph: '●', tone: 'good', meaning: 'Mined and executed' }
+      return { word: 'Succeeded', glyph: '●', tone: 'good', meaning: 'Mined, and it ran to completion' }
     case 'failed':
       return {
         word: 'Reverted',
         glyph: '⊘',
         tone: 'bad',
-        meaning: 'Mined, and it gathers depth like any other — but it did not succeed',
+        meaning: 'Mined, and gathering depth like any other, but it did not succeed',
       }
     case 'pending':
-      return { word: 'Pending', glyph: '○', tone: 'idle', meaning: 'Seen, not yet in a block' }
+      return { word: 'Pending', glyph: '○', tone: 'idle', meaning: 'Noticed, and not yet in a block' }
     case 'dropped':
-      return { word: 'Dropped', glyph: '○', tone: 'warn', meaning: 'Left the mempool unmined' }
+      return { word: 'Dropped', glyph: '○', tone: 'warn', meaning: 'Fell out of the waiting queue without being mined' }
     case 'orphaned':
       return {
         word: 'Orphaned',
         glyph: '▲',
         tone: 'warn',
-        meaning: 'The block that carried it is no longer on the canonical chain',
+        meaning: 'The block that carried it is no longer part of the accepted chain',
       }
     default:
       // Never a guess. An unrecognised status is rendered verbatim so a reader can report the
       // actual string rather than a label this app invented for it.
-      return { word: status, glyph: '?', tone: 'idle', meaning: 'A status this page does not know' }
+      return { word: status, glyph: '?', tone: 'idle', meaning: 'A word this page has not been taught' }
   }
 }
 
@@ -251,21 +251,21 @@ export function transactionTone(status: string): Tone {
 export function activityTone(status: 'included' | 'orphaned' | 'conflicted'): Tone {
   switch (status) {
     case 'included':
-      return { word: 'Included', glyph: '●', tone: 'good', meaning: 'On the canonical chain' }
+      return { word: 'Included', glyph: '●', tone: 'good', meaning: 'Part of the chain everyone accepts' }
     case 'conflicted':
       return {
         word: 'Conflicted',
         glyph: '⊘',
         tone: 'bad',
         meaning:
-          'The coins behind it were spent by a different transaction. Unlike an orphaned movement, this one cannot be re-mined',
+          'A different transaction has already spent the coins behind it. An orphaned movement can be mined again; this one cannot',
       }
     default:
       return {
         word: 'Orphaned',
         glyph: '▲',
         tone: 'warn',
-        meaning: 'Retracted by a reorg. This movement did not happen on the chain as it now is',
+        meaning: 'Taken back when the chain rewrote itself. On the chain as it now stands, this never happened',
       }
   }
 }
@@ -279,15 +279,15 @@ export function activityTone(status: 'included' | 'orphaned' | 'conflicted'): To
 export function unavailableReason(reason: string): string {
   switch (reason) {
     case 'nothing_indexed':
-      return 'This service has walked no block on this chain, so it knows nothing about what any address held.'
+      return 'Not one block of this chain has been read here, so nothing is known about what any address has ever held.'
     case 'coverage_incomplete':
-      return 'The canonical chain this service holds does not run unbroken from the genesis block to the height asked for, so a total of the movements it has seen would be a window total rather than a balance.'
+      return 'The record held here has a gap in it between the first block and the height you asked about. Adding up the movements either side of that gap would give you the total for a window, which is not a balance.'
     case 'chain_halted':
-      return 'This service has stopped vouching for this chain after a reorg past the alarm depth, so it will not answer a holdings question from it.'
+      return 'A rewrite past the alarm threshold stopped this service standing behind this chain, so it declines to tell you what anything holds on it.'
     case 'negative':
-      return 'The derivation produced a negative balance, which is impossible on a complete record — so the derivation is wrong rather than the address being overdrawn. Withheld rather than clamped to zero.'
+      return 'Working the balance out produced a number below zero, which a complete record cannot do. The arithmetic is wrong rather than the address being overdrawn, so nothing is shown — rounding it up to nought would hide the fault, not fix it.'
     default:
-      return `The balance was withheld for a reason this page does not recognise: ${reason}.`
+      return `The balance is held back for a reason this page does not recognise: ${reason}.`
   }
 }
 
@@ -300,16 +300,16 @@ export function unavailableReason(reason: string): string {
 export function tokenFaultReason(code: string): string {
   switch (code) {
     case 'family_not_supported':
-      return 'This build cannot read token state on this chain family. Waiting will not change it.'
+      return 'Nothing in this build knows how to read a token on this kind of chain. Waiting will not change it.'
     case 'chain_not_followed':
-      return 'This replica does not follow this chain, so it has no provider to ask.'
+      return 'This deployment does not follow that chain, so it has nowhere to put the question.'
     case 'nothing_indexed':
-      return 'This service has walked no block on this chain, so it has no head to make the call at.'
+      return 'Not one block of this chain has been read here, so there is no point in the chain at which to ask.'
     case 'head_diverged':
-      return 'The block this service walked is no longer one the node serves, so the observation would be as at a block that no longer exists.'
+      return 'The block this service had reached is one the node no longer recognises, so any reading would be taken at a point in history that has since been rewritten.'
     case 'rpc_unavailable':
-      return 'The chain could not be reached to ask. This says nothing about whether a token is there.'
+      return 'Nothing could be reached to ask. That says nothing about whether a token is there.'
     default:
-      return `The observation could not be made, for a reason this page does not recognise: ${code}.`
+      return `The reading could not be taken, for a reason this page does not recognise: ${code}.`
   }
 }

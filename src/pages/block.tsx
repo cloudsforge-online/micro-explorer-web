@@ -50,13 +50,13 @@ export function BlockPage() {
   const resource = useResource<BlockView>(
     load,
     () => 1,
-    'The chain index could not be reached.',
+    'The chain index is not answering.',
     [scope?.chain, scope?.network, height],
   )
 
   if (!scope) return <UnknownScope chain={params['chain']} network={params['network']} />
 
-  if (resource.state === 'loading') return <Loading label={`Reading block ${height}`} />
+  if (resource.state === 'loading') return <Loading label={`Fetching block ${height}`} />
   if (resource.error) {
     if (resource.error.code === 'unknown_chain' || resource.error.code === 'unknown_network') {
       return <UnknownScope chain={params['chain']} network={params['network']} />
@@ -65,7 +65,7 @@ export function BlockPage() {
       return (
         <Missing
           title="That is not a block height"
-          hint="A height is a non-negative integer of up to fifteen digits. The chain index refuses anything else outright rather than querying for it."
+          hint="A height is a whole number, zero or above, of up to fifteen digits. Anything else is turned away before a database is asked about it."
           notice={resource.error}
         />
       )
@@ -73,11 +73,12 @@ export function BlockPage() {
     if (resource.error.status === 404) {
       return (
         <Missing
-          title={`No block at height ${height} on the canonical chain`}
+          title={`Nothing stands at height ${height} on the accepted chain`}
           hint={
-            'Either this index has not walked that far yet, or the block that was there has been ' +
-            'retracted by a reorg. This route serves the canonical chain only, so the two answer ' +
-            'the same way — the chain page shows how far it has walked, which tells you which.'
+            'Two situations read alike here: this service may not have got that far yet, or the ' +
+            'block that once sat there may have been taken back when the chain rewrote itself. ' +
+            'Only the accepted chain is served from this address. Compare the height against how ' +
+            'far the chain page says the walk has reached, and you will know which of the two it is.'
           }
           notice={resource.error}
         />
@@ -86,7 +87,7 @@ export function BlockPage() {
     return <Failed notice={resource.error} onRetry={resource.reload} />
   }
   const block = resource.data
-  if (!block) return <Loading label={`Reading block ${height}`} />
+  if (!block) return <Loading label={`Fetching block ${height}`} />
 
   return (
     <div className="ex-page">
@@ -100,10 +101,11 @@ export function BlockPage() {
       </header>
 
       <DepthNote>
-        This block&rsquo;s depth is counted against the tip a provider last claimed
-        (<code className="cf-num">indexer/src/reads.ts</code>), which can be ahead of the
-        highest block this index has actually walked. The{' '}
-        <Link to={linkTo.chain(block.chain, block.network)}>chain page</Link> shows the gap.
+The depth below is measured from the top of the chain as an upstream provider last reported
+        it (<code className="cf-num">indexer/src/reads.ts</code>), and that report can run
+        ahead of the highest block read here. The{' '}
+        <Link to={linkTo.chain(block.chain, block.network)}>chain page</Link> puts a number on the
+        difference.
       </DepthNote>
 
       <dl className="ex-facts">
@@ -122,13 +124,13 @@ export function BlockPage() {
             {block.parentHash}
           </Link>
         </Fact>
-        <Fact label="Mined">{timestamp(block.blockTime)}</Fact>
-        <Fact label="Status">{block.status}</Fact>
-        <Fact label="Transactions">
+        <Fact label="Mined at">{timestamp(block.blockTime)}</Fact>
+        <Fact label="Standing">{block.status}</Fact>
+        <Fact label="Transactions it carries">
           <span className="cf-num">{count(block.txCount)}</span>
         </Fact>
         {block.reorgDepth !== null && (
-          <Fact label="Reorg depth recorded on this block">
+          <Fact label="Depth of the rewrite recorded here">
             <span className="cf-num">{count(block.reorgDepth)}</span>
           </Fact>
         )}
@@ -150,14 +152,14 @@ export function BlockPage() {
       </h2>
       {block.transactionHashes.length === 0 ? (
         <p className="ex-absent">
-          This index holds no transaction rows for this block.
+Not one transaction from this block has been stored here.
           {block.txCount > 0 && (
             <>
               {' '}
-              The block header says it carries {count(block.txCount)}, so this is a block whose
-              header has been walked and whose bodies have not — the two counts come from different
-              places (<code className="cf-num">indexer/src/store.ts</code> lists the rows;{' '}
-              <code className="cf-num">txCount</code> is the header&rsquo;s own figure).
+The block&rsquo;s own header claims {count(block.txCount)}. The header has been read and the
+              contents have not, which is why the two figures disagree — one is counted from stored
+              rows (<code className="cf-num">indexer/src/store.ts</code>) and the other is what
+              the chain itself declared (<code className="cf-num">txCount</code>).
             </>
           )}
         </p>
@@ -178,11 +180,11 @@ export function BlockPage() {
 
       {Object.keys(block.detail).length > 0 && (
         <>
-          <h2 className="ex-section__title">What the node said</h2>
+          <h2 className="ex-section__title">The header, exactly as the node gave it</h2>
           <Note>
-            The header fields this index stored verbatim. They are rendered as received, without
-            being renamed or reinterpreted: a value this page does not understand is still a value
-            somebody can check against their own node.
+Kept and shown word for word, with nothing renamed and nothing reinterpreted. A field this
+            page cannot make sense of is still a field you can hold up against your own node and
+            compare.
           </Note>
           <div className="ex-tablewrap">
             <table className="ex-table">

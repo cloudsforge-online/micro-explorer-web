@@ -763,8 +763,9 @@ describe('the cited lines are the lines that register the routes', () => {
   })
 
   it('the indexer still binds 4008, which the README and the hosts note both state', () => {
-    // Half of the devPort disagreement. The other half — the registry's 8080 — is pinned in
-    // test/hosts.test.ts, so whichever moves first fails and names the other.
+    // Both halves now AGREE: micro-ui corrected the registry's `explorer` devPort from 8080 to
+    // 4008, which is the number this file reads out of the service. test/hosts.test.ts pins the
+    // registry side, so whichever moves first fails and names the other.
     // ONE assertion, on the expression. There used to be a second one requiring 4008 to appear at
     // line 364 of `indexer/src/env.ts`, and it is the reason this suite was red: micro-indexer
     // moved the line to 363, the default was unchanged, and nothing in this repository was wrong.

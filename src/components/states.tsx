@@ -93,16 +93,16 @@ export function Missing({
       <span className="wt-state__icon" aria-hidden="true">
         ○
       </span>
-      <p className="wt-state__title">{ourFault ? 'This page asked for the wrong address' : title}</p>
+      <p className="wt-state__title">{ourFault ? 'This page asked the wrong question' : title}</p>
       <p className="wt-state__hint">
         {ourFault
-          ? 'The chain index does not serve the path this page requested. That is a defect in this ' +
-            'explorer and says nothing about whether the thing you looked for exists.'
+          ? 'It requested an address the chain index does not serve. That is a defect in this ' +
+            'explorer, and it says nothing at all about whether what you were looking for exists.'
           : hint}
       </p>
       {notice?.code && (
         <p className="wt-state__meta">
-          The index answered <code className="cf-num ex-code">{notice.code}</code>
+          The index replied <code className="cf-num ex-code">{notice.code}</code>
           {notice.requestId && (
             <>
               {' '}
@@ -125,7 +125,7 @@ export function Missing({
 export function Failed({
   notice,
   onRetry,
-  title = 'That did not load',
+  title = 'This is not on screen',
 }: {
   notice: ErrorNotice
   onRetry?: (() => void) | undefined
@@ -140,7 +140,7 @@ export function Failed({
       <p className="wt-state__hint">{notice.message}</p>
       {notice.requestId && (
         <p className="wt-state__meta">
-          Quote this to support: <code className="cf-num wt-reqid">{notice.requestId}</code>
+          Give support this reference: <code className="cf-num wt-reqid">{notice.requestId}</code>
         </p>
       )}
       {onRetry && (

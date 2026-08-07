@@ -297,8 +297,8 @@ describe('BJ-NET — the explorer', () => {
       // it. Changing the copy now fails in this file, which is where a change to a load-bearing
       // sentence should have to be argued for.
       const DENIES_FINALITY =
-        'Depth is a probability, not a proof. This page shows how deep a thing is and what that ' +
-        'depth was measured against; it never says a thing is final.'
+        'A depth measures how unlikely a reversal has become. It is not a proof that one cannot ' +
+        'happen, so every count here names the block it was measured from.'
       assert.equal(
         NOT_FINAL,
         DENIES_FINALITY,
@@ -348,15 +348,15 @@ describe('BJ-NET — the explorer', () => {
     // has no record, and says in as many words that it is not the same as unconfirmed. A branch
     // that fell through to the generic 404 would still produce "different text" and would have
     // lost exactly the sentence that matters, so `notEqual` alone is not enough.
-    assert.match(neverSeen, /has never seen that transaction/i)
-    assert.match(neverSeen, /not the same as unconfirmed/i)
+    assert.match(neverSeen, /no record of that transaction here/i)
+    assert.match(neverSeen, /a different thing from not yet deep enough/i)
     assert.match(
       neverSeen,
-      /declines to give one rather than reporting zero/i,
+      /nothing to measure a depth against/i,
       'the never-seen screen reported a depth of zero. Zero is a count; this is an absence.',
     )
     // The unconfirmed one says how deep it is, which is the fact a caller can act on.
-    assert.match(notDeepEnough, /2 of the 6/i)
+    assert.match(notDeepEnough, /sits 2 blocks deep, and this chain is credited at 6/i)
     // And the never-seen one claims no depth at all.
     assert.doesNotMatch(neverSeen, /2 of the 6|2 confirmations/i)
   })
