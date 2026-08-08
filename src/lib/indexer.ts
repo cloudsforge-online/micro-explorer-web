@@ -71,10 +71,10 @@
  * a bearer creeping back in here, turns the suite red.
  * ══════════════════════════════════════════════════════════════════════════════════════════════
  *
- * ── Three routes are declined: one read that takes a token, and two writes ─────────────────────
+ * ── Four routes are declined: two reads that take a token, and two writes ──────────────────────
  *
- *   * `GET /v1/custody/:chain/:network/total` (`indexer/src/server.ts`) is the ONLY domain
- *     read on this service that requires one, and it is declined for a reason the other two do
+ *   * `GET /v1/custody/:chain/:network/total` (`indexer/src/server.ts`) is one of the two domain
+ *     reads on this service that require one, and both are declined for a reason the writes do
  *     not share. It returns Σ confirmed native balance over the estate's custody set — the number
  *     `micro-ledger` reconciles its own books against. The rule that opened the seven reads is
  *     "what they return is already public: anyone may obtain it by running a Hearth node", and
@@ -84,6 +84,16 @@
  *     treasury's size to anyone who can reach the port (`indexer/src/server.ts`). It
  *     therefore calls `authorise(ctx, deps, READ_SCOPE)` (`indexer/src/server.ts`), and a
  *     public block explorer holds no service token — nor has this surface any use for the number.
+ *   * `GET /v1/custody/:chain/:network/addresses/:address` (`indexer/src/server.ts`) is the other
+ *     one, added beside the total and gated the same way: `authorise(ctx, deps, READ_SCOPE)`. It
+ *     answers ONE named custody address's observed balance, at the depth and against the block
+ *     hash the aggregate is taken at, so a failed reconciliation can be broken down to the address
+ *     that moved instead of being re-derived from a number the two sides measured differently.
+ *     Note that the address IS named by the caller, so the rule that opened the seven reads looks
+ *     as though it should cover this one — it does not, because the addresses worth asking about
+ *     are the estate's own, and an answer confirms membership of the very set the total exists to
+ *     keep private. This surface already reads any address's holdings anonymously through
+ *     `token-balances`; what it has no business obtaining is which addresses are custody's.
  *   * `POST /v1/watch/:chain/:network/:address` (`indexer/src/server.ts`) calls
  *     `authorise(ctx, deps, WRITE_SCOPE)`, where `WRITE_SCOPE` is `indexer:write`. "Watch
  *     this address" is an operator or a service decision about what this deployment indexes; a

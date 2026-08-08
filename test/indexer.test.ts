@@ -140,6 +140,22 @@ const DECLINED: ReadonlyArray<{
       'use for the number.',
   },
   {
+    method: 'GET',
+    path: '/custody/:chain/:network/addresses/:address',
+    gate: 'authorise:READ_SCOPE',
+    why:
+      'indexer:read, and the SECOND domain GET that takes a token. It answers one named ' +
+      'custody address’s observed balance at the same measurement depth — same confirmation ' +
+      'depth, same block hash — that the aggregate above is taken at, so micro-ledger can break a ' +
+      'failed reconciliation down to the address that moved rather than re-deriving a number the ' +
+      'two sides measured differently (indexer/src/server.ts). It is gated for the aggregate’s ' +
+      'reason and not for the caller-named-it reason: the ADDRESS is named, but it is named out ' +
+      'of the estate’s custody set, so answering at all confirms membership of that set — which ' +
+      'is the fact the total is protecting. A public block explorer holds no service token, and ' +
+      'the balance of an address this surface can already read anonymously through ' +
+      'token-balances is not what this route is for.',
+  },
+  {
     method: 'POST',
     path: '/watch/:chain/:network/:address',
     gate: 'authorise:WRITE_SCOPE',
@@ -325,21 +341,28 @@ describe('the cited lines are the lines that register the routes', () => {
   const env = readFileSync(`${indexerRoot}/src/env.ts`, 'utf8')
 
   it('reads a server with a route table in it, so this cannot pass on an empty file', () => {
-    // TEN since `micro-indexer` f9344de added `GET /custody/:chain/:network/total`. The count is
-    // not bumped to silence it: the tenth entry was read, and it is in DECLINED above with the
-    // reason. `micro-ledger`'s `reconcileAsset` had taken an optional `indexerObservedTotal` for
-    // the life of that service and, before this route, nothing in the estate could produce one —
-    // it was supplied in exactly one place, a test. So every reconciliation compared the ledger
-    // against the ledger and reported clean, on the one asset the check exists for. This route is
-    // the independent side, and `indexer/src/server.ts` is the whole argument for it.
+    // TWO things, and NO NUMBER WRITTEN HERE.
     //
-    // (Stated without a `ledger/…:line` citation on purpose: this repository's CI does not check
-    // micro-ledger out, and a citation nothing verifies is the thing `test/citations.test.ts`
-    // exists to refuse.)
+    // The first is what the name says: a table with entries in it, so nothing below can pass by
+    // reading an empty or renamed file.
     //
-    // It is a read that takes a token, which is why `Gate` above has three values rather than two.
+    // The second is that the tables above account for every one of them — and it is the LENGTH OF
+    // THOSE TABLES, not a literal. A literal here is a third copy of a fact micro-indexer owns:
+    // it said TEN, `micro-indexer` ed9db36 added `GET /custody/:chain/:network/addresses/:address`
+    // and this repository went red for an edit that touched nothing it calls, alongside
+    // micro-network-site, which had the same number written down. Bumping it to ELEVEN would buy
+    // one release. Reading it from SURFACE and DECLINED means the only way to satisfy this check
+    // is to have READ the new route and put it in one of them with its reason — which is the
+    // thing actually worth requiring, and is what the both-directions check below then verifies
+    // against the service.
     const entries = lines.filter((l) => /^\s{2}\['(GET|POST)',/.test(l))
-    assert.equal(entries.length, 10, `expected the indexer's ten DOMAIN entries, found ${entries.length}`)
+    assert.ok(entries.length > 0, 'indexer/src/server.ts has no DOMAIN entries in it at all')
+    const known = [...SURFACE, ...DECLINED]
+    assert.equal(
+      entries.length,
+      known.length,
+      `micro-indexer registers ${entries.length} DOMAIN entries; the tables here cover ${known.length}`,
+    )
   })
 
   /**
@@ -510,7 +533,7 @@ describe('the cited lines are the lines that register the routes', () => {
     assert.doesNotMatch(fn, /throw new TokenError/, 'authoriseRead has grown a missing-token throw')
   })
 
-  it('…and the nine handlers are exactly seven anonymous reads and two gated writes, and the TENTH is a read that takes a token', () => {
+  it('…and the domain handlers are exactly seven anonymous reads, two reads that take a token and two gated writes', () => {
     // Counted off the SERVICE rather than off the table above, so a route that changed gate
     // without anybody updating this file is a failure rather than an agreement with ourselves.
     //
@@ -519,8 +542,12 @@ describe('the cited lines are the lines that register the routes', () => {
     // arithmetic would have done with it: `gated` matched only WRITE_SCOPE, so a READ_SCOPE
     // handler would have landed in NEITHER bucket and the final `anonymous + gated === 9` is what
     // would have caught it. That line is why the third bucket is named here rather than folded in.
+    //
+    // The custody total then stopped being the ONLY read that takes a token — `micro-indexer`
+    // ed9db36 added the per-address balance beside it, gated the same way — so the bucket is
+    // sized off the tables rather than pinned at one. What each bucket must equal is the
+    // corresponding table; the totals are consequences of that and are not written down twice.
     const handlers = [...SURFACE, ...DECLINED]
-    assert.equal(handlers.length, 10, 'the tables no longer cover all ten domain routes')
     const bodies = new Map(handlers.map((r) => [r, bodyOf(r.method, r.path)] as const))
     const anonymous = handlers.filter((r) => /await authoriseRead\(ctx, deps\)/.test(bodies.get(r) ?? ''))
     const readScoped = handlers.filter((r) => /await authorise\(ctx, deps, READ_SCOPE\)/.test(bodies.get(r) ?? ''))
@@ -543,9 +570,9 @@ describe('the cited lines are the lines that register the routes', () => {
       [],
       'a handler opens with two gates or with none, so somebody must read it',
     )
-    assert.equal(anonymous.length, 7)
-    assert.equal(readScoped.length, 1, 'the custody total is no longer the only read that takes a token')
-    assert.equal(gated.length, 2)
+    assert.equal(anonymous.length, SURFACE.length)
+    assert.equal(readScoped.length + gated.length, DECLINED.length)
+    assert.equal(gated.length, 2, `${gated.length} routes take indexer:write upstream, not two`)
   })
 
   it('the three things still refused are still refused, and this app depends on none of them', () => {
@@ -702,7 +729,20 @@ describe('the cited lines are the lines that register the routes', () => {
 
   it('the rule that scopes the two is where this repository cites it', () => {
     // `indexer/src/reads.ts`, quoted on this surface and in four comments here.
-    const cited = readsLines.slice(17, 30).join('\n')
+    //
+    // FOUND, not sliced out of lines 18 to 30. What is worth checking is that the three sentences
+    // sit in ONE paragraph — the second rule is what makes the first safe, and a reader sent to
+    // the first must land on both — so the paragraph is located by its heading rather than by a
+    // position micro-indexer is free to move. Every other line pin in this file that named a
+    // position in that service has already gone stale once, this one had simply not been reached
+    // yet, and micro-org #235 records the pattern estate-wide.
+    const from = readsLines.findIndex((l) =>
+      /## Two reads that exist because a consumer was blocked/.test(l),
+    )
+    assert.ok(from >= 0, 'indexer/src/reads.ts no longer has the section that scopes the two reads')
+    const to = readsLines.findIndex((l, i) => i > from && l.trim() === '*/')
+    assert.ok(to > from, 'that section is not inside a doc comment any more; the bound means nothing')
+    const cited = readsLines.slice(from, to).join('\n')
     assert.match(cited, /Confirmations are counted against the stored canonical HEAD/)
     assert.match(cited, /never against/)
     assert.match(cited, /`confirmation` and `tokenBalances`/)
