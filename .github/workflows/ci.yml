@@ -306,7 +306,11 @@ jobs:
             echo "::error::the route cross-check did not run against indexer/src/server.ts"
             exit 1
           }
-          # Seven called routes plus three declined ones, each looked up in the service's DOMAIN.
+          # A FLOOR, not the size of the surface. Ten is what this client was written against; the
+          # service is free to grow, and `test/indexer.test.ts` is what requires the tables here to
+          # match it exactly. Raising this number every time micro-indexer adds a route would put a
+          # count of a sibling repository's routes back into a build gate, which is the thing that
+          # turned this repository red for an edit it did not make.
           #
           # DEDUPED before counting. node:test names each subtest twice — once as it runs and once
           # in the summary — so a raw `grep -c` reports double. The threshold would still pass, so
@@ -316,7 +320,7 @@ jobs:
           count=$(printf '%s\n' "$out" \
                   | grep -oE '[A-Z]+ /[^ ]+ is registered in indexer/src/server\.ts' | sort -u | wc -l | tr -d ' ')
           [ "$count" -ge 10 ] || {
-            echo "::error::only $count routes were checked against the service; the surface has ten"
+            echo "::error::only $count routes were checked against the service; there are at least ten"
             exit 1
           }
           echo "ok: $count routes verified against the service that serves them"
@@ -375,7 +379,7 @@ jobs:
           out=$(node --import tsx --test test/indexer.test.ts 2>&1 || true)
           for name in \
             'all seven reads are ANONYMOUS: authoriseRead serves a caller with no token' \
-            'the nine handlers are exactly seven anonymous reads and two gated writes' \
+            'the domain handlers are exactly seven anonymous reads, two reads that take a token and two gated writes' \
             'the three things still refused are still refused' \
             'the client sends no bearer on any read'
           do
