@@ -275,9 +275,18 @@ export function activityTone(status: 'included' | 'orphaned' | 'conflicted'): To
  *
  * Each is a full sentence rather than a code, because the whole point of the field is that a
  * consumer must act differently for each, and a reader cannot act on `coverage_incomplete`.
+ *
+ * `address_not_watched` joined the four on 2026-08-09 (`micro-indexer` `976c03b`, micro-org#281)
+ * and it is worded apart from them on purpose. The other four all say "the chain we hold is not
+ * good enough to answer from"; this one says the chain is fine and NOBODY WROTE THIS ADDRESS DOWN.
+ * Wording it as a coverage gap would send the reader to look for a hole in the record that is not
+ * there. It says as little about WHY the address was not watched as `unrecordedReason` does, and
+ * for the same reason: which addresses a deployment watches is not this surface's to publish.
  */
 export function unavailableReason(reason: string): string {
   switch (reason) {
+    case 'address_not_watched':
+      return 'This deployment writes down what moved only for the addresses it was asked to watch, and this address is not one of them. A balance here is added up from those movements, so there is nothing to add up — which is not the same as adding up to nothing, and no figure will be shown in place of that difference.'
     case 'nothing_indexed':
       return 'Not one block of this chain has been read here, so nothing is known about what any address has ever held.'
     case 'coverage_incomplete':

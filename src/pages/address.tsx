@@ -42,12 +42,27 @@
  *      below that height were recorded for everybody. Such a page has real rows and a truncated
  *      history at once, so the notice is rendered above the table as well.
  *   2. **The holdings panel is derived from the same rows** — `tokenBalancesAt`
- *      (`indexer/src/store.ts`) sums `address_activity` — and its read carries no marker of its
- *      own, so an unwatched address gets `balances: []` with `unavailable` absent and this page
- *      used to call that "genuinely means nought rather than unknown". It is not nought, it is the
- *      same silence, and the activity read is the only thing on this screen that knows. The two
- *      resources are therefore no longer independent: what activity learned is passed to holdings.
- *      Reported to micro-indexer; the honest fix is a marker on that read, which is theirs to add.
+ *      (`indexer/src/store.ts`) sums `address_activity` — so an unwatched address used to get
+ *      `balances: []` with `unavailable` absent, and this page called that "genuinely means nought
+ *      rather than unknown". It is not nought, it is the same silence. That was reported to
+ *      micro-indexer and, until 2026-08-09, worked around here: the activity read's marker was
+ *      threaded into the holdings panel, because the activity read was the only thing on this
+ *      screen that knew.
+ *
+ *      **That workaround is gone, and this is the note that says why rather than leaving a reader
+ *      to wonder where it went.** `micro-indexer` `976c03b` (micro-org#281) added
+ *      `unavailable: 'address_not_watched'` and `notWatchedFromHeight` to the holdings read,
+ *      decided by `notWatchedFromHeight` in `indexer/src/reads.ts` — the SAME predicate the
+ *      activity marker is decided by, called once, so the two reads cannot disagree about one
+ *      address. The panel below therefore answers from its own response through the withheld
+ *      branch that was already there, and the two panels are independent again. Keeping the thread
+ *      as well would have left two mechanisms for one fact, and the client-side one is the weaker:
+ *      it is two HTTP responses reconciled by this component, and it could only fire when the sum
+ *      came back empty — which upstream now refuses to reach.
+ *
+ *      **This page therefore requires an indexer at or after `976c03b`.** Against an older one the
+ *      holdings read carries no marker, and an unwatched address falls to the "genuinely means
+ *      nought" sentence again. Deploy the indexer first.
  *
  * ── An orphaned movement is shown, and shown as orphaned ──────────────────────────────────────
  *
@@ -126,12 +141,8 @@ export function AddressPage() {
 
   if (!scope) return <UnknownScope chain={params['chain']} network={params['network']} />
 
-  // The activity read is the only one of the two that carries the marker, and both panels on this
-  // page are built out of the same rows — see the header. Null while the read is in flight, which
-  // is correct: the holdings panel is behind its own `Loading` until then and has nothing to
-  // qualify yet.
-  const unrecorded = activity.data?.incomplete ?? null
-
+  // NOTHING IS THREADED BETWEEN THE TWO READS ANY MORE. Both carry their own marker since
+  // `micro-indexer` `976c03b`, decided by one predicate upstream — see the header.
   return (
     <div className="ex-page">
       <header className="ex-page__head">
@@ -155,7 +166,7 @@ export function AddressPage() {
       </p>
 
       <h2 className="ex-section__title">Tokens held</h2>
-      <Holdings holdings={holdings} unrecorded={unrecorded} />
+      <Holdings holdings={holdings} />
 
       <h2 className="ex-section__title">Money in and out</h2>
       <DepthNote>
@@ -172,9 +183,6 @@ Depths in this table are measured from the top of the chain as an upstream provi
     </div>
   )
 }
-
-/** The marker off the activity read, or its absence. `undefined` is not a state this page renders. */
-type Unrecorded = NonNullable<ActivityPage['incomplete']> | null
 
 /**
  * THE ONE PANEL ON THIS PAGE THAT SAYS "WE DID NOT WRITE THIS DOWN".
@@ -216,10 +224,8 @@ Anything shown here happened below that height, when every address was written d
 
 function Holdings({
   holdings,
-  unrecorded,
 }: {
   holdings: ReturnType<typeof useResource<TokenBalancesView>>
-  unrecorded: Unrecorded
 }) {
   if (holdings.state === 'loading') return <Loading label="Totting up token balances" />
   if (holdings.error) {
@@ -271,11 +277,24 @@ function Holdings({
               <span className="cf-num">{count(h.indexedHeight)}</span>
             )}
           </Fact>
+          {/* Only `address_not_watched` carries it, and it is the number that makes the refusal
+              legible: the two facts above both look HEALTHY on a narrowed deployment, because the
+              blocks really are all there. Without this the panel would refuse alongside a complete
+              coverage range and read as a contradiction. */}
+          {h.notWatchedFromHeight !== undefined && (
+            <Fact label="Recorded for every address below block">
+              <span className="cf-num">{count(h.notWatchedFromHeight)}</span>
+            </Fact>
+          )}
         </dl>
         <p className="ex-withheld__note">
-Held back, which is not the same as nought. A balance built up from movements is only a
-          balance when every movement is present, so a record with a hole in it yields no figure at
-          all rather than a believable wrong one.
+          {h.unavailable === 'address_not_watched'
+            ? // The coverage sentence would be a lie here — nothing is missing from the chain. What
+              // is missing is the per-address record the sum is made of, which is a different fact
+              // and the reason micro-org#281 gave this its own reason code rather than folding it
+              // into `coverage_incomplete`.
+              'Held back, which is not the same as nought. Every block is here; what is not here is any note of what this particular address did, so there is nothing to add up. A nought would be arithmetic over an empty set presented as a holding.'
+            : 'Held back, which is not the same as nought. A balance built up from movements is only a balance when every movement is present, so a record with a hole in it yields no figure at all rather than a believable wrong one.'}
         </p>
       </div>
     )
@@ -297,26 +316,16 @@ Held back, which is not the same as nought. A balance built up from movements is
         </Fact>
       </dl>
       {balances.length === 0 ? (
-        // ── "NOUGHT" AND "NOT WRITTEN DOWN" LOOK IDENTICAL FROM THIS READ, SO IT IS NOT ASKED
-        //    ALONE. `tokenBalancesAt` (`indexer/src/store.ts`) sums `address_activity` rows, and
-        //    this route carries no marker saying whether they were recorded for this address — the
-        //    `unavailable` union covers coverage, halts and negatives and has nothing for it. Its
-        //    coverage check therefore passes on a narrowed record, because the BLOCKS are all
-        //    there; only the address rows are missing. So the confident sentence is spent only when
-        //    the activity read has said the record is this address's, and withheld when it has not.
-        unrecorded ? (
-          <p className="ex-absent">
-No token balance can be worked out for this address. It is built from the same movements the
-            table below is, and those were never written down here — so nought would be an
-            arithmetic result rather than a holding.
-          </p>
-        ) : (
-          <p className="ex-absent">
+        // ── THE CONFIDENT SENTENCE, AND WHAT NOW EARNS IT. It is only reached when `unavailable`
+        //    is absent, and since `micro-indexer` `976c03b` that means the service has checked
+        //    BOTH halves: the blocks run unbroken from genesis, AND the `address_activity` rows
+        //    this sum is made of were really written for this address. It used to mean only the
+        //    first, which is why this branch was split in two and fed from the activity read.
+        <p className="ex-absent">
 This address holds none of the tokens seen moving on this chain. Here that genuinely means
-            nought rather than unknown, because the record behind it runs without a break from the
-            very first block.
-          </p>
-        )
+          nought rather than unknown, because the record behind it runs without a break from the
+          very first block and this address is one the record was kept for.
+        </p>
       ) : (
         <div className="ex-tablewrap">
           <table className="ex-table">

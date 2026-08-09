@@ -227,21 +227,44 @@ describe('a CONFLICTED movement is not an orphaned one', () => {
 })
 
 describe('a withheld balance explains itself in a sentence', () => {
-  it('covers all four reasons the service can give', () => {
-    // `indexer/src/reads.ts`. Each is a different action for the reader, which is why none of
-    // them is rendered as a code alone.
-    for (const reason of ['nothing_indexed', 'coverage_incomplete', 'chain_halted', 'negative']) {
+  /**
+   * `indexer/src/reads.ts`, and FIVE since `micro-indexer` `976c03b` (micro-org#281).
+   *
+   * The fifth is not a fifth flavour of the first four. Those say the chain this service holds is
+   * not good enough to answer from; `address_not_watched` says the chain is fine and nobody wrote
+   * this address down. `test/indexer.test.ts` is where the list is checked against the service —
+   * here it only has to be worded.
+   */
+  const WITHHELD = [
+    'nothing_indexed',
+    'coverage_incomplete',
+    'chain_halted',
+    'negative',
+    'address_not_watched',
+  ]
+
+  it('covers all five reasons the service can give', () => {
+    // Each is a different action for the reader, which is why none of them is rendered as a code
+    // alone.
+    for (const reason of WITHHELD) {
       const sentence = unavailableReason(reason)
       assert.ok(sentence.length > 40, `${reason} has no real sentence`)
       assert.doesNotMatch(sentence, /^\w+_\w+/, `${reason} is rendered as a code`)
+      assert.doesNotMatch(
+        sentence,
+        /does not recognise/,
+        `${reason} fell through to the default branch — it has no sentence of its own`,
+      )
     }
   })
 
   it('never says zero', () => {
-    for (const reason of ['nothing_indexed', 'coverage_incomplete', 'chain_halted', 'negative']) {
+    for (const reason of WITHHELD) {
       assert.doesNotMatch(unavailableReason(reason), /\bis zero\b/)
     }
     assert.match(unavailableReason('negative'), /rounding it up to nought would hide the fault/)
+    // The fifth one's whole job: an empty SUM is not a nought, and the sentence has to say which.
+    assert.match(unavailableReason('address_not_watched'), /not the same as adding up to nothing/)
   })
 
   it('an unknown reason says it is unknown rather than picking the nearest', () => {
