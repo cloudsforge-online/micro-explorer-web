@@ -5,7 +5,10 @@
  * That is the whole problem: a test asserting "the client calls /v1/blocks/…" is a test that the
  * client agrees with itself. So this file does not assert paths in the abstract — it reads
  * `indexer/src/server.ts` from the sibling checkout and requires that each path and method this
- * bundle calls is registered there, at the line the citation names.
+ * bundle calls is registered there, found by SEARCHING that file for the symbol. Never at a line
+ * number: micro-org#235 retired those estate-wide, and every pin in this file that once named a
+ * position in a repository this one does not own has already gone stale at least once. The
+ * incidents are recorded beside the checks that replaced them.
  *
  * ── Four things this file checks that a naive version would not ───────────────────────────────
  *
@@ -329,7 +332,24 @@ describe('the shape check can say no', () => {
   })
 })
 
-describe('the cited lines are the lines that register the routes', () => {
+/*
+ * ── THE NAME OF THIS SUITE WAS THE LAST LINE-NUMBER CITATION IN THIS FILE (micro-org#235) ──────
+ *
+ * It was called "the cited lines are the lines that register the routes", and it earned that name:
+ * `SURFACE` and `DECLINED` each carried a `line` and a `handler` line number per route, and the
+ * body sliced `indexer/src/server.ts` at them. Every one of those pins has since been replaced by
+ * a search — `domainEntry` finds the DOMAIN entry and yields the handler NAME, the PREFIXES loop
+ * is found and read three consecutive lines forward, the two helpers are located by declaration,
+ * the reads paragraph by its heading, the port by its expression — and each replacement carries
+ * the incident that forced it. Nothing under this name has cited a line for some time.
+ *
+ * The name did, and a name is where a reader looks first. micro-org#235 retired line-anchored
+ * cross-repository citations across this estate because they rot; a heading that still promises
+ * them tells the next person that pinning positions in `micro-indexer` is how this file works, and
+ * "line 45 of the TAP output" is the form the failure arrived in. Renamed 2026-08-09 to say what
+ * the suite actually does: it reads a FILE and looks for SYMBOLS in it.
+ */
+describe('micro-indexer registers these routes, found in indexer/src/server.ts by symbol', () => {
   if (indexerRoot === undefined) {
     // NOT a silent pass, and no longer a LOUD one either. This used to be a green test named
     // "SKIPPED", which still counted towards `pass` and towards the number a reader compares
@@ -764,8 +784,16 @@ describe('the cited lines are the lines that register the routes', () => {
   })
 
   it('a balance is still WITHHELD rather than zeroed, with a reason', () => {
-    // The whole of src/pages/address.tsx's holdings panel depends on this staying true.
-    for (const reason of ['nothing_indexed', 'coverage_incomplete', 'chain_halted', 'negative']) {
+    // The whole of src/pages/address.tsx's holdings panel depends on this staying true. FIVE since
+    // `micro-indexer` `976c03b` — `address_not_watched` is the one that is not about blocks, and it
+    // has its own test below.
+    for (const reason of [
+      'nothing_indexed',
+      'coverage_incomplete',
+      'chain_halted',
+      'negative',
+      'address_not_watched',
+    ]) {
       assert.match(reads, new RegExp(`unavailable: '${reason}'`), `${reason} is no longer returned`)
     }
     assert.match(reads, /A missing balance is missing, never zero/)
@@ -803,10 +831,27 @@ describe('the cited lines are the lines that register the routes', () => {
       /reason: 'address_not_watched' as const/,
       'indexer/src/reads.ts no longer marks an unwatched address; this bundle would show its empty state again',
     )
+    // RE-POINTED 2026-08-09, not relaxed. This read `fromHeight: partialFrom` and went red on
+    // `micro-indexer` `976c03b`, which moved the decision out of `activity`'s body and into the
+    // shared `notWatchedFromHeight` function so the holdings read could ask the same question; the
+    // local it assigns to is now `narrowFrom`. NOTHING ABOUT THE MARKER CHANGED. What the pin was
+    // really asserting is that the marker carries a height and that the height is a computed value
+    // rather than a literal, so that is what it says now — `\w+` is any local, and the check below
+    // is the one that pins WHICH computation, by symbol. A local name is a private detail of a
+    // function in a repository this one does not own, which is the same class of thing as a line
+    // number and rots the same way.
     assert.match(
       reads,
-      /incomplete: \{ reason: 'address_not_watched' as const, fromHeight: partialFrom \}/,
-      'the marker no longer carries fromHeight, which src/pages/address.tsx prints as the height it holds from',
+      /incomplete: \{ reason: 'address_not_watched' as const, fromHeight: \w+ \}/,
+      'the marker no longer carries a computed fromHeight, which src/pages/address.tsx prints as the height it holds from',
+    )
+    // …and the height comes from the function BOTH reads decide on, cited by symbol. This is the
+    // stronger half of the pin the local name was standing in for: it is what makes the number on
+    // the activity notice and the number on the holdings panel the same number.
+    assert.match(
+      reads,
+      /async function notWatchedFromHeight\(/,
+      'indexer/src/reads.ts no longer decides "were this address\'s rows written" in one place',
     )
     // …and that it is still OPTIONAL on the view type, which is what makes an unmarked empty page
     // safe to keep calling "nothing happened".
@@ -878,28 +923,66 @@ describe('the cited lines are the lines that register the routes', () => {
     assert.equal(partialMarker({ [PARTIAL_DETAIL_KEY]: 'some-future-reason' }), 'some-future-reason')
   })
 
-  it('token balances inherit the same silence and carry NO marker of their own', () => {
-    // FOUND AND NOT FIXED, recorded here so it cannot be rediscovered as a surprise.
+  it('token balances now carry the SAME marker, from the same predicate, and the workaround is gone', () => {
+    // ── THIS TEST WAS INVERTED ON 2026-08-09, AND THAT IS WHAT IT WAS BUILT TO DO. ──────────────
     //
+    // It used to assert the ABSENCE of a marker on this read, with a note recording the gap:
     // `tokenBalancesAt` sums `address_activity`, the same table the narrowed walk stopped writing
-    // rows into, so an unwatched address gets `balances: []` — and the `unavailable` union has no
-    // member for "this address was never watched". The withheld-balance machinery this surface
-    // depends on cannot fire, because nothing upstream tells it to.
+    // rows into, so an unwatched address got `balances: []` while the `unavailable` union had no
+    // member for "nobody wrote this address down". `src/pages/address.tsx` covered it by threading
+    // the ACTIVITY read's marker into the holdings panel, and this assertion existed to go red the
+    // day the honest fix landed upstream — "so somebody comes back and deletes the workaround
+    // instead of leaving two mechanisms where one would do".
     //
-    // This bundle works around it rather than inventing an answer: `src/pages/address.tsx` threads
-    // the ACTIVITY read's marker into the holdings panel and withholds the sentence claiming an
-    // empty balance list means nought. That is a client-side patch over a service-side gap; the
-    // fix belongs in micro-indexer, and this test goes red the day it lands so somebody comes back
-    // and deletes the workaround instead of leaving two mechanisms where one would do.
-    assert.doesNotMatch(
+    // `micro-indexer` `976c03b` (micro-org#281) landed it. So the workaround is deleted and the
+    // assertion is turned round rather than dropped: the same fact is still measured against the
+    // service's own source, in the direction that is now true. An assertion that simply went away
+    // would leave this bundle's holdings panel depending on a field with nothing watching it.
+    assert.match(
       reads,
       /unavailable: 'address_not_watched'/,
-      'micro-indexer now marks the token-balances read too — delete the workaround in src/pages/address.tsx',
+      'the holdings read no longer refuses for an unwatched address; src/pages/address.tsx would call an empty list nought again',
     )
     assert.match(
+      reads,
+      /notWatchedFromHeight: \w+/,
+      'the holdings refusal no longer carries the height, which src/pages/address.tsx prints beside it',
+    )
+    assert.match(
+      reads,
+      /readonly notWatchedFromHeight\?: number/,
+      'TokenBalancesView.notWatchedFromHeight has changed shape; src/lib/indexer.ts restates it and would now be wrong',
+    )
+    // ONE PREDICATE, TWO READS. This is the property the client now leans on and the reason the
+    // thread between the panels could be cut: a visitor holding both answers at once sees them
+    // agree because upstream asks the question once, not because this component reconciles them.
+    // Counted rather than eyeballed — a second, independent implementation of "is this address
+    // watched" is exactly the drift this file exists to catch.
+    // The CALL sites, not the word: the declaration spreads its parameters over several lines and
+    // does not match this, while both callers pass the executor positionally — `exec` on the
+    // activity read, the REPEATABLE READ transaction `tx` on the holdings one, which is itself
+    // worth seeing, since the holdings marker and the sum it replaces must describe one snapshot.
+    const decided = [...reads.matchAll(/notWatchedFromHeight\(\w+, scope, address\)/g)]
+    assert.equal(
+      decided.length,
+      2,
+      `expected the activity and holdings reads to share one decision, found ${decided.length} calls`,
+    )
+    // …and this bundle restates the fifth reason and words it. `unavailableReason` has a default
+    // branch, so a MISSING sentence degrades to an honest one rather than to silence — which is
+    // precisely why the presence of the good sentence has to be asserted somewhere.
+    assert.match(client, /'address_not_watched'/, 'src/lib/indexer.ts no longer names the reason')
+    assert.match(
+      readFileSync(here('src/lib/format.ts'), 'utf8'),
+      /case 'address_not_watched':\n\s*return 'This deployment writes down what moved only for the addresses it was asked to watch, and this address is not one of them\. A balance/,
+      'src/lib/format.ts has no sentence for a balance withheld because the address was never watched',
+    )
+    // The workaround itself: gone, and asserted gone. Two mechanisms for one fact is the state this
+    // whole exchange existed to leave behind, and the weaker of the two is the one that lived here.
+    assert.doesNotMatch(
       readFileSync(here('src/pages/address.tsx'), 'utf8'),
-      /unrecorded/,
-      'the holdings panel no longer knows the activity read was incomplete',
+      /unrecorded=\{/,
+      'the activity read is being threaded into the holdings panel again; the holdings read carries its own marker now',
     )
   })
 

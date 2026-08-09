@@ -37,6 +37,16 @@
  * positive check that the notice rendered would pass just as happily if the page showed BOTH,
  * which is the failure mode a careless fix produces — a caveat stacked on top of a confident
  * denial, leaving the reader to decide which of two contradictory paragraphs to believe.
+ *
+ * ── 2026-08-09: THE HOLDINGS SCENARIOS NOW EXERCISE THE SERVICE'S OWN MARKER ───────────────────
+ *
+ * The holdings read used to inherit the same silence with nothing to say about it, and this page
+ * covered the gap by passing the activity read's marker across to the balances panel. `micro-
+ * indexer` `976c03b` (micro-org#281) closed it: `tokenBalances` refuses with
+ * `unavailable: 'address_not_watched'` and `notWatchedFromHeight`, decided by the same predicate
+ * as the activity marker, so the two panels are independent again and the thread between them is
+ * deleted. The fixtures below serve what the service serves now; not one assertion about what a
+ * reader may be told has been weakened, and one has been added to hold the panels apart.
  * ══════════════════════════════════════════════════════════════════════════════════════════════
  */
 import assert from 'node:assert/strict'
@@ -51,6 +61,7 @@ import {
   type ActivityPage,
   type ActivityView,
   type BlockView,
+  type TokenBalancesView,
 } from '../src/lib/indexer.ts'
 
 /** The testnet hostname, so the origin and the scope agree — see `test/journeys.test.ts`. */
@@ -111,8 +122,8 @@ const movement: ActivityView = {
   reorgedAt: null,
 }
 
-/** A holdings answer that is believable and empty — the shape that used to say "genuinely nought". */
-const emptyHoldings = {
+/** A holdings answer that is believable and empty — the shape that says "genuinely nought". */
+const emptyHoldings: TokenBalancesView = {
   chain: 'ember',
   network: 'testnet',
   address: fx.ADDRESS,
@@ -124,7 +135,28 @@ const emptyHoldings = {
   balances: [],
 }
 
-const addressRoutes = (page: ActivityPage, holdings: unknown = emptyHoldings): Routes => ({
+/**
+ * The same read on a NARROWED deployment, as `micro-indexer` `976c03b` answers it.
+ *
+ * Note what it is NOT: `coverage.complete` is true and `balances` is simply absent. Every block is
+ * present and canonical — the narrowing takes away per-address rows, not blocks — which is why none
+ * of the four coverage reasons could ever express this and why micro-org#281 had to add a fifth.
+ * A fixture that faked a coverage gap here would be testing a branch the service cannot send.
+ */
+const unwatchedHoldings: TokenBalancesView = {
+  chain: 'ember',
+  network: 'testnet',
+  address: fx.ADDRESS,
+  atBlock: 912,
+  indexedHeight: 912,
+  tipHeight: 915,
+  halted: false,
+  coverage: { fromHeight: 0, toHeight: 912, blocks: 913, complete: true },
+  unavailable: 'address_not_watched',
+  notWatchedFromHeight: 120,
+}
+
+const addressRoutes = (page: ActivityPage, holdings: TokenBalancesView = emptyHoldings): Routes => ({
   [`GET /v1/addresses/${SCOPE}/${fx.ADDRESS}/activity`]: { body: page },
   [`GET /v1/addresses/${SCOPE}/${fx.ADDRESS}/token-balances`]: { body: holdings },
 })
@@ -210,15 +242,23 @@ describe('an address this deployment never watched', () => {
   })
 
   it('does not let the holdings panel call an empty balance list a nought', async () => {
+    // ── REWRITTEN 2026-08-09 AROUND THE FIX, NOT AROUND THE WORKAROUND. ────────────────────────
+    //
     // `tokenBalancesAt` (`indexer/src/store.ts`) sums the same `address_activity` rows, so this
-    // read inherits the silence — but its `unavailable` union has no member for it, and its
-    // coverage check passes because the BLOCKS are all there. Nothing upstream can tell this panel
-    // anything is wrong, which is why `src/pages/address.tsx` passes it what the activity read
-    // learned. Reported to micro-indexer; `test/indexer.test.ts` goes red when they fix it.
+    // read inherits the silence. It used to inherit it in SILENCE: the `unavailable` union had no
+    // member for it and the coverage check passed because the BLOCKS were all there, so nothing
+    // upstream could tell this panel anything was wrong and `src/pages/address.tsx` passed it what
+    // the activity read had learned. `micro-indexer` `976c03b` (micro-org#281) added
+    // `unavailable: 'address_not_watched'` with `notWatchedFromHeight`, decided by the same
+    // predicate as the activity marker, so the panel answers from its OWN response now.
+    //
+    // The fixture therefore serves what the service serves today. What is asserted has not moved
+    // an inch — it is still that this panel must not say an unrecorded address holds nothing.
     await app(
       `/address/${SCOPE}/${fx.ADDRESS}`,
       addressRoutes(
         activity({ incomplete: { reason: 'address_not_watched', fromHeight: 120 } }),
+        unwatchedHoldings,
       ),
       async (s) => {
         await s.settle(30)
@@ -229,9 +269,40 @@ describe('an address this deployment never watched', () => {
         )
         assert.match(
           s.text(),
-          /never written down here/i,
+          /No balance is being given for this address/i,
           'the holdings panel says nothing at all about why it has no figure',
         )
+        assert.match(
+          s.text(),
+          /nothing to add up/i,
+          'the withheld note still explains this as a hole in the chain, which it is not',
+        )
+        assert.match(s.text(), /address_not_watched/, 'the reason code is not shown')
+      },
+    )
+  })
+
+  it('has the holdings panel answer from its OWN read, with no help from the activity one', async () => {
+    // The property the client-side thread between the two panels was deleted for, asserted rather
+    // than assumed. The activity read here is a plain empty page with NO marker on it — a state the
+    // service will not produce beside a marked holdings read, and precisely the reason it is used:
+    // if this page still reached into the activity response to decide what the holdings panel may
+    // say, the confident sentence would come back. It must not.
+    await app(
+      `/address/${SCOPE}/${fx.ADDRESS}`,
+      addressRoutes(activity(), unwatchedHoldings),
+      async (s) => {
+        await s.settle(30)
+        assert.doesNotMatch(
+          s.text(),
+          /genuinely means nought rather than unknown/i,
+          'the holdings panel is still being told what to say by the activity read',
+        )
+        assert.match(s.text(), /No balance is being given for this address/i)
+        // The height comes off the holdings response, which is what makes the panel answerable on
+        // its own — and it is the same number the activity marker carries, because upstream decides
+        // it once (`notWatchedFromHeight` in `indexer/src/reads.ts`).
+        assert.match(s.text(), /120/, 'the height the record narrows at is not shown beside the refusal')
       },
     )
   })
