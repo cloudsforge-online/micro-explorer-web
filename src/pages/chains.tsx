@@ -75,14 +75,24 @@ import { linkTo } from '../lib/routes.ts'
  *
  * `ltc` was missing from this record and from `CHAIN_IDS`, so Litecoin rendered as the bare string
  * `ltc` with no description at all. That is the drift the chain-id test had been red about.
+ *
+ * `etc` and `doge` arrived together and would have rendered the same way. **Each is one line and
+ * neither says "supported".** They cannot: this record only supplies the description on a card the
+ * sorting above has already put under `served` or `absent` from that scope's own `/status`, and
+ * `INDEXER_CHAINS` follows neither of these two on any deployment — so both appear under the
+ * heading for chains this deployment does not walk, exactly as BTC and XRP do today. Naming a chain
+ * is not offering it, and the day that stops being true on this page it will be because a
+ * deployment started walking one, which is the only thing that should make it true.
  */
 const ABOUT: Readonly<Record<string, string>> = {
   ember: 'EMBER — the Forge Network chain, secured by proof of work',
   eth: 'ETH — Ethereum',
+  etc: 'ETC — Ethereum Classic',
   btc: 'BTC — Bitcoin',
   sol: 'SOL — Solana',
   xrp: 'XRP — the XRP Ledger',
   ltc: 'LTC — Litecoin',
+  doge: 'DOGE — Dogecoin',
 }
 
 export function ChainsPage() {

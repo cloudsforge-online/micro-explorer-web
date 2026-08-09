@@ -313,3 +313,54 @@ export function tokenFaultReason(code: string): string {
       return `The reading could not be taken, for a reason this page does not recognise: ${code}.`
   }
 }
+
+/* ══════════════════════ not recorded, which is not the same as nothing happened ══════════════════════ */
+
+/**
+ * Why an address's page of movements is not that address's record — `indexer/src/reads.ts`.
+ *
+ * ══════════════════════════════════════════════════════════════════════════════════════════════
+ * THIS IS RULE 1 AGAIN, ON THE ONE FIELD WHERE BREAKING IT COSTS NOTHING AT RENDER TIME.
+ *
+ * Rule 1 at the top of this file is "never render a null as a zero", and every other place it
+ * applies has something visibly missing to point at: a `confirmations` of null, an absent
+ * `balances`. Here there is nothing missing to see. The service answers 200, the page is
+ * well-formed, `items` is `[]`, and a surface that says "nothing has moved through this address"
+ * has produced a fluent, confident, false sentence with no error anywhere for anybody to notice.
+ * That is worse than a failure, because a failure is disbelieved.
+ *
+ * So the wording says what is and is not known, in that order, and never offers a reassurance the
+ * record cannot support. It deliberately does not say "you are not a customer" or anything else
+ * about WHY an address was not watched: which addresses a deployment watches is the estate's
+ * business and the reader's address is their own, and an explorer that hinted at the membership of
+ * that set would be publishing it one query at a time.
+ * ══════════════════════════════════════════════════════════════════════════════════════════════
+ */
+export function unrecordedReason(reason: string): string {
+  switch (reason) {
+    case 'address_not_watched':
+      return 'This deployment writes down what moved only for the addresses it was asked to watch, and this address is not one of them. So there is no record here to read — which is not the same as a record showing nothing, and this page will not show you one in place of the other.'
+    default:
+      return `The record for this address is not complete, for a reason this page does not recognise: ${reason}.`
+  }
+}
+
+/**
+ * What a block's `partial` marker says was not stored for it — `indexer/src/btcsource.ts`.
+ *
+ * Two reasons, two different sentences, because they leave a reader able to believe different
+ * things. After `transactions-not-fetched` the block cannot answer "was my transaction mined" for
+ * any hash at all; after `watched-addresses-only` it answers that perfectly well for every hash and
+ * is silent only about who was paid. Wording both as "this block is incomplete" would throw away
+ * the half of the answer that is still good.
+ */
+export function partialBlockReason(marker: string): string {
+  switch (marker) {
+    case 'transactions-not-fetched':
+      return 'Only this block’s header was fetched. A filter said none of its transactions concerned the addresses being watched, so the body was never downloaded — nothing about what this block carried is stored here, and the transaction list below is empty for that reason rather than because the block was.'
+    case 'watched-addresses-only':
+      return 'Every transaction in this block is stored, and the list below is the whole of it. What is not complete is who was paid: movements were written down only for the addresses this deployment was watching at the time, so an address page for anybody else will be short of this block.'
+    default:
+      return `Something about this block was not stored, for a reason this page does not recognise: ${marker}.`
+  }
+}
