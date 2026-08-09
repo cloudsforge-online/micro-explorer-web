@@ -495,9 +495,22 @@ export interface CoverageView {
  * What this service's own record says an address holds, and the evidence that it is a balance.
  *
  * `indexer/src/reads.ts`. **`balances` and `balance` are ABSENT rather than zero** whenever
- * the answer may not be believed, and `unavailable` names which of the four reasons applied
+ * the answer may not be believed, and `unavailable` names which of the five reasons applied
  * (`indexer/src/reads.ts`). A missing balance is missing: "zero is what evicts a token-gated
  * member" (`indexer/src/server.ts`). This app renders the reason and never a nought.
+ *
+ * ── `address_not_watched` IS THE ONE THAT IS NOT ABOUT BLOCKS (micro-org#281) ──────────────────
+ *
+ * The other four are statements about coverage: a hole in the chain, nothing walked at all, a
+ * halt, arithmetic that came out below nought. None of them can fire on a deployment running
+ * `INDEXER_WATCHED_ADDRESSES_ONLY`, because every block IS present and canonical there — the only
+ * thing missing is the `address_activity` rows the sum is made of, and those were never written
+ * for an address nobody registered. That gap used to leave `balances: []`, a nought carrying the
+ * indexer's authority, and `src/pages/address.tsx` covered it by threading the ACTIVITY read's
+ * `incomplete` marker into the holdings panel. `micro-indexer` `976c03b` closed it at the source:
+ * `notWatchedFromHeight` in `indexer/src/reads.ts` now decides the question ONCE and both reads
+ * answer from it, so the two can no longer disagree about one address, and the client-side thread
+ * between the two panels is gone.
  */
 export interface TokenBalancesView {
   readonly chain: string
@@ -510,7 +523,18 @@ export interface TokenBalancesView {
   readonly coverage: CoverageView
   readonly balances?: readonly TokenBalance[]
   readonly balance?: string
-  readonly unavailable?: 'nothing_indexed' | 'coverage_incomplete' | 'chain_halted' | 'negative'
+  readonly unavailable?:
+    | 'nothing_indexed'
+    | 'coverage_incomplete'
+    | 'chain_halted'
+    | 'negative'
+    | 'address_not_watched'
+  /**
+   * Set exactly when `unavailable` is `address_not_watched`: the height at and above which only
+   * watched addresses were recorded. The same number `activity` reports as `incomplete.fromHeight`,
+   * decided by the same predicate — which is what lets this panel answer on its own read.
+   */
+  readonly notWatchedFromHeight?: number
 }
 
 /**
