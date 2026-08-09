@@ -264,9 +264,14 @@ export function SearchPage() {
             <>
               This matches none of the three forms the box can classify: a plain decimal height of
               up to fifteen digits, a <code className="cf-num">0x</code> hash of 64 hex characters,
-              or a <code className="cf-num">0x</code> address of 40. Bitcoin, Solana and XRP write
-              their addresses in base58 or bech32, which nothing in this estate can recognise by
-              shape, so go to the address page and put one straight in the path.
+              or a <code className="cf-num">0x</code> address of 40.
+              {/* The families, not their members. This named "Bitcoin, Solana and XRP" — the union
+                  as it stood when the box was written, already short of Litecoin, and shorter again
+                  once micro-contracts `c0e7c77` added Dogecoin to the same family. Naming the
+                  encodings rather than the coins says the same thing and stays true. */}{' '}
+              Chains outside the EVM family write their addresses in base58, bech32 and other forms
+              this box cannot recognise by shape, so go to the address page and put one straight in
+              the path.
             </>
           )}
         </p>

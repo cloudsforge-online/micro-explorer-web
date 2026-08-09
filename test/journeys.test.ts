@@ -214,7 +214,14 @@ describe('BJ-NET — the explorer', () => {
   })
 
   it('BJ-NET-13 T2: an unrun scope gets the unknown-scope screen, naming the chains and networks', async () => {
-    await app('/chains/doge/mainnet', {}, async (s) => {
+    // `bnb`, and it used to be `doge`. micro-contracts `c0e7c77` put Dogecoin in the union, so
+    // `/chains/doge/mainnet` became a real page that answers "nothing walked here" — and this
+    // scenario went red asserting the unknown-scope screen against a scope that had become known.
+    // That is the test doing its job: the scope list moved and something that hard-coded a
+    // non-member had to be re-checked. micro-indexer moved its own example the same way and for the
+    // same reason (`indexer/src/server.ts`). Whatever slug stands here must be one no `CHAIN_IDS`
+    // contains, on either side.
+    await app('/chains/bnb/mainnet', {}, async (s) => {
       await s.settle(20)
       // Not a generic not-found. That is what turns a typo into a fix: the reader is told what
       // this estate does run, so they can pick one.

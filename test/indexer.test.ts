@@ -53,7 +53,14 @@ import assert from 'node:assert/strict'
 import { existsSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, it } from 'node:test'
-import { CHAIN_IDS, CONFIRMATIONS_AGAINST, NETWORKS } from '../src/lib/indexer.ts'
+import {
+  CHAIN_IDS,
+  CONFIRMATIONS_AGAINST,
+  NETWORKS,
+  PARTIAL_DETAIL_KEY,
+  partialMarker,
+  type PartialBlockReason,
+} from '../src/lib/indexer.ts'
 
 const here = (p: string) => fileURLToPath(new URL(`../${p}`, import.meta.url))
 
@@ -339,6 +346,14 @@ describe('the cited lines are the lines that register the routes', () => {
   const reads = readFileSync(`${indexerRoot}/src/reads.ts`, 'utf8')
   const chains = readFileSync(`${indexerRoot}/src/chains.ts`, 'utf8')
   const env = readFileSync(`${indexerRoot}/src/env.ts`, 'utf8')
+  // Read through `existsSync` rather than straight, unlike the four above. Those four are as old as
+  // the service; `btcsource.ts` arrived with micro-indexer#7 and holds one small vocabulary this
+  // bundle depends on, so it is the file most likely to be renamed or folded into another. A throw
+  // here would happen while the describe body runs and would take the WHOLE suite down with a
+  // filesystem stack trace, which is the least legible way for a cross-repository check to fail.
+  // Empty instead, and the first test below says plainly that the file is gone.
+  const btcsourcePath = `${indexerRoot}/src/btcsource.ts`
+  const btcsource = existsSync(btcsourcePath) ? readFileSync(btcsourcePath, 'utf8') : ''
 
   it('reads a server with a route table in it, so this cannot pass on an empty file', () => {
     // TWO things, and NO NUMBER WRITTEN HERE.
@@ -754,6 +769,138 @@ describe('the cited lines are the lines that register the routes', () => {
       assert.match(reads, new RegExp(`unavailable: '${reason}'`), `${reason} is no longer returned`)
     }
     assert.match(reads, /A missing balance is missing, never zero/)
+  })
+
+  /* ────────────────────────────────────────────────────────────────────────────────────────────
+   * "NOT RECORDED" IS NOT "NOTHING HAPPENED".
+   *
+   * micro-indexer#7 (micro-org #253) narrowed what `address_activity` holds: a deployment walking
+   * a chain for its own custody set now writes a row only for an address it was asked to watch, and
+   * stamps every block walked that way `detail.partial = 'watched-addresses-only'`. An activity read
+   * for an address that was never watched therefore comes back with NO ROWS and a marker saying so,
+   * rather than with rows.
+   *
+   * Before this bundle knew about the marker it rendered that answer as "Nothing has moved through
+   * this address" — an assertion about the chain, made from a fact about this deployment's
+   * configuration, and the one failure mode a block explorer must not have. `src/pages/address.tsx`
+   * carries the whole reasoning.
+   *
+   * These checks are here rather than beside the render tests because the thing that can rot is not
+   * the rendering, it is the AGREEMENT: the marker is three strings and a number, restated in
+   * `src/lib/indexer.ts` because this repository does not import the service's types. If micro-
+   * indexer renames the reason, moves the detail key or adds a third `PartialBlockReason`, nothing
+   * in this bundle breaks — it silently goes back to showing the empty state, which is the defect
+   * again with no symptom. So the agreement is measured against the service's own source.
+   * ──────────────────────────────────────────────────────────────────────────────────────────── */
+
+  it('an unwatched address still comes back MARKED, not merely empty', () => {
+    // The producing side, found in `activity()` rather than cited: the marker is attached exactly
+    // when the address is not watched AND some block below the tip was walked in the narrow mode.
+    // Both halves matter — an unconditional marker would put the caveat on every address on a
+    // fully-walked chain, and no marker at all is the defect.
+    assert.match(
+      reads,
+      /reason: 'address_not_watched' as const/,
+      'indexer/src/reads.ts no longer marks an unwatched address; this bundle would show its empty state again',
+    )
+    assert.match(
+      reads,
+      /incomplete: \{ reason: 'address_not_watched' as const, fromHeight: partialFrom \}/,
+      'the marker no longer carries fromHeight, which src/pages/address.tsx prints as the height it holds from',
+    )
+    // …and that it is still OPTIONAL on the view type, which is what makes an unmarked empty page
+    // safe to keep calling "nothing happened".
+    assert.match(
+      reads,
+      /readonly incomplete\?: \{\n\s*readonly reason: 'address_not_watched'\n\s*readonly fromHeight: number/,
+      'ActivityPageView.incomplete has changed shape; src/lib/indexer.ts restates it and would now be wrong',
+    )
+  })
+
+  it('the reason string this bundle prints is the reason string the service sends', () => {
+    // Restated, not imported — so the one string that carries the meaning is compared directly.
+    // `unrecordedReason` in `src/lib/format.ts` switches on it and has a default branch that prints
+    // an unrecognised reason verbatim, so a RENAME degrades to an honest sentence rather than to
+    // silence; this test is what makes somebody come and write the good sentence for the new name.
+    const format = readFileSync(here('src/lib/format.ts'), 'utf8')
+    assert.match(client, /'address_not_watched'/, 'src/lib/indexer.ts no longer names the reason')
+    assert.match(format, /case 'address_not_watched':/, 'src/lib/format.ts no longer words the reason')
+  })
+
+  it('the block-level marker is the key and the two values micro-indexer stamps', () => {
+    assert.ok(btcsource.length > 0, `indexer/src/btcsource.ts is gone from ${indexerRoot}`)
+    // The KEY. `partialMarker` in `src/lib/indexer.ts` reads `detail[PARTIAL_DETAIL_KEY]` off a
+    // block's verbatim detail object, and a key renamed upstream turns that reader into one that
+    // finds nothing — on every block, forever, with no error anywhere.
+    assert.match(
+      btcsource,
+      new RegExp(`export const PARTIAL_DETAIL_KEY = '${PARTIAL_DETAIL_KEY}'`),
+      `micro-indexer no longer stamps the detail key this bundle reads (${PARTIAL_DETAIL_KEY})`,
+    )
+    // The VALUES, both of them, in the union rather than merely somewhere in the file. `src/pages/
+    // block.tsx` words each one; a third that nobody worded would fall to the default branch of
+    // `partialBlockReason` and print its own code, which is honest and worse than a sentence.
+    const union = /export type PartialBlockReason = ([^\n]+)/.exec(btcsource)
+    assert.ok(union, 'PartialBlockReason is gone from indexer/src/btcsource.ts')
+    const upstream = (union[1] ?? '')
+      .split('|')
+      .map((s) => s.trim().replace(/'/g, ''))
+      .filter(Boolean)
+    const worded: readonly PartialBlockReason[] = ['transactions-not-fetched', 'watched-addresses-only']
+    assert.deepEqual(
+      upstream,
+      [...worded],
+      'micro-indexer stamps a partial-block reason this bundle has no sentence for',
+    )
+    const format = readFileSync(here('src/lib/format.ts'), 'utf8')
+    for (const reason of upstream) {
+      assert.match(format, new RegExp(`case '${reason}':`), `src/lib/format.ts does not word ${reason}`)
+    }
+  })
+
+  it('a whole block is stamped null, so ABSENCE of the key cannot mean "complete"', () => {
+    // The service writes `partial: null` explicitly for a block it walked in full, and says in
+    // `indexer/src/btcsource.ts` that absence means "written by a build older than this", not
+    // "complete". `partialMarker` therefore returns null for BOTH — which is the right call for a
+    // reader and worth writing down, because it is the one place this bundle knowingly declines to
+    // pass a distinction on. Only the bitcoin-family walker stamps the key at all today; treating
+    // absence as a caveat would put one on every EMBER block on both live estates, permanently.
+    assert.match(
+      btcsource,
+      /\[PARTIAL_DETAIL_KEY\]: reason/,
+      'markPartial no longer writes the key unconditionally, so null and absent have merged upstream',
+    )
+    assert.equal(partialMarker({}), null)
+    assert.equal(partialMarker({ [PARTIAL_DETAIL_KEY]: null }), null)
+    assert.equal(partialMarker({ [PARTIAL_DETAIL_KEY]: 'watched-addresses-only' }), 'watched-addresses-only')
+    // An unrecognised future value survives to the screen rather than being dropped by a narrowing
+    // cast — the reader is told there is something, and told this page does not know what.
+    assert.equal(partialMarker({ [PARTIAL_DETAIL_KEY]: 'some-future-reason' }), 'some-future-reason')
+  })
+
+  it('token balances inherit the same silence and carry NO marker of their own', () => {
+    // FOUND AND NOT FIXED, recorded here so it cannot be rediscovered as a surprise.
+    //
+    // `tokenBalancesAt` sums `address_activity`, the same table the narrowed walk stopped writing
+    // rows into, so an unwatched address gets `balances: []` — and the `unavailable` union has no
+    // member for "this address was never watched". The withheld-balance machinery this surface
+    // depends on cannot fire, because nothing upstream tells it to.
+    //
+    // This bundle works around it rather than inventing an answer: `src/pages/address.tsx` threads
+    // the ACTIVITY read's marker into the holdings panel and withholds the sentence claiming an
+    // empty balance list means nought. That is a client-side patch over a service-side gap; the
+    // fix belongs in micro-indexer, and this test goes red the day it lands so somebody comes back
+    // and deletes the workaround instead of leaving two mechanisms where one would do.
+    assert.doesNotMatch(
+      reads,
+      /unavailable: 'address_not_watched'/,
+      'micro-indexer now marks the token-balances read too — delete the workaround in src/pages/address.tsx',
+    )
+    assert.match(
+      readFileSync(here('src/pages/address.tsx'), 'utf8'),
+      /unrecorded/,
+      'the holdings panel no longer knows the activity read was incomplete',
+    )
   })
 
   /* ────────────────────────────────────────────────────────────────────────────────────────────

@@ -136,10 +136,27 @@ import { api, noticeFor, type ErrorNotice } from './api.ts'
  * the drift test in `test/indexer.test.ts` had been red for exactly this since micro-contracts
  * `7ec2117` added LTC, and a chain the service serves was missing from the client that reads it.
  *
+ * ── `etc` AND `doge` ARE THE SAME EVENT, RUN AGAIN, AND THE SAME TEST WAS RED AGAIN ────────────
+ *
+ * micro-contracts `c0e7c77` added ETC (`family: 'evm'`) and DOGE (`family: 'bitcoin'`), and
+ * `indexer/src/chains.ts` widened its own union with it — its comment there works through why
+ * neither needs a worker of its own, one seam at a time. This list did not move, so two scopes the
+ * service answers about could not be reached from a browser at all: `parseScope` returns null for
+ * an unlisted slug, so `/doge/mainnet/…` rendered the unknown-scope screen before any request was
+ * made. That is the LTC defect exactly, and the drift test caught it exactly as before.
+ *
+ * **BEING REACHABLE IS STILL NOT BEING FOLLOWED, AND FOR THESE TWO IT IS FURTHER FROM IT THAN FOR
+ * ANY OTHER MEMBER.** `contracts/packages/chain/src/index.ts` says so beside `ON_CHAIN_ASSETS`:
+ * for DOGE and ETC "the follower, the addresses and the sweep" are not built, `INDEXER_CHAINS`
+ * follows neither, and no deposit in either has ever been credited at any depth. Nothing on this
+ * surface may imply otherwise — and nothing does, by the same mechanism as the paragraph above:
+ * every scope is sorted by `isServed`, which reads that scope's own `/status`, so both land under
+ * "not walked by this deployment" on `/chains` without a line of copy deciding it.
+ *
  * Restated here rather than imported, because a browser bundle must not depend on a service's
  * source tree; `test/indexer.test.ts` reads the real list and fails if this one drifts.
  */
-export const CHAIN_IDS = ['ember', 'eth', 'btc', 'sol', 'xrp', 'ltc'] as const
+export const CHAIN_IDS = ['ember', 'eth', 'etc', 'btc', 'sol', 'xrp', 'ltc', 'doge'] as const
 export type ChainId = (typeof CHAIN_IDS)[number]
 
 /** `indexer/src/chains.ts`. */
@@ -277,6 +294,46 @@ export interface ActivityPage {
   readonly requiredConfirmations: number
   readonly items: readonly ActivityView[]
   readonly nextCursor: string | null
+  /**
+   * PRESENT EXACTLY WHEN THIS PAGE IS NOT THIS ADDRESS'S RECORD, AND ABSENT WHEN IT IS.
+   *
+   * ══════════════════════════════════════════════════════════════════════════════════════════════
+   * AN EMPTY PAGE HAS TWO MEANINGS NOW, AND THEY ARE OPPOSITES.
+   *
+   * `address_activity` used to be written for every address a block touched, which is what let a
+   * public explorer ask about addresses nobody had registered. micro-indexer#7 (micro-org #253)
+   * ended that: a deployment running `INDEXER_WATCHED_ADDRESSES_ONLY` records the row only for
+   * addresses it was watching at the time, and stamps each block it walked that way
+   * `detail.partial = 'watched-addresses-only'` (`indexer/src/btcsource.ts`).
+   *
+   * So `items: []` from such a deployment is either "nothing has ever moved here" or "nobody ever
+   * wrote it down", and the service refuses to let those look alike — its own words at
+   * `indexer/src/reads.ts`: an empty page for an unregistered address "reads as 'this address has
+   * never transacted' and is a different, false statement". This field is which of the two it is.
+   * **An empty `items` WITH this present means unknown; an empty `items` WITHOUT it means nothing
+   * happened.**
+   *
+   * `src/pages/address.tsx` is where that becomes two different screens. Getting it wrong is not a
+   * missing feature: it is this surface telling a visitor their address is empty when the estate
+   * simply never recorded it — a wrong answer wearing a right answer's clothes, and the exact shape
+   * of failure the withheld-balance panel on that same page already exists to prevent.
+   *
+   * ── IT CAN ARRIVE WITH ROWS ON THE PAGE, WHICH IS WHY THIS IS NOT JUST AN EMPTY-STATE BRANCH ──
+   *
+   * `fromHeight` is the height at which the recorded set narrows: below it every address was
+   * written down, at and from it only watched ones were. An address that moved coin before that
+   * point therefore has real rows AND a truncated history at once, and a page that only checked
+   * this when `items` was empty would render those rows as the whole story. Both cases say it.
+   *
+   * The height is the conservative end of the answer rather than the exact one: the service takes
+   * it off the record of blocks carrying the marker, so any window in which the narrowing was
+   * switched off again is still counted as suspect.
+   * ══════════════════════════════════════════════════════════════════════════════════════════════
+   */
+  readonly incomplete?: {
+    readonly reason: 'address_not_watched'
+    readonly fromHeight: number
+  }
 }
 
 /** One log entry on a transaction (`indexer/src/reads.ts`). */
@@ -339,6 +396,55 @@ export interface BlockView {
   readonly confirmations: number | null
   readonly detail: Record<string, unknown>
   readonly transactionHashes: readonly string[]
+}
+
+/**
+ * The key a block's `detail` carries the "what was NOT stored for this block" marker under.
+ *
+ * `indexer/src/btcsource.ts` names it once for the same reason it is named once here: two writers
+ * put it there, and "a reader that looked for a different spelling than the writer used would
+ * conclude, silently and wrongly, that every block is complete".
+ */
+export const PARTIAL_DETAIL_KEY = 'partial'
+
+/**
+ * The two ways a stored block can hold less than the chain put in it — `indexer/src/btcsource.ts`.
+ *
+ *   * `transactions-not-fetched` — a compact-filter source proved no transaction in the block
+ *     concerned the watched set and never downloaded the body. Nothing is stored beyond the header,
+ *     so this block cannot answer "was my transaction mined" for any hash.
+ *   * `watched-addresses-only` — the whole block was fetched and every transaction IS stored, but
+ *     `address_activity` was written only for the addresses being watched at the time. The
+ *     transaction record is complete; the address record is not.
+ *
+ * The difference decides what a reader may still believe, which is why this surface words them
+ * separately rather than saying "partial" twice. See `partialBlockReason` in `src/lib/format.ts`.
+ */
+export type PartialBlockReason = 'transactions-not-fetched' | 'watched-addresses-only'
+
+/**
+ * The marker off a block's detail, or null when the block does not carry one.
+ *
+ * **Returned as the raw string rather than narrowed to `PartialBlockReason`, deliberately.** A
+ * marker this bundle does not recognise is a marker micro-indexer added after this build, and the
+ * one thing that must not happen to it is being dropped on the floor by a type guard — a reader
+ * looking at an incomplete block would be told nothing at all. `partialBlockReason` has a default
+ * arm that prints the unrecognised code, on the same principle as `unavailableReason`.
+ *
+ * **Absence is left silent, and that is a decision rather than an oversight.**
+ * `indexer/src/btcsource.ts` is emphatic that absence must not be read as completeness — a row
+ * written by an older build carries no marker, and "a reader that treats absence as completeness
+ * would vouch for exactly the blocks nobody can vouch for". That argument is aimed at the backfill,
+ * which must decide whether to rescan. This surface is not deciding anything: the only writer that
+ * stamps the key today is `indexer/src/bitcoin.ts`, so every EMBER block — which is every block on
+ * both live estates — would carry a caveat that is true of the marker's history and false of the
+ * block. A warning printed on every page is a warning nobody reads by the second page.
+ * `partial: null`, which is what a whole block from a stamping writer says, also lands here, and
+ * that one genuinely does mean complete.
+ */
+export function partialMarker(detail: Record<string, unknown>): string | null {
+  const value = detail[PARTIAL_DETAIL_KEY]
+  return typeof value === 'string' && value.length > 0 ? value : null
 }
 
 /**
@@ -527,8 +633,16 @@ type RequestQuery = Record<string, string | number | boolean | undefined | null>
  *
  * A chain this estate does not run is a **404 `unknown_chain`** rather than a 400, and the service
  * says why (`indexer/src/server.ts`): the path names a resource that does not exist, and a
- * caller asking for `/chains/doge/mainnet/status` "has not made a malformed request, it has asked
+ * caller asking for `/chains/bnb/mainnet/status` "has not made a malformed request, it has asked
  * for a chain this estate does not run".
+ *
+ * **That example used to be `doge` on both sides, and it stopped being one.** micro-contracts
+ * `c0e7c77` put Dogecoin in the union, so `/chains/doge/…` is now a real address that answers 200
+ * with nothing walked — a different answer entirely from a chain that does not exist. The service
+ * moved its own example to `bnb` and said so where it is thrown (`indexer/src/server.ts`); this
+ * quotes the current one. An example of a thing that does not exist has to be re-checked every time
+ * the set of things that do exist grows, which is a small chore and the only reliable way to keep a
+ * quotation from becoming a lie.
  */
 export function getChainStatus(scope: Scope, signal?: AbortSignal): Promise<ChainStatus> {
   return publicRead<ChainStatus>(`/v1/chains/${seg(scope.chain)}/${seg(scope.network)}/status`, {

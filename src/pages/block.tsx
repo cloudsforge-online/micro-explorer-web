@@ -15,6 +15,22 @@
  * So this page renders the number with `head="claimed-tip"`, which `Depth` labels, and it never
  * uses the word "final". The chain page is where the size of that gap can be read.
  *
+ * ── A BLOCK CAN NOW SAY WHAT WAS NOT STORED FOR IT, AND THIS PAGE READS THAT RATHER THAN
+ *    LEAVING IT IN THE HEADER DUMP ────────────────────────────────────────────────────────────
+ *
+ * micro-indexer#7 (micro-org #253) began stamping `detail.partial` on blocks walked for a narrowed
+ * address set (`indexer/src/btcsource.ts`). `detail` is already rendered verbatim at the foot of
+ * this page, so before this change the marker WAS on screen — as a row reading `partial` /
+ * `watched-addresses-only`, between whatever else the node happened to put in the header, in a
+ * table whose own note says it shows fields "this page cannot make sense of". A field that decides
+ * whether the transaction list below is the whole block is not a header curiosity, and a reader who
+ * could work out what that row meant would not have needed the page.
+ *
+ * So it is read, worded, and put where the consequence is — above the transaction list, which is
+ * the thing it qualifies. It stays in the verbatim table as well: that table's promise is that
+ * nothing is renamed or dropped, and quietly removing a field once the page understands it would
+ * break the one property it has.
+ *
  * ── There is no orphaned block here, and that is worth knowing before looking for one ──────────
  *
  * `blockAtHeight` filters `status <> 'orphaned'` (`indexer/src/store.ts`), so a height whose
@@ -28,8 +44,13 @@ import { useCallback } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { Failed, Loading, Missing } from '../components/states.tsx'
 import { Depth, DepthNote, Fact, Note } from '../components/tone.tsx'
-import { count, timestamp } from '../lib/format.ts'
-import { CONFIRMATIONS_AGAINST, getBlock, type BlockView } from '../lib/indexer.ts'
+import { count, partialBlockReason, timestamp } from '../lib/format.ts'
+import {
+  CONFIRMATIONS_AGAINST,
+  getBlock,
+  partialMarker,
+  type BlockView,
+} from '../lib/indexer.ts'
 import { useResource } from '../lib/resource.ts'
 import { linkTo } from '../lib/routes.ts'
 import { parseScope } from '../lib/scope.ts'
@@ -88,6 +109,8 @@ export function BlockPage() {
   }
   const block = resource.data
   if (!block) return <Loading label={`Fetching block ${height}`} />
+
+  const partial = partialMarker(block.detail)
 
   return (
     <div className="ex-page">
@@ -149,6 +172,24 @@ The depth below is measured from the top of the chain as an upstream provider la
       <h2 className="ex-section__title">
         Transactions in this block ({count(block.transactionHashes.length)})
       </h2>
+
+      {/* Above the list, because it is a statement about the list. The withheld-balance panel's
+          markup, for the same reason the address page reuses it: this is the same kind of sentence
+          — what is not here and why — and a reader who has met it once should recognise it. */}
+      {partial !== null && (
+        <div className="ex-withheld" role="status">
+          <p className="ex-withheld__title">
+            <span aria-hidden="true">⊘</span> Not everything about this block was written down here.
+          </p>
+          <p className="ex-withheld__why">{partialBlockReason(partial)}</p>
+          <dl className="ex-facts ex-facts--tight">
+            <Fact label="What the block itself says was left out">
+              <code className="cf-num ex-code">{partial}</code>
+            </Fact>
+          </dl>
+        </div>
+      )}
+
       {block.transactionHashes.length === 0 ? (
         <p className="ex-absent">
 Not one transaction from this block has been stored here.
