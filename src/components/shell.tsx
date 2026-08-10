@@ -19,10 +19,10 @@
  * explorer is reached from Forge Network, not chosen from a product list.
  */
 import { useEffect } from 'react'
-import { CloudsForgeBar, CookieBanner, MainRegion, SkipLink } from '@cloudsforge/ui'
+import { CloudsForgeBar, CookieBanner, MainRegion, SkipLink, miningOnHub } from '@cloudsforge/ui'
 import { applyHead, surfaceMeta } from '@cloudsforge/ui/seo'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
-import { PRODUCT, SURFACE_DESCRIPTION } from '../lib/hosts.ts'
+import { PRODUCT, SURFACE_DESCRIPTION, hosts } from '../lib/hosts.ts'
 import { isNetwork, type Network } from '../lib/indexer.ts'
 import { deploymentNetwork, siblingExplorer } from '../lib/network.ts'
 import { NAV, ROUTES } from '../lib/routes.ts'
@@ -67,11 +67,32 @@ export function AppShell({ unregistered = false }: { unregistered?: boolean }) {
         was missing, and it sets the id and the tabindex together so they cannot disagree.
       */}
       <SkipLink>Skip to the page</SkipLink>
+      {/*
+        `mining` is the design system's own control, and the bar puts it immediately before the
+        account menu — on every address this deployment serves.
+
+        The owner's report was that starting a browser miner is "hidden deep in mining page". The
+        answer is a place in the one piece of chrome every surface renders. What THIS surface hands
+        the bar is `miningOnHub()`, the `elsewhere` state, and that is not a lesser version of a
+        Start button: the miner is a WebSocket and two Web Workers on ONE origin, `hub.<apex>` is a
+        different origin from this one, and nothing in this bundle can start, observe or stop a
+        session over there. A button here would be a control that cannot do what it says.
+
+        So it renders an ANCHOR, for the same reason the cross-network notice further down this file
+        renders one — a destination the router cannot reach is a destination the router must not
+        own. An anchor is middle-clickable, openable in a new tab, and visible to everything that
+        reads links; a destination expressed as an onClick is visible to nothing.
+
+        `hosts().hub` rather than a written-out URL, and on this surface that is not a nicety. Two
+        deployments of this bundle sit on two hostnames — see `deploymentNetwork()` — plus localhost
+        and the preview host, and a literal would be right on exactly one of the four.
+      */}
       <CloudsForgeBar
         current={PRODUCT}
         account={account}
         onSignIn={() => signIn()}
         onSignOut={signOut}
+        mining={miningOnHub(hosts().hub)}
       />
       {/*
         The sub-nav is sticky at exactly `var(--cf-bar-h)` — the bar's own height token, not a
