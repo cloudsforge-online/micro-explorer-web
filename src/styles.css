@@ -110,50 +110,38 @@ body {
    carries `tabIndex={-1}`, which the local one did not. A rule left behind after its element is
    deleted is dead weight the next reader has to prove is dead. */
 
-.ex-subnav {
-  position: sticky;
-  /* The bar's OWN height token, not a number copied out of it. */
-  top: var(--cf-bar-h);
-  z-index: 20;
-  background: var(--cf-bg);
-  border-bottom: 1px solid var(--cf-line);
-}
+/* `.ex-subnav`, `.ex-subnav__inner`, `.ex-subnav__link`, its `:hover` and `.is-active` WERE HERE,
+   and they are gone with the markup they styled: the section strip is `SubNav` from
+   @cloudsforge/ui now, which brings `.cf-subnav`, `.cf-subnav__inner`, `.cf-subnav__link` and
+   `.cf-subnav__link--current`.
 
-.ex-subnav__inner {
-  max-width: var(--cf-max-w);
-  margin: 0 auto;
-  display: flex;
-  gap: var(--cf-space-xs);
-  padding: 0 var(--cf-space-xl);
-  overflow-x: auto;
-}
+   Measured 2026-08-10: ten frontends declared this strip privately, under six class prefixes, from
+   one original. Two of the three defects that census found did NOT apply here — this copy already
+   scrolled (`overflow-x: auto` with `white-space: nowrap` on the link) and already took its measure
+   from `--cf-max-w` rather than the 76rem five of the ten wrote. The one that did apply is what a
+   private copy always eventually does: `.is-active` marked the current section in TWO channels,
+   ink and underline, where the estate's rule is three. The shared rule adds the weight, hides the
+   scrollbar so the row does not grow by its thickness on one platform, and draws the focus ring
+   INSIDE the scroll container so it is not clipped on the first and last item.
 
-.ex-subnav__link {
-  padding: var(--cf-space-md) var(--cf-space-sm);
-  color: var(--cf-fg-dim);
-  text-decoration: none;
-  font-size: var(--cf-text-md);
-  border-bottom: 2px solid transparent;
-  white-space: nowrap;
-}
-
-.ex-subnav__link:hover {
-  color: var(--cf-fg);
-}
-
-.ex-subnav__link.is-active {
-  color: var(--cf-fg);
-  border-bottom-color: var(--cf-accent);
-}
+   A rule left behind after its element is deleted is dead weight the next reader has to prove is
+   dead — the same reason `.ex-skip` above is a comment rather than a rule. */
 
 /*
-  Which network this deployment is, on every page.
+  Which network this deployment is, on every page. A LOCAL EXTRA inside the shared strip, and
+  deliberately not one of its links — see `src/components/shell.tsx` for why it is not a
+  destination.
 
-  Pushed to the end of the row rather than into the link list: it is not a destination and must not
-  read as one. `white-space: nowrap` because the row scrolls horizontally on a narrow screen and a
-  label that wraps mid-word is how "mainnet" becomes "main".
+  It was `.ex-subnav__net`. The `__net` element of a `.ex-subnav` block this file no longer declares
+  would be a name pointing at styling that is not here, so it is `.ex-net`: an app class that layers
+  on `.cf-subnav__inner`'s flex row rather than pretending to be part of it.
+
+  `margin-left: auto` pushes it past the sections; `align-self: center` opts out of the shared row's
+  `align-items: stretch`, which would otherwise stretch a paragraph to the height of a tab.
+  `white-space: nowrap` because the row scrolls horizontally on a narrow screen and a label that
+  wraps mid-word is how "mainnet" becomes "main".
 */
-.ex-subnav__net {
+.ex-net {
   margin: 0 0 0 auto;
   align-self: center;
   padding-left: var(--cf-space-md);
@@ -162,7 +150,7 @@ body {
   white-space: nowrap;
 }
 
-.ex-subnav__net strong {
+.ex-net strong {
   color: var(--cf-fg);
 }
 

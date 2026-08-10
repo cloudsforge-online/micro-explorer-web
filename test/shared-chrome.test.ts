@@ -41,6 +41,7 @@ import {
 import { createElement as h } from 'react'
 import { App } from '../src/app.tsx'
 import { PRODUCT, hosts } from '../src/lib/hosts.ts'
+import { NAV } from '../src/lib/routes.ts'
 import * as fx from './fixtures.ts'
 import { withScreen, type Routes, type Screen } from './dom.ts'
 
@@ -115,24 +116,35 @@ test('ProductSwitcher and AccountMenu also render standing alone', async () => {
 })
 
 /* ══════════════════════════════════════════════════════════════════════════════════════════════
-   BROWSER MINING, FROM THE BAR
+   THE SECTION STRIP, ON SCREEN, AND IT IS THE SHARED ONE
 
-   The owner's report was that starting a browser miner is "hidden deep in mining page, it should be
-   easily found near the account on all pages". It lives in the shared chrome now, so it is on every
-   address this deployment serves, and this file is where that is asserted because this file is
-   where the shared chrome's presence in a real document already is.
-
-   ── Why this one MOUNTS THE APP when the four above mount the bar ─────────────────────────────
+   ── Why this mounts the APP when the four above mount components ──────────────────────────────
 
    The four above are about a component reaching one React; their subject is `@cloudsforge/ui`, so
    naming it directly is the point. This one's subject is `src/components/shell.tsx` — whether THIS
-   repository hands the bar the prop — and a bar constructed here would answer that question by
-   assuming it. A shell that passes `mining` and a shell that dropped it render the same bar in
-   isolation.
+   repository renders the shared strip — and a `SubNav` constructed here would answer that by
+   assuming it. A shell that adopted `SubNav` and a shell that kept its private `.ex-subnav` copy
+   are indistinguishable to a test that builds the component itself.
 
-   What this surface renders is the `elsewhere` state, which is a LINK. The miner is a WebSocket and
-   two Web Workers on `hub.<apex>`, a different origin, so nothing in this bundle can start, observe
-   or stop a session; pressing the session itself is micro-hub-web's to assert.
+   ── Why it addresses elements by CLASS, which `test/dom.ts` otherwise forbids ──────────────────
+
+   `test/dom.ts` records the rule: "Elements are addressed by accessible role and name, never by
+   class or DOM path ... A markup change must not break these tests." That rule is right for a
+   scenario, whose subject is what a human can do. It is exactly wrong here, because the class IS
+   the subject: `.cf-subnav` and `.ex-subnav` render the identical accessible tree — one `<nav>`
+   named "Sections" holding the same links — and differ only in which stylesheet reaches them. An
+   accessibility-first assertion would have passed against every one of the ten drifted copies.
+
+   ── The defect this would have caught (measured 2026-08-10) ───────────────────────────────────
+
+   Nine of the ten private copies were a `display: flex` row with neither `white-space: nowrap` nor
+   `overflow-x: auto`, so on a phone the labels squeezed and broke mid-word and the ones past the
+   edge could not be reached at all. Those properties are not observable here — happy-dom lays
+   nothing out, and asserting computed style would be asserting happy-dom. What IS observable, and
+   what actually fixes it, is WHICH strip is on screen: `ui/packages/ui/src/subnav.test.ts` pins the
+   scrolling, the nowrap and the measure onto `.cf-subnav`, so "the rendered strip is `.cf-subnav`"
+   plus that file is the whole chain. A source-text grep would not close it — this repository could
+   import `SubNav` and still render the local `<nav className="ex-subnav">` beside it.
    ══════════════════════════════════════════════════════════════════════════════════════════════ */
 
 /**
@@ -152,6 +164,86 @@ const chainOffers: Routes = {
     return { body: fx.chainStatus({ chain, network }) }
   },
 }
+
+test('the sub-nav on screen is the shared strip, and every section link is a shared link', async () => {
+  await withScreen(h(App), { url: `${ORIGIN}/`, routes: chainOffers }, async (s) => {
+    await s.settle(20)
+
+    // The landmark. Named, because the bar is the other `<nav>` in this document and two unnamed
+    // ones are announced as "navigation" and "navigation" — `SubNav` requires `label` for that
+    // reason, and this surface's own wording is kept.
+    const strip = s.document.querySelector('nav.cf-subnav')
+    assert.ok(strip, 'the sub-nav on screen is not the shared strip')
+    assert.equal(strip.getAttribute('aria-label'), 'Sections')
+    assert.ok(strip.querySelector('.cf-subnav__inner'), 'the shared strip has no scrolling inner')
+
+    // The private copy is not rendered anywhere, under any of its names. Adopting the shared strip
+    // and leaving the old one in the tree is the one way the assertion above passes on a defect.
+    assert.equal(
+      s.document.querySelector('[class*="ex-subnav"]'),
+      null,
+      'the local .ex-subnav markup is still in the document beside the shared one',
+    )
+
+    // EVERY section, not "at least one": a partial adoption is the shape this catches. `NAV` is the
+    // same declaration the shell maps over, so a section added later is covered without an edit.
+    const links = [...strip.querySelectorAll('a')]
+    assert.equal(
+      links.length,
+      NAV.length,
+      `the strip holds ${links.length} links for ${NAV.length} sections`,
+    )
+    for (const item of NAV) {
+      const link = links.find((a) => (a.textContent ?? '').trim() === item.label)
+      assert.ok(link, `no link in the sub-nav is labelled ${item.label}`)
+      assert.ok(
+        link.classList.contains('cf-subnav__link'),
+        `the ${item.label} link carries "${link.getAttribute('class')}", not cf-subnav__link`,
+      )
+    }
+
+    // The current section, marked with the SHARED modifier. `is-active` was this repository's own
+    // spelling and it styles nothing now, so a link still wearing it would be a section the reader
+    // cannot see they are in. This is the index, so `Search` is the one.
+    const current = [...strip.querySelectorAll('.cf-subnav__link--current')]
+    assert.equal(current.length, 1, `${current.length} sections are marked current on the index`)
+    assert.equal((current[0]?.textContent ?? '').trim(), 'Search')
+    assert.equal(
+      strip.querySelector('.is-active'),
+      null,
+      'a link still carries the local is-active modifier, which no stylesheet styles',
+    )
+
+    // The one thing that is deliberately NOT a shared link: which network this deployment is. It
+    // sits inside the strip as a local extra and must not be announced as a destination.
+    const net = strip.querySelector('.ex-net')
+    assert.ok(net, 'the network indicator left the strip')
+    assert.equal(net.tagName, 'P', 'the network indicator became something a reader can press')
+
+    s.clean('the shared sub-nav')
+  })
+})
+
+/* ══════════════════════════════════════════════════════════════════════════════════════════════
+   BROWSER MINING, FROM THE BAR
+
+   The owner's report was that starting a browser miner is "hidden deep in mining page, it should be
+   easily found near the account on all pages". It lives in the shared chrome now, so it is on every
+   address this deployment serves, and this file is where that is asserted because this file is
+   where the shared chrome's presence in a real document already is.
+
+   ── Why this one MOUNTS THE APP when the four above mount the bar ─────────────────────────────
+
+   The four above are about a component reaching one React; their subject is `@cloudsforge/ui`, so
+   naming it directly is the point. This one's subject is `src/components/shell.tsx` — whether THIS
+   repository hands the bar the prop — and a bar constructed here would answer that question by
+   assuming it. A shell that passes `mining` and a shell that dropped it render the same bar in
+   isolation.
+
+   What this surface renders is the `elsewhere` state, which is a LINK. The miner is a WebSocket and
+   two Web Workers on `hub.<apex>`, a different origin, so nothing in this bundle can start, observe
+   or stop a session; pressing the session itself is micro-hub-web's to assert.
+   ══════════════════════════════════════════════════════════════════════════════════════════════ */
 
 test('the bar offers browser mining, beside the account, on an ordinary address', async () => {
   await withScreen(h(App), { url: `${ORIGIN}/`, routes: chainOffers }, async (s) => {
