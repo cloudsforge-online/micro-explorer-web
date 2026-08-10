@@ -31,10 +31,16 @@
  */
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { AccountMenu, CloudsForgeBar, ProductSwitcher } from '@cloudsforge/ui'
+import {
+  AccountMenu,
+  CloudsForgeBar,
+  HUB_MINE_PATH,
+  NOT_PAID_CLAUSE,
+  ProductSwitcher,
+} from '@cloudsforge/ui'
 import { createElement as h } from 'react'
 import { App } from '../src/app.tsx'
-import { PRODUCT } from '../src/lib/hosts.ts'
+import { PRODUCT, hosts } from '../src/lib/hosts.ts'
 import { NAV } from '../src/lib/routes.ts'
 import * as fx from './fixtures.ts'
 import { withScreen, type Routes, type Screen } from './dom.ts'
@@ -141,7 +147,14 @@ test('ProductSwitcher and AccountMenu also render standing alone', async () => {
    import `SubNav` and still render the local `<nav className="ex-subnav">` beside it.
    ══════════════════════════════════════════════════════════════════════════════════════════════ */
 
-/** The testnet hostname, which is a real address this bundle is served from. */
+/**
+ * A registered address, and the TESTNET one.
+ *
+ * `hosts()` derives every estate URL from the hostname the bundle was served from, so the origin is
+ * an input to the assertion below rather than scenery: served from a name the registry does not
+ * know, the shell raises its unregistered notice and `hosts().hub` resolves one level too deep.
+ * `test/journeys.test.ts` runs on the same hostname and gives the longer reason.
+ */
 const ORIGIN = 'https://explorer-testnet.cloudsforge.online'
 
 /** The index asks which chains this deployment serves before it offers any; nothing else. */
@@ -208,5 +221,79 @@ test('the sub-nav on screen is the shared strip, and every section link is a sha
     assert.equal(net.tagName, 'P', 'the network indicator became something a reader can press')
 
     s.clean('the shared sub-nav')
+  })
+})
+
+/* ══════════════════════════════════════════════════════════════════════════════════════════════
+   BROWSER MINING, FROM THE BAR
+
+   The owner's report was that starting a browser miner is "hidden deep in mining page, it should be
+   easily found near the account on all pages". It lives in the shared chrome now, so it is on every
+   address this deployment serves, and this file is where that is asserted because this file is
+   where the shared chrome's presence in a real document already is.
+
+   ── Why this one MOUNTS THE APP when the four above mount the bar ─────────────────────────────
+
+   The four above are about a component reaching one React; their subject is `@cloudsforge/ui`, so
+   naming it directly is the point. This one's subject is `src/components/shell.tsx` — whether THIS
+   repository hands the bar the prop — and a bar constructed here would answer that question by
+   assuming it. A shell that passes `mining` and a shell that dropped it render the same bar in
+   isolation.
+
+   What this surface renders is the `elsewhere` state, which is a LINK. The miner is a WebSocket and
+   two Web Workers on `hub.<apex>`, a different origin, so nothing in this bundle can start, observe
+   or stop a session; pressing the session itself is micro-hub-web's to assert.
+   ══════════════════════════════════════════════════════════════════════════════════════════════ */
+
+test('the bar offers browser mining, beside the account, on an ordinary address', async () => {
+  await withScreen(h(App), { url: `${ORIGIN}/`, routes: chainOffers }, async (s) => {
+    await s.settle(20)
+
+    const bar = s.document.querySelector('.cf-bar')
+    assert.ok(bar, 'this surface no longer renders the company bar')
+    const found = [...bar.querySelectorAll('.cf-mine')]
+    assert.equal(found.length, 1, `expected one mining control in the bar, found ${found.length}`)
+    const mine = found[0] as Element
+
+    // An anchor, not an onClick — the same rule the cross-network notice in `src/components/
+    // shell.tsx` follows. A destination the router cannot reach cannot be a handler: a handler
+    // cannot be middle-clicked, copied out of a support ticket or crawled, and is invisible to
+    // every check that reads links.
+    assert.equal(mine.tagName, 'A', 'the mining control is not a link')
+    // Composed by the registry, never written out. This bundle is served from two hostnames, one
+    // per network, and from localhost; a literal would be right on one of them.
+    assert.equal(
+      mine.getAttribute('href'),
+      `${hosts().hub}${HUB_MINE_PATH}`,
+      'the mining control does not point at Forge Hub’s mining address',
+    )
+
+    // Beside the account, asserted as TAB ORDER rather than as a CSS neighbour: a stylesheet can
+    // move a box, but only document order moves this, and document order is what a reader who
+    // never touches a mouse actually has. Signed out, the account control is the Sign in button.
+    const order = s.tabbables()
+    const account = s.byRole('button', 'Sign in')
+    assert.equal(
+      order.indexOf(account) - order.indexOf(mine),
+      1,
+      'the mining control is no longer immediately before the account in the tab order',
+    )
+
+    // And it promises nothing the pool does not pay. `pool/src/payouts.ts` derives
+    // `payoutsImplemented` and it is false today, so a figure here would be a claim about money on
+    // a surface whose whole job is reporting what a chain actually recorded.
+    const described = s.document.getElementById(mine.getAttribute('aria-describedby') ?? '')
+    assert.ok(described, 'the mining control carries no description for a screen reader')
+    assert.ok(
+      (described.textContent ?? '').includes(NOT_PAID_CLAUSE),
+      'the mining control does not carry the not-paid clause',
+    )
+    assert.doesNotMatch(
+      `${mine.textContent ?? ''} ${described.textContent ?? ''}`,
+      /[$€£]|\d/,
+      'the mining control shows a figure, and nothing is paid',
+    )
+
+    s.clean('the bar’s mining control')
   })
 })
