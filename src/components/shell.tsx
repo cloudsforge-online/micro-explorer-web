@@ -19,7 +19,7 @@
  * explorer is reached from Forge Network, not chosen from a product list.
  */
 import { useEffect } from 'react'
-import { CloudsForgeBar, CookieBanner, MainRegion, SkipLink } from '@cloudsforge/ui'
+import { CloudsForgeBar, CookieBanner, MainRegion, SkipLink, SubNav } from '@cloudsforge/ui'
 import { applyHead, surfaceMeta } from '@cloudsforge/ui/seo'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { PRODUCT, SURFACE_DESCRIPTION } from '../lib/hosts.ts'
@@ -74,39 +74,63 @@ export function AppShell({ unregistered = false }: { unregistered?: boolean }) {
         onSignOut={signOut}
       />
       {/*
-        The sub-nav is sticky at exactly `var(--cf-bar-h)` — the bar's own height token, not a
-        number copied out of it. When the bar's height changes, this moves with it.
-      */}
-      <nav className="ex-subnav" aria-label="Sections">
-        <div className="ex-subnav__inner">
-          {NAV.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.to === '/'}
-              className={({ isActive }) => `ex-subnav__link${isActive ? ' is-active' : ''}`}
-            >
-              {item.label}
-            </NavLink>
-          ))}
-          {/*
-            WHICH NETWORK THIS IS, ON EVERY PAGE.
+        THE SUB-NAV IS THE SHARED ONE NOW, AND THE LOCAL `.ex-subnav*` RULES ARE GONE WITH IT.
 
-            The right default fixes the common case; this fixes the confused one. Two deployments
-            of one bundle sit on two hostnames under one apex, and until now nothing on the page
-            said which of them you had reached — so a reader who followed a link from a receipt, or
-            who had both open, had no way to tell a mainnet answer from a testnet one. It is a
-            `<strong>` with a label rather than a coloured dot, because the fact has to survive
-            being read aloud.
-          */}
-          <p className="ex-subnav__net">
-            <span className="ex-dim">Network</span>{' '}
-            <strong className="cf-num" data-cf-network={network}>
-              {network}
-            </strong>
-          </p>
-        </div>
-      </nav>
+        The strip itself — sticky at the bar's own `--cf-bar-h`, the bar's measure, the horizontal
+        scroll, the three-channel current marker — is `SubNav` from @cloudsforge/ui. Measured
+        2026-08-10 across the estate: ten frontends declared this row in their own stylesheet under
+        six class prefixes, from one original that had then been edited in ten places. This one had
+        drifted less than most (it already scrolled, and it already used `--cf-max-w`), but it had
+        drifted: `.ex-subnav__link.is-active` marked the current section in TWO channels, ink and
+        underline, where the estate's standing rule is three. A private copy of a shared thing is a
+        copy that ages, and this is the deletion that stops it ageing again.
+
+        `aria-label` stays "Sections" — this repo's own wording, passed through as `label`. Only the
+        strip is homogenised, not the sentence a screen reader reads.
+      */}
+      <SubNav label="Sections">
+        {NAV.map((item) => (
+          <NavLink
+            key={item.to}
+            to={item.to}
+            end={item.to === '/'}
+            className={({ isActive }) =>
+              `cf-subnav__link${isActive ? ' cf-subnav__link--current' : ''}`
+            }
+          >
+            {item.label}
+          </NavLink>
+        ))}
+        {/*
+          WHICH NETWORK THIS IS, ON EVERY PAGE.
+
+          The right default fixes the common case; this fixes the confused one. Two deployments
+          of one bundle sit on two hostnames under one apex, and until now nothing on the page
+          said which of them you had reached — so a reader who followed a link from a receipt, or
+          who had both open, had no way to tell a mainnet answer from a testnet one. It is a
+          `<strong>` with a label rather than a coloured dot, because the fact has to survive
+          being read aloud.
+
+          IT STAYS A LOCAL EXTRA ON THE SHARED STRIP, AND IT IS NOT ONE OF THE LINKS.
+
+          `SubNav` takes the caller's own children, so an app-specific item inside the row costs
+          the design system nothing. The alternative — making it the last item in the list of
+          sections — was rejected: it is not a destination, nothing happens when it is pressed, and
+          a non-link sitting in a row of links is announced by a screen reader walking the
+          navigation as one more place to go. It is also the only surface in the estate that has
+          two deployments of one bundle to tell apart, so there is nothing here to share.
+
+          The class is `.ex-net`, not the old `.ex-subnav__net`: an `__net` ELEMENT of a `.ex-subnav`
+          BLOCK this repository no longer declares is a name that lies about where its styling comes
+          from, and `test/tokens.test.ts` now asserts no `.ex-subnav` selector survives at all.
+        */}
+        <p className="ex-net">
+          <span className="ex-dim">Network</span>{' '}
+          <strong className="cf-num" data-cf-network={network}>
+            {network}
+          </strong>
+        </p>
+      </SubNav>
       <DocumentMeta />
       {/*
         `MainRegion` rather than a hand-written `<main>`: it sets `id={MAIN_ID}` — `cf-main` — and

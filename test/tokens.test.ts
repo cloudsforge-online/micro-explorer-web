@@ -202,6 +202,50 @@ describe('the stylesheet names only tokens that exist', () => {
       assert.doesNotMatch(CSS, /\.ex-input\b/, 'the local form control is back')
       assert.doesNotMatch(CSS, /\.ex-select\b/, 'the local form control is back')
     })
+
+    it('the shared sub-nav exists and the local copy is gone', () => {
+      /*
+       * The same shape as the form controls above, for the same reason and off a real census.
+       *
+       * Measured 2026-08-10: ten frontends declared the section strip in their own stylesheet under
+       * six class prefixes, from what was plainly one original. This repository's copy was one of
+       * the better ones — it scrolled, and it took its measure from `--cf-max-w` — and it had still
+       * drifted where a private copy always drifts: `.ex-subnav__link.is-active` marked the current
+       * section in ink and underline only, where the estate's rule is three channels.
+       *
+       * So both halves are asserted. The shared classes must EXIST, because a `className` naming a
+       * class ui.css does not declare fails as silently as an undefined custom property — the check
+       * directly above this one is that lesson. And the local block must be GONE, because the whole
+       * point of adopting a shared thing is that there is no second copy left to age beside it.
+       */
+      const declared = new Set([...ui.matchAll(/\.(cf-[a-z0-9_-]+)/g)].map((m) => m[1] ?? ''))
+      for (const present of [
+        'cf-subnav',
+        'cf-subnav__inner',
+        'cf-subnav__link',
+        'cf-subnav__link--current',
+      ]) {
+        assert.ok(declared.has(present), `.${present} is missing from ui.css`)
+      }
+
+      // Not one `.ex-subnav*` selector, not the block and not an element of it. `CSS` has had its
+      // comments stripped, so the note in src/styles.css explaining the deletion does not match.
+      const survivors = [...CSS.matchAll(/\.ex-subnav[a-z0-9_-]*/g)].map((m) => m[0])
+      assert.deepEqual(
+        survivors,
+        [],
+        `src/styles.css still declares ${survivors.join(', ')}; the strip is SubNav's now`,
+      )
+      // And the modifier really did move: `is-active` was this repo's spelling and the shared one
+      // is `cf-subnav__link--current`. A stylesheet still styling `.is-active` would mean a link
+      // somewhere is still asking for it.
+      assert.doesNotMatch(CSS, /\.is-active\b/, 'the local current-section modifier is back')
+
+      // The one thing that stayed local, and is expected to: the network indicator. It is not a
+      // destination, so it is not a link, so it is not the design system's — see the note beside
+      // `.ex-net` in src/styles.css.
+      assert.match(CSS, /\.ex-net\s*\{/, 'the network indicator lost its rule')
+    })
   }
 })
 
