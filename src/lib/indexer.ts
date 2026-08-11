@@ -71,7 +71,7 @@
  * a bearer creeping back in here, turns the suite red.
  * ══════════════════════════════════════════════════════════════════════════════════════════════
  *
- * ── Four routes are declined: two reads that take a token, and two writes ──────────────────────
+ * ── Five routes are declined: three reads that take a token, and two writes ────────────────────
  *
  *   * `GET /v1/custody/:chain/:network/total` (`indexer/src/server.ts`) is one of the two domain
  *     reads on this service that require one, and both are declined for a reason the writes do
@@ -94,6 +94,18 @@
  *     are the estate's own, and an answer confirms membership of the very set the total exists to
  *     keep private. This surface already reads any address's holdings anonymously through
  *     `token-balances`; what it has no business obtaining is which addresses are custody's.
+ *   * `GET /v1/custody/:chain/:network/addresses/:address/outpoints` (`indexer/src/server.ts`) is
+ *     the third, gated the same way: `authorise(ctx, deps, READ_SCOPE)`. It answers which
+ *     outpoints a named bitcoin-family custody address may still hold, and it exists because the
+ *     nodes will not answer: `listunspent` is a wallet RPC and both `bitcoind` and `litecoind` run
+ *     `disablewallet=1`, so this service — which walked every block — is the only place a BTC or
+ *     LTC withdrawal can get its input set (micro-org#382). It is declined for the membership
+ *     reason above, and for one more that is sharper than anything the other four carry: the
+ *     answer becomes the INPUT SET OF A SIGNED TRANSACTION. A list that is too long is corrected
+ *     downstream by `gettxout`; a list that is too short looks exactly like a swept address and is
+ *     not correctable at all. The callers of this route are the ones that sign, and a public block
+ *     explorer does not sign. Nor does this surface display an address's spendable coins: the
+ *     anonymous transaction and `token-balances` reads answer everything the pages here draw.
  *   * `POST /v1/watch/:chain/:network/:address` (`indexer/src/server.ts`) calls
  *     `authorise(ctx, deps, WRITE_SCOPE)`, where `WRITE_SCOPE` is `indexer:write`. "Watch
  *     this address" is an operator or a service decision about what this deployment indexes; a

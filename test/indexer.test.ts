@@ -166,6 +166,23 @@ const DECLINED: ReadonlyArray<{
       'token-balances is not what this route is for.',
   },
   {
+    method: 'GET',
+    path: '/custody/:chain/:network/addresses/:address/outpoints',
+    gate: 'authorise:READ_SCOPE',
+    why:
+      'indexer:read, and the THIRD domain GET that takes a token. It answers which outpoints a ' +
+      'named bitcoin-family custody address may still hold, because `listunspent` is a wallet RPC ' +
+      'and both nodes run `disablewallet=1` — so it is the only place on the estate a BTC or LTC ' +
+      'withdrawal can get its input set (micro-org#382, indexer/src/server.ts). Declined for the ' +
+      'membership reason the two routes above are declined for, plus one this surface must not be ' +
+      'on the wrong side of: the answer becomes the input set of a SIGNED TRANSACTION. A list ' +
+      'that is too short is indistinguishable from a swept address and is not correctable ' +
+      'downstream, so the callers of this route are the ones that sign, and a public block ' +
+      'explorer is not one of them. Nothing here needs it either: an address’s spendable ' +
+      'coins are not a fact this surface displays, and the anonymous transaction and ' +
+      'token-balance reads already answer everything it does display.',
+  },
+  {
     method: 'POST',
     path: '/watch/:chain/:network/:address',
     gate: 'authorise:WRITE_SCOPE',
