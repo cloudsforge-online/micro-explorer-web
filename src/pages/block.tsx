@@ -31,6 +31,28 @@
  * nothing is renamed or dropped, and quietly removing a field once the page understands it would
  * break the one property it has.
  *
+ * ── THE VERBATIM HEADER WAS FOUR FIELDS LONG, AND THE COPY ABOVE IT SAID IT WAS EVERYTHING ─────
+ *
+ * micro-org#395. This page has always rendered `detail` generically — `Object.entries`, no field
+ * list, nothing curated — and still showed a reader of Hearth mainnet genesis exactly four rows:
+ * `miner`, `gasUsed`, `gasLimit`, `difficulty`. The narrowing was a service away, in
+ * `indexer/src/evm.ts`, which reduced the header to those four keys before it reached a database.
+ * `stateRoot` was never stored, so no rendering of what this page was given could have shown it.
+ *
+ * That is worth saying here because it is the failure mode a reviewer of THIS file would have
+ * looked for and not found: the promise was broken upstream of the code that makes it. Two things
+ * change on this side of it.
+ *
+ * The copy now claims what this page can actually vouch for — every field THE CHAIN INDEX HOLDS,
+ * rather than every field the node sent, which is a claim about somebody else's storage. A block
+ * walked before micro-indexer's migration 10 re-walks it still has four fields in it, and a note
+ * promising the node's whole header would be false again for exactly the reader who checks.
+ *
+ * And the rows are SORTED into the order a node lists a header in (`headerFields`), because
+ * `blocks.detail` is a jsonb column and jsonb sorts keys by length: served as stored, the table
+ * reads `hash, miner, nonce, number, size, gasUsed…`, which cannot be laid beside `curl` output by
+ * eye. Sorting adds and removes nothing, and `test/render.test.ts` holds it to that.
+ *
  * ── There is no orphaned block here, and that is worth knowing before looking for one ──────────
  *
  * `blockAtHeight` filters `status <> 'orphaned'` (`indexer/src/store.ts`), so a height whose
@@ -48,6 +70,7 @@ import { count, partialBlockReason, timestamp } from '../lib/format.ts'
 import {
   CONFIRMATIONS_AGAINST,
   getBlock,
+  headerFields,
   partialMarker,
   type BlockView,
 } from '../lib/indexer.ts'
@@ -221,17 +244,18 @@ The block&rsquo;s own header claims {count(block.txCount)}. The header has been 
         <>
           <h2 className="ex-section__title">The header, exactly as the node gave it</h2>
           <Note>
-Kept and shown word for word, with nothing renamed and nothing reinterpreted. A field this
-            page cannot make sense of is still a field you can hold up against your own node and
-            compare.
+Every field the chain index holds for this block, shown word for word, with nothing renamed,
+            nothing reinterpreted and nothing left out. A field this page cannot make sense of is
+            still a field you can hold up against your own node and compare. They are listed in the
+            order a node lists them, which is not the order they are stored in.
           </Note>
           <div className="ex-tablewrap">
             <table className="ex-table">
               <tbody>
-                {Object.entries(block.detail).map(([key, value]) => (
+                {headerFields(block.detail).map(([key, value]) => (
                   <tr key={key}>
                     <th scope="row">{key}</th>
-                    <td className="cf-num ex-hex">
+                    <td className="cf-num ex-hex ex-hex--wrap">
                       {typeof value === 'string' || typeof value === 'number'
                         ? String(value)
                         : JSON.stringify(value)}

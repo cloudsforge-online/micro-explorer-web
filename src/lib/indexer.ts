@@ -460,6 +460,77 @@ export function partialMarker(detail: Record<string, unknown>): string | null {
 }
 
 /**
+ * The order a node lists an EVM header in, for the fields a node has always listed.
+ *
+ * `eth_getBlockByNumber` returns these in this sequence and every EVM node agrees on it — Hearth's
+ * own `node/src/jsonrpc/methods.js:formatBlock` builds the object in exactly this order. It is
+ * copied here because it does not survive the trip: `indexer`'s `blocks.detail` is a Postgres
+ * `jsonb` column, and jsonb stores keys sorted by length and then bytewise, so what arrives at this
+ * bundle is alphabetised-by-length nonsense that no `curl` output can be laid beside.
+ */
+const EVM_HEADER_ORDER: readonly string[] = [
+  'number',
+  'hash',
+  'parentHash',
+  'nonce',
+  'sha3Uncles',
+  'logsBloom',
+  'transactionsRoot',
+  'stateRoot',
+  'receiptsRoot',
+  'miner',
+  'difficulty',
+  'totalDifficulty',
+  'extraData',
+  'size',
+  'gasLimit',
+  'gasUsed',
+  'timestamp',
+  'mixHash',
+  'baseFeePerGas',
+  'withdrawalsRoot',
+  'blobGasUsed',
+  'excessBlobGas',
+  'parentBeaconBlockRoot',
+  'uncles',
+]
+
+/**
+ * A block's header fields, in the order a node would have listed them.
+ *
+ * ══════════════════════════════════════════════════════════════════════════════════════════════
+ * **THIS SORTS. IT NEVER SELECTS.** Every key handed in comes back out, exactly once, under the
+ * name it arrived with. That is not a nicety — it is the whole substance of micro-org#395.
+ *
+ * The block page's own note says the header is "kept and shown word for word, with nothing renamed
+ * and nothing reinterpreted", and until micro-org#395 that note sat above four fields, because
+ * `indexer/src/evm.ts` narrowed the header to `miner`, `gasUsed`, `gasLimit` and `difficulty`
+ * before it ever reached a database. The missing one that mattered was `stateRoot`: on an
+ * account-model chain a premine lives in the genesis allocation and the header commits to it, so
+ * block 0's state root is the only cryptographic evidence that nobody was funded before the first
+ * block was mined. A page that exists to show people the chain was the one place it could not be
+ * read.
+ *
+ * So a KNOWN-FIELDS list is exactly the shape of the defect, and this one is deliberately not that:
+ * a field this bundle has never heard of is not dropped and not hidden, it is appended in the order
+ * it arrived, immediately visible and directly comparable. `test/render.test.ts` asserts the
+ * permutation property against a header with an invented field in it, so a future edit that turns
+ * this back into a filter is a red build rather than a quiet omission.
+ * ══════════════════════════════════════════════════════════════════════════════════════════════
+ */
+export function headerFields(detail: Record<string, unknown>): Array<[string, unknown]> {
+  const entries = Object.entries(detail)
+  const rank = (key: string): number => {
+    const at = EVM_HEADER_ORDER.indexOf(key)
+    return at === -1 ? EVM_HEADER_ORDER.length : at
+  }
+  return entries
+    .map((entry, arrived) => ({ entry, arrived, rank: rank(entry[0]) }))
+    .sort((a, b) => a.rank - b.rank || a.arrived - b.arrived)
+    .map((held) => held.entry)
+}
+
+/**
  * Whether a transaction has reached its depth — the ONLY answer in this API that may be acted on.
  *
  * `indexer/src/reads.ts`. Everything `confirmed` was computed from travels with it, so no
