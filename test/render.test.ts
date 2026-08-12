@@ -31,6 +31,7 @@ import { readFileSync, readdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, it } from 'node:test'
 import { NOT_FINAL } from '../src/lib/format.ts'
+import { headerFields } from '../src/lib/indexer.ts'
 
 const at = (p: string) => fileURLToPath(new URL(`../${p}`, import.meta.url))
 const read = (p: string): string => readFileSync(at(p), 'utf8')
@@ -289,5 +290,103 @@ describe('a 404 that is an answer does not look like a 404 that is our fault', (
     const source = read('src/pages/transaction.tsx')
     assert.match(source, /code === 'transaction_not_found'/)
     assert.match(source, /a different thing from not yet deep enough/i)
+  })
+})
+
+describe('the verbatim header table is a sort and never a filter', () => {
+  // micro-org#395. The note above that table says nothing is renamed, reinterpreted or left out,
+  // and for the whole life of the page it sat above four rows, because `indexer/src/evm.ts`
+  // narrowed the header before it reached a database. The narrowing was fixed there; what can go
+  // wrong HERE is the same mistake in this repository's own hand — an ordering helper that
+  // quietly becomes a known-fields list, because listing the fields somebody recognises is the
+  // obvious way to order them and it reads as tidier than the alternative.
+  //
+  // EMBER mainnet genesis, as `eth_getBlockByNumber("0x0", true)` answered
+  // `https://rpc.cloudsforge.online` on 2026-08-12, minus the body the indexer drops. Keyed in the
+  // order jsonb hands it back — by key length, then bytewise — which is the order this table was
+  // rendering in and the reason it could not be laid beside `curl` output by eye.
+  const GENESIS: Record<string, unknown> = {
+    hash: '0x0bd75ff12fe407213d4b5e43fc10777e5c24ee0484d3ea07ed1fa3516289900b',
+    size: '0x236',
+    miner: `0x${'0'.repeat(40)}`,
+    nonce: '0x0000000000000000',
+    number: '0x0',
+    uncles: [],
+    gasUsed: '0x0',
+    mixHash: `0x${'0'.repeat(64)}`,
+    gasLimit: '0x1c9c380',
+    extraData: '0x6865617274682f37343131',
+    logsBloom: `0x${'0'.repeat(512)}`,
+    stateRoot: '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421',
+    timestamp: '0x684ee180',
+    difficulty: '0x0',
+    parentHash: `0x${'0'.repeat(64)}`,
+    sha3Uncles: '0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347',
+    receiptsRoot: '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421',
+    totalDifficulty: '0x0',
+    transactionsRoot: '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421',
+  }
+
+  it('everything handed in comes back out, including a field this bundle has never heard of', () => {
+    // `hearthFlux` is not an Ethereum header field and never will be. It stands in for the next
+    // one that IS: `baseFeePerGas`, `withdrawalsRoot` and `blobGasUsed` each arrived after the
+    // last person to write down what a header contains, and each would have been dropped by a
+    // helper that only emits what it recognises.
+    const detail: Record<string, unknown> = { ...GENESIS, hearthFlux: '0x2a' }
+    const shown = headerFields(detail)
+
+    assert.deepEqual(
+      shown.map(([key]) => key).sort(),
+      Object.keys(detail).sort(),
+      'the header table is selecting: a field went in and did not come out',
+    )
+    assert.equal(shown.length, Object.keys(detail).length, 'a field was emitted twice')
+    for (const [key, value] of shown) {
+      assert.equal(value, detail[key], `${key} came back holding something else`)
+    }
+    assert.equal(
+      shown.at(-1)?.[0],
+      'hearthFlux',
+      'an unrecognised field must be appended and visible, not sorted away or dropped',
+    )
+  })
+
+  it('the state root is on screen, above the fields a reader is likelier to skim past', () => {
+    // The specific row micro-org#395 was filed about. On an account-model chain the premine lives
+    // in the genesis allocation and the header commits to it, so block 0's state root — here the
+    // canonical empty-trie root — is the only cryptographic evidence that nobody held a balance
+    // before the first block was mined. It is asserted by POSITION as well as presence because a
+    // proof that renders somewhere below a 514-character bloom filter is a proof nobody reads.
+    const keys = headerFields(GENESIS).map(([key]) => key)
+    assert.ok(keys.includes('stateRoot'), 'the one field the issue is about is not rendered')
+    assert.equal(
+      GENESIS['stateRoot'],
+      '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421',
+      'the empty-trie root is no longer what an unallocated genesis reports',
+    )
+    assert.ok(
+      keys.indexOf('stateRoot') < keys.indexOf('miner'),
+      'the rows are no longer in the order a node lists a header in',
+    )
+    assert.equal(keys[0], 'number', 'a header is listed from its number down; this one is not')
+  })
+
+  it('the block page routes the table through that helper rather than iterating storage order', () => {
+    const source = rendered('src/pages/block.tsx')
+    assert.match(source, /headerFields\(block\.detail\)/, 'the table no longer sorts its rows')
+    assert.doesNotMatch(
+      source,
+      /Object\.entries\(block\.detail\)/,
+      'the table is back to jsonb order, which cannot be compared against a node by eye',
+    )
+  })
+
+  it('the note above the table promises only what this app can vouch for', () => {
+    // It may not promise the NODE's whole header. A block walked before micro-indexer's migration
+    // 10 re-walks it still holds four fields, and the reader who checks that promise against their
+    // own node is exactly the reader this page is for.
+    const source = rendered('src/pages/block.tsx')
+    assert.match(source, /Every field the chain index holds for this block/)
+    assert.doesNotMatch(source, /every field the node (sent|gave)/i)
   })
 })
