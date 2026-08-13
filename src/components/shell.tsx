@@ -18,13 +18,14 @@
  * the six products and the operator tools, and this app is not among them. That is correct: the
  * explorer is reached from Forge Network, not chosen from a product list.
  */
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { CloudsForgeBar, CookieBanner, MainRegion, SkipLink, SubNav, miningOnHub } from '@cloudsforge/ui'
 import { applyHead, surfaceMeta } from '@cloudsforge/ui/seo'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { PRODUCT, SURFACE_DESCRIPTION, hosts } from '../lib/hosts.ts'
 import { isNetwork, type Network } from '../lib/indexer.ts'
 import { deploymentNetwork, siblingExplorer } from '../lib/network.ts'
+import { setViewedNetwork } from '../lib/viewed.ts'
 import { NAV, ROUTES } from '../lib/routes.ts'
 import { useSession } from '../lib/auth.tsx'
 
@@ -45,6 +46,11 @@ export function AppShell({ unregistered = false }: { unregistered?: boolean }) {
   const { account, signIn, signOut } = useSession()
   const { pathname } = useLocation()
   const network = deploymentNetwork()
+  // The viewed network: in-tab memory, defaulting to the hostname's own. `viewed.ts` holds the
+  // module copy the api layer reads; this state exists so React re-renders and the Outlet key
+  // changes. setViewedNetwork runs FIRST in the handler, so the remounted tree reads the new
+  // value on its very first render.
+  const [viewed, setViewed] = useState<Network>(network)
   const asked = networkInPath(pathname)
   // A deep link into the network this deployment is NOT. The page below will render an honest
   // "not found" off a scope this index has never walked, which is exactly the sentence that reads
@@ -87,12 +93,24 @@ export function AppShell({ unregistered = false }: { unregistered?: boolean }) {
         deployments of this bundle sit on two hostnames — see `deploymentNetwork()` — plus localhost
         and the preview host, and a literal would be right on exactly one of the four.
       */}
+      {/* In-app network context (micro-org#459 stage 3, owner's decision with the network.ts
+          concern on the table). The choice lives in viewed.ts — memory only, never storage —
+          and the `key` on the Outlet below is the whole refetch mechanism: remounting the page
+          tree re-runs every loader against the newly viewed network. The band follows the
+          SELECTED network, so testnet data under a mainnet address bar is unmistakable. */}
       <CloudsForgeBar
         current={PRODUCT}
         account={account}
         onSignIn={() => signIn()}
         onSignOut={signOut}
         mining={miningOnHub(hosts().hub)}
+        networkSwitch={{
+          selected: viewed === 'testnet' ? 'testnet' : 'mainnet',
+          onSelect: (n) => {
+            setViewedNetwork(n)
+            setViewed(n)
+          },
+        }}
       />
       {/*
         THE SUB-NAV IS THE SHARED ONE NOW, AND THE LOCAL `.ex-subnav*` RULES ARE GONE WITH IT.
@@ -222,7 +240,7 @@ export function AppShell({ unregistered = false }: { unregistered?: boolean }) {
 
           Nothing replaces it. A surface that works needs no notice saying so.
         */}
-        <Outlet />
+        <Outlet key={viewed} />
       </MainRegion>
 
       {/*

@@ -51,13 +51,15 @@ import {
   type ChainId,
   type ChainOffer,
 } from '../lib/indexer.ts'
-import { deploymentNetwork, siblingExplorer } from '../lib/network.ts'
+import { siblingExplorer } from '../lib/network.ts'
+import { viewedNetwork } from '../lib/viewed.ts'
 import { useResource } from '../lib/resource.ts'
 import { guessKind, linkTo } from '../lib/routes.ts'
 
 export function SearchPage() {
   const navigate = useNavigate()
-  const network = deploymentNetwork()
+  // The VIEWED network (micro-org#459 stage 3): the reader's in-tab choice, or the hostname's.
+  const network = viewedNetwork()
   const other = network === 'mainnet' ? 'testnet' : 'mainnet'
   const sibling = siblingExplorer(other)
 
