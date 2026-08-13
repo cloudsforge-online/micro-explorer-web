@@ -23,6 +23,7 @@
  */
 import { attemptSilentSignIn, consumeAuthCallback, signInRedirect, signOutRedirect } from '@cloudsforge/ui'
 import { APP_NAME, apiBase, hosts, pageOrigin } from './hosts.ts'
+import { viewedApiOrigin } from './viewed.ts'
 import { report } from './obs.ts'
 
 /** Nimbus issues and refreshes tokens; it is cross-origin from every app, always. */
@@ -408,9 +409,20 @@ async function request<T>(base: string, path: string, opts: RequestOptions = {})
   return (await res.json()) as T
 }
 
-/** This app's own API: relative in production, the registry's dev port under `pnpm dev`. */
-export const api = <T,>(path: string, opts?: RequestOptions): Promise<T> =>
-  request<T>(apiBase(), path, opts)
+/**
+ * This app's own API: relative in production, the registry's dev port under `pnpm dev` — and the
+ * SIBLING ESTATE's origin when the reader is viewing the other network (micro-org#459 stage 3).
+ *
+ * The cross-estate read is anonymous by construction: this page's bearer means nothing at the
+ * other estate (separate identities until stage 2) and an authorization header would force a
+ * CORS preflight for a request that fails anyway. `viewed.ts` carries the reasoning; forcing
+ * `auth: false` here is what makes it true for every caller rather than a convention.
+ */
+export const api = <T,>(path: string, opts?: RequestOptions): Promise<T> => {
+  const crossEstate = viewedApiOrigin()
+  if (crossEstate === '') return request<T>(apiBase(), path, opts)
+  return request<T>(crossEstate, path, { ...opts, auth: false })
+}
 
 /** Nimbus, which is cross-origin from everywhere. */
 export const nimbus = <T,>(path: string, opts?: RequestOptions): Promise<T> =>

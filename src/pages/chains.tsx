@@ -61,7 +61,8 @@ import {
   type ChainOffer,
   type ChainStatus,
 } from '../lib/indexer.ts'
-import { deploymentNetwork, siblingExplorer } from '../lib/network.ts'
+import { siblingExplorer } from '../lib/network.ts'
+import { viewedNetwork } from '../lib/viewed.ts'
 import { useResource } from '../lib/resource.ts'
 import { linkTo } from '../lib/routes.ts'
 
@@ -96,7 +97,8 @@ const ABOUT: Readonly<Record<string, string>> = {
 }
 
 export function ChainsPage() {
-  const network = deploymentNetwork()
+  // The VIEWED network (micro-org#459 stage 3): the reader's in-tab choice, or the hostname's.
+  const network = viewedNetwork()
   const sibling = siblingExplorer(network === 'mainnet' ? 'testnet' : 'mainnet')
 
   const load = useCallback(
