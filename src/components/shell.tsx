@@ -25,7 +25,7 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { PRODUCT, SURFACE_DESCRIPTION, hosts } from '../lib/hosts.ts'
 import { isNetwork, type Network } from '../lib/indexer.ts'
 import { deploymentNetwork, siblingExplorer } from '../lib/network.ts'
-import { setViewedNetwork } from '../lib/viewed.ts'
+import { setViewedNetwork, viewedNetwork } from '../lib/viewed.ts'
 import { NAV, ROUTES } from '../lib/routes.ts'
 import { useSession } from '../lib/auth.tsx'
 
@@ -50,7 +50,16 @@ export function AppShell({ unregistered = false }: { unregistered?: boolean }) {
   // module copy the api layer reads; this state exists so React re-renders and the Outlet key
   // changes. setViewedNetwork runs FIRST in the handler, so the remounted tree reads the new
   // value on its very first render.
-  const [viewed, setViewed] = useState<Network>(network)
+  //
+  // `viewedNetwork()` and not `network`: `network` is `deploymentNetwork()`, the HOSTNAME's answer,
+  // and it ignores the `?net=testnet` a link from another product arrived carrying — which
+  // `viewed.ts` has already read and is already serving the index reads from. The two must not
+  // disagree. Told the hostname's answer, the bar labels the switcher Mainnet over testnet data,
+  // drops the amber band, and — because `CloudsForgeBar` hands this same value to
+  // `resolveProducts` — strips `?net=` off every product link out of here, so the reader's choice
+  // dies at this surface and at everything they reach from it. `network` stays as it is for the
+  // cross-network deep-link notice below, which is a question about the ADDRESS, not the view.
+  const [viewed, setViewed] = useState<Network>(viewedNetwork())
   const asked = networkInPath(pathname)
   // A deep link into the network this deployment is NOT. The page below will render an honest
   // "not found" off a scope this index has never walked, which is exactly the sentence that reads

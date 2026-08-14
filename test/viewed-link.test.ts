@@ -22,7 +22,9 @@
  * that makes it a carrier rather than a store.
  */
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { afterEach, describe, it } from 'node:test'
+import { fileURLToPath } from 'node:url'
 import { installWindow, removeWindow } from './browser-stubs.ts'
 
 let seq = 0
@@ -85,5 +87,52 @@ describe('the network a link arrived carrying', () => {
     await import(`../src/lib/viewed.ts?case=${seq}`)
     assert.deepEqual(browser.replaced, [])
     assert.deepEqual(browser.assigned, [])
+  })
+})
+
+/**
+ * AND THE BAR IS TOLD THE SAME NETWORK THIS MODULE HONOURS.
+ *
+ * Everything above passed while the shell was seeding its state from `deploymentNetwork()` — the
+ * HOSTNAME — so the module could be serving testnet reads while the bar described mainnet. The
+ * same defect was reported on `network-site` on 2026-08-14 and is guarded there identically:
+ *
+ *     "if you have testnet and you choose forge network it return you to mainnet,
+ *      the rest products seems to keep it"
+ *
+ * The bar spends `networkSwitch.selected` three ways (`ui/packages/ui/src/index.tsx`): the
+ * switcher's label, whether `TestnetBand` renders, and the `viewedNetwork` given to
+ * `resolveProducts`, which decides whether each outgoing product link carries `?net=`. So a shell
+ * seeded from the hostname does not just mislabel its own chrome — it strips the reader's choice
+ * off every link out, and the surface becomes the place a tour of the estate silently resets.
+ *
+ * Read off the source, not a render: the defect is one identifier, and one identifier is what a
+ * test has to look at to see it.
+ */
+describe('the shell seeds the bar from the viewed network', () => {
+  const code = readFileSync(
+    fileURLToPath(new URL('../src/components/shell.tsx', import.meta.url)),
+    'utf8',
+  )
+    .replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .split('\n')
+    .filter((line) => !/^\s*\/\//.test(line))
+    .join('\n')
+
+  it('seeds its state from viewedNetwork(), which honours the link', () => {
+    assert.match(code, /useState<Network>\(viewedNetwork\(\)\)/)
+  })
+
+  it('does not seed it from the deployment', () => {
+    // `deploymentNetwork()` answers what this estate IS. That is the right question for the
+    // cross-network deep-link notice, and the wrong one for the bar.
+    assert.doesNotMatch(code, /useState<Network>\(network\)/)
+    assert.doesNotMatch(code, /useState<Network>\(deploymentNetwork\(\)\)/)
+  })
+
+  it('passes that state to the bar, so the two cannot drift apart', () => {
+    assert.match(code, /networkSwitch=\{\{/)
+    assert.match(code, /selected: viewed/)
   })
 })
