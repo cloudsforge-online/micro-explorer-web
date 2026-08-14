@@ -136,3 +136,40 @@ describe('the shell seeds the bar from the viewed network', () => {
     assert.match(code, /selected: viewed/)
   })
 })
+
+/**
+ * AND THE CHOICE SURVIVES A RELOAD, BECAUSE THE ADDRESS BAR CARRIES IT.
+ *
+ *     "if we have testnet selected and we refresh the page it goes to mainnet"   — 2026-08-14
+ *
+ * The last case in the first block — "read, never written back" — was the property that made this
+ * inevitable, and it is still true of what matters: no storage, no cookie, no preference, so a
+ * pasted hash on a fresh mainnet address is still looked up on mainnet, which is the whole of the
+ * scar `network.ts` guards. What changed is that the reader's own switch now names itself in the
+ * address bar, where F5 can see it. The mechanism is `keepNetworkInTheAddressBar` in
+ * `@cloudsforge/ui/network-view`; these cases pin this module's wiring to it.
+ */
+describe('the viewed network survives a reload', () => {
+  it('is written into the address bar when the reader switches', async () => {
+    const browser = installWindow('https://explorer.cloudsforge.online/block/128')
+    seq += 1
+    const m = (await import(`../src/lib/viewed.ts?case=${seq}`)) as typeof import('../src/lib/viewed.ts')
+    m.setViewedNetwork('testnet')
+    assert.deepEqual(browser.replaced, ['/block/128?net=testnet'])
+  })
+
+  it('and a fresh load at that address is viewing testnet — the reload, end to end', async () => {
+    const m = await loadAt('https://explorer.cloudsforge.online/block/128?net=testnet')
+    assert.equal(m.viewedNetwork(), 'testnet')
+    assert.equal(m.viewedApiOrigin(), 'https://explorer-testnet.cloudsforge.online')
+  })
+
+  it('and switching back leaves the URL as it was found', async () => {
+    const browser = installWindow('https://explorer.cloudsforge.online/block/128')
+    seq += 1
+    const m = (await import(`../src/lib/viewed.ts?case=${seq}`)) as typeof import('../src/lib/viewed.ts')
+    m.setViewedNetwork('testnet')
+    m.setViewedNetwork('mainnet')
+    assert.deepEqual(browser.replaced, ['/block/128?net=testnet', '/block/128'])
+  })
+})
