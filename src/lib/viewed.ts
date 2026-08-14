@@ -14,9 +14,11 @@
  * the invariant's reasons kept:
  *
  *   - **Nothing is persisted.** Module state, in memory, per tab. A reload, a new tab, a link
- *     followed from anywhere — all land on the hostname's own network, exactly as before. The
- *     defect class the invariant closed was a WRONG DEFAULT SURVIVING; an in-memory choice made
- *     by a click on this page load cannot survive anything.
+ *     followed from anywhere — all land on the hostname's own network, exactly as before, unless
+ *     the link ITSELF says otherwise (see `fromLink()` below). The defect class the invariant
+ *     closed was a WRONG DEFAULT SURVIVING; an in-memory choice made by a click on this page load
+ *     cannot survive anything, and a choice spelled out in the address the reader followed is not
+ *     a default at all.
  *   - **The default IS `deploymentNetwork()`.** Until the reader touches the switcher, this
  *     module is invisible and every answer is the hostname's.
  *   - **The viewed network is always on screen.** The bar's switcher shows the selection, and
@@ -31,11 +33,45 @@
  * network is read as a stranger, which for a public explorer is every reader anyway.
  */
 
-import { networkOrigin } from '@cloudsforge/ui'
+import { currentNetwork, networkFromQuery, networkOrigin } from '@cloudsforge/ui'
 import type { Network } from './indexer.ts'
 import { deploymentNetwork } from './network.ts'
 
-let viewed: Network | null = null
+/**
+ * The choice a link arrived carrying, read ONCE, at load.
+ *
+ *     "if you select testnet and switch product you are back to mainnet"
+ *
+ * Every surface is its own origin, so the module state below stops at the hostname and a link
+ * from Forge Hub to a block on this explorer could not bring the reader's network with it. `?net=`
+ * is the one channel that survives a cross-origin navigation without being storage — and it has to
+ * survive the combined view's retirement redirect too, which it does: `explorer-testnet.<apex>`
+ * 302s to `explorer.<apex>` preserving path and query.
+ *
+ * This does not weaken the invariant `network.ts` enforces, and the distinction is the whole
+ * argument. What that invariant closed was a stored default OUTLIVING the reader's intent — a
+ * scope chosen weeks ago silently deciding that a pasted mainnet hash does not exist. A parameter
+ * in the address the reader just followed is the opposite: it is present, visible, scoped to this
+ * one navigation, and written back nowhere. Navigate in-app and it is gone.
+ *
+ * Normalised through the same rule as `setViewedNetwork`: `?net=mainnet` on a mainnet page is
+ * agreement, not an override, and recording it as one would send this surface's own reads out to
+ * an absolute origin for no reason.
+ *
+ * Off-registry it answers null, and the check is `currentNetwork()` rather than
+ * `deploymentNetwork()` deliberately. Localhost has no sibling estate — `NetworkSwitcher` hides
+ * itself there, so no CLICK can produce an override — but a link can, and `deploymentNetwork()`
+ * reads a development host as mainnet, so `?net=testnet` would have looked like a real choice and
+ * pointed a dev bundle at the live testnet indexer.
+ */
+function fromLink(): Network | null {
+  if (currentNetwork() === null) return null
+  const asked = networkFromQuery()
+  if (asked === null) return null
+  return asked === deploymentNetwork() ? null : asked
+}
+
+let viewed: Network | null = fromLink()
 
 /** The network the reader is viewing: their in-tab choice, or the hostname's network. */
 export function viewedNetwork(): Network {
