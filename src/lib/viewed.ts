@@ -34,6 +34,7 @@
  */
 
 import { currentNetwork, networkFromQuery, networkOrigin } from '@cloudsforge/ui'
+import { keepNetworkInTheAddressBar } from '@cloudsforge/ui/network-view'
 import type { Network } from './indexer.ts'
 import { deploymentNetwork } from './network.ts'
 
@@ -73,6 +74,21 @@ function fromLink(): Network | null {
 
 let viewed: Network | null = fromLink()
 
+/**
+ * The address bar says what the reader is viewing, and keeps saying it.
+ *
+ *     "if we have testnet selected and we refresh the page it goes to mainnet"
+ *
+ * It did, and precisely because of the property the header above defends: the choice was module
+ * memory, and a reload discards module memory. `keepNetworkInTheAddressBar` writes `?net=` in
+ * place on every change — see it for why a reload reproducing what is on screen is the opposite of
+ * the stored default `network.ts` exists to forbid, not a softening of it. Nothing is stored: no
+ * `localStorage`, no cookie, no preference. A pasted hash on a fresh mainnet address is still
+ * looked up on mainnet, which is the whole of that scar.
+ */
+const syncAddressBar = keepNetworkInTheAddressBar(() => viewed)
+syncAddressBar()
+
 /** The network the reader is viewing: their in-tab choice, or the hostname's network. */
 export function viewedNetwork(): Network {
   return viewed ?? deploymentNetwork()
@@ -81,6 +97,7 @@ export function viewedNetwork(): Network {
 /** Record the reader's choice. Choosing the hostname's own network clears the override. */
 export function setViewedNetwork(network: Network): void {
   viewed = network === deploymentNetwork() ? null : network
+  syncAddressBar()
 }
 
 /**
