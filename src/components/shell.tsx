@@ -19,7 +19,7 @@
  * explorer is reached from Forge Network, not chosen from a product list.
  */
 import { useEffect, useState } from 'react'
-import { CloudsForgeBar, CookieBanner, MainRegion, SkipLink, SubNav, miningOnHub } from '@cloudsforge/ui'
+import { CloudsForgeBar, CloudsForgeFooter, CookieBanner, MainRegion, SkipLink, SubNav, miningOnHub } from '@cloudsforge/ui'
 import { applyHead, surfaceMeta } from '@cloudsforge/ui/seo'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { PRODUCT, SURFACE_DESCRIPTION, hosts } from '../lib/hosts.ts'
@@ -251,6 +251,36 @@ export function AppShell({ unregistered = false }: { unregistered?: boolean }) {
         */}
         <Outlet key={viewed} />
       </MainRegion>
+
+      {/*
+        ── THIS SURFACE HAD NO FOOTER AT ALL UNTIL micro-org#489 ────────────────────────────────
+
+        `ui/scripts/footer-audit.ts` names the surfaces that do not mount the shared component, and
+        this was one of three: the marketing site, which had written its own; `micro-network-site`,
+        which has none and is held by another agent; and this one, which simply ended at the last
+        panel. The exemption entry for it has been deleted, and that map is self-deleting by
+        construction — an entry whose surface HAS the shared footer fails the audit — so this
+        cannot be quietly re-exempted.
+
+        What the absence cost is not decoration. The footer is where the registry's Platform column
+        lives, and it is the only navigation on this page to anything that is not a block or a
+        transaction. A reader who followed a link into a transaction record from a chat message —
+        which is most of the traffic a block explorer gets — arrived on a page from which the rest
+        of the estate was reachable only through the product switcher in the bar. Forge Journal, in
+        particular, was reachable from no link on this surface, which is the same defect the
+        marketing site had and the reason both were on one issue.
+
+        `account` is passed rather than omitted. Omitting it is the SAFE default — it hides every
+        `adminOnly` surface — and it is the wrong one for an operator, who would find Admin and
+        Lantern in the footer of every other surface and not this one.
+
+        No `note`. The `note` slot exists for a surface with a standing disclosure of its own, and
+        this one's disclosures are about the DATA — which chain, which network, what the index has
+        walked — and every one of them is already stated on the panel it qualifies, where a reader
+        meets it beside the number rather than under the page. A footnote repeating them would be
+        the standing banner deleted from this file above, in a quieter place.
+      */}
+      <CloudsForgeFooter current={PRODUCT} account={account} />
 
       {/*
         Last in the document, and therefore last in the tab order. That is deliberate: the banner
