@@ -38,12 +38,15 @@ import { TransactionPage } from './pages/transaction.tsx'
 import { AddressPage } from './pages/address.tsx'
 import { TokenPage } from './pages/token.tsx'
 import { NotFoundPage } from './pages/not-found.tsx'
+import { BASE } from './lib/routes.ts'
 
 export function App() {
   const unregistered = !placementIsKnown()
 
+  // `basename` is the mount: react-router STRIPS it before `useLocation()` sees anything, so
+  // every <Route> below is unchanged by wave 3h and `routes.ts` still holds router paths.
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={BASE}>
       <ScrollToTop />
       <AuthProvider>
         <Routes>

@@ -55,6 +55,7 @@
 import assert from 'node:assert/strict'
 import { Window } from 'happy-dom'
 import type { ReactElement } from 'react'
+import { BASE, publicPath } from '../src/lib/routes.ts'
 
 /* ── the globals a React tree touches ───────────────────────────────────────────────────────── */
 
@@ -329,7 +330,26 @@ function tabbablesIn(doc: Document): Element[] {
 }
 
 export async function mount(element: ReactElement, options: MountOptions = {}): Promise<Screen> {
-  const url = options.url ?? 'https://market.cloudsforge.online/'
+  // ── SCENARIOS NAME ROUTER PATHS; THE ADDRESS BAR TAKES PUBLIC ONES ──────────────────────────
+  //
+  // Every `url` a scenario passes is a route this app owns — `/chains`, `/tx/ember/…`. Since
+  // wave 3h those are no longer addresses: the public one is `/explorer/chains`, and the router
+  // is mounted with `basename` so it sees `/chains` again once the shell loads. Opening at the
+  // unmounted address makes react-router refuse to render at all —
+  //
+  //   <Router basename="/explorer"> is not able to match the URL "/chains"
+  //
+  // — which is a blank page and 35 identical failures that say nothing about the scenario.
+  //
+  // Converting HERE keeps every scenario written in the vocabulary it reasons in, and means the
+  // mount appears once in this harness rather than in each of them. The default front door moves
+  // with it, and stops naming `market.` — a leftover from the template this file was cut from.
+  const asked = options.url ?? `https://cloudsforge.online${BASE}/`
+  const parsedAsked = new URL(asked)
+  if (!parsedAsked.pathname.startsWith(`${BASE}/`) && parsedAsked.pathname !== BASE) {
+    parsedAsked.pathname = publicPath(parsedAsked.pathname)
+  }
+  const url = parsedAsked.toString()
   const win = new Window({ url })
   const doc = win.document as unknown as Document
 
@@ -408,7 +428,19 @@ export async function mount(element: ReactElement, options: MountOptions = {}): 
     const call: Wire = {
       method,
       url: raw,
-      path: `${parsed.pathname}${parsed.search}`,
+      // ── `path` IS WHAT micro-indexer SEES, NOT WHAT THE BROWSER TYPED ─────────────────────
+      //
+      // Since wave 3h the client calls `<apex>/explorer/v1/chains`, and the gateway routes that
+      // with `stripPrefix` — so the request reaching the service is `/v1/chains`, exactly as it
+      // was before the move. This harness stands in for the gateway, so it strips too: a
+      // scenario's `routes` keys and its `wire[].path` assertions are claims about what the
+      // SERVICE was asked, and none of them should have had to change for a mount.
+      //
+      // `url` above keeps the whole address, so a test that wants to prove the mount IS on the
+      // wire still can — and `test/hosts.test.ts` does exactly that.
+      path: `${
+        parsed.pathname.startsWith(`${BASE}/`) ? parsed.pathname.slice(BASE.length) : parsed.pathname
+      }${parsed.search}`,
       headers,
       body,
       json,

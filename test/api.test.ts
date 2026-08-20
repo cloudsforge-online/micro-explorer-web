@@ -235,7 +235,7 @@ describe('failures', () => {
     // client that is only correct because of where it happens to be called is one refactor from
     // signing a user out of a session they never had.
     clearTokens()
-    const browser = installWindow('https://explorer.cloudsforge.online/')
+    const browser = installWindow('https://cloudsforge.online/explorer/')
     stub = installFetch(() => json(401, { error: { code: 'unauthenticated', message: 'no' } }, 'r'))
     await api('/v1/thing').catch(() => undefined)
     assert.deepEqual(browser.dispatched, [], 'an anonymous 401 dispatched a session event')
@@ -246,7 +246,7 @@ describe('failures', () => {
     // The other direction, so the guard cannot go vacuous. With a refresh token present the client
     // tries a refresh; when that is refused, the session ends exactly as the template intends.
     setTokens({ accessToken: 'a1', refreshToken: 'r1' })
-    const browser = installWindow('https://explorer.cloudsforge.online/')
+    const browser = installWindow('https://cloudsforge.online/explorer/')
     stub = installFetch((call) =>
       call.url.includes('/auth/refresh')
         ? json(401, { error: 'expired' }, 'r-ref')
@@ -302,23 +302,23 @@ describe('auth callback', () => {
       : json(404, { error: { code: 'not_found', message: 'identity serves no such route' } })
 
   it('strips the code from the address bar BEFORE the redemption is sent', async () => {
-    browser = installWindow('https://explorer.cloudsforge.online/chains/ember/testnet#cf_code=abc123&view=grid')
+    browser = installWindow('https://cloudsforge.online/explorer/chains/ember/testnet#cf_code=abc123&view=grid')
     stub = installFetch(identityRedemption, browser.trace)
 
     assert.equal(await bootstrapSession(), true)
 
     // The ORDER is the assertion. Reverse the two side effects in @cloudsforge/ui and this fails.
-    assert.equal(browser.trace[0], 'replaceState:/chains/ember/testnet#view=grid')
+    assert.equal(browser.trace[0], 'replaceState:/explorer/chains/ember/testnet#view=grid')
     assert.ok(browser.trace[1]?.startsWith('fetch:'))
 
     // The rest of the fragment survives: an app may keep its own route there.
-    assert.deepEqual(browser.replaced, ['/chains/ember/testnet#view=grid'])
+    assert.deepEqual(browser.replaced, ['/explorer/chains/ember/testnet#view=grid'])
     assert.equal(browser.window.location.hash, '#view=grid')
     assert.equal(getAccessToken(), 'a-new')
   })
 
   it('redeems at the route identity serves, on identity’s host', async () => {
-    browser = installWindow('https://explorer.cloudsforge.online/#cf_code=abc123')
+    browser = installWindow('https://cloudsforge.online/explorer/#cf_code=abc123')
     stub = installFetch(identityRedemption, browser.trace)
 
     assert.equal(await bootstrapSession(), true, 'the redemption was refused')
@@ -332,16 +332,16 @@ describe('auth callback', () => {
   it('still strips the code when the redemption fails', async () => {
     // An "after the exchange resolves" implementation never strips it at all on this path, and
     // the code stays in the address bar for as long as the tab is open.
-    browser = installWindow('https://explorer.cloudsforge.online/#cf_code=dead')
+    browser = installWindow('https://cloudsforge.online/explorer/#cf_code=dead')
     stub = installFetch(() => json(400, { error: 'code expired' }), browser.trace)
 
     assert.equal(await bootstrapSession(), false)
-    assert.deepEqual(browser.replaced, ['/'])
+    assert.deepEqual(browser.replaced, ['/explorer/'])
     assert.equal(getAccessToken(), null)
   })
 
   it('does nothing to a URL that carries no code', async () => {
-    browser = installWindow('https://explorer.cloudsforge.online/chains#section-2')
+    browser = installWindow('https://cloudsforge.online/explorer/chains#section-2')
     let calls = 0
     stub = installFetch(() => {
       calls += 1

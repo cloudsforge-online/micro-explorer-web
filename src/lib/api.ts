@@ -25,6 +25,7 @@ import { attemptSilentSignIn, consumeAuthCallback, signInRedirect, signOutRedire
 import { APP_NAME, apiBase, hosts, pageOrigin } from './hosts.ts'
 import { viewedApiOrigin } from './viewed.ts'
 import { report } from './obs.ts'
+import { BASE } from './routes.ts'
 
 /** Nimbus issues and refreshes tokens; it is cross-origin from every app, always. */
 function nimbusUrl(): string {
@@ -421,7 +422,25 @@ async function request<T>(base: string, path: string, opts: RequestOptions = {})
 export const api = <T,>(path: string, opts?: RequestOptions): Promise<T> => {
   const crossEstate = viewedApiOrigin()
   if (crossEstate === '') return request<T>(apiBase(), path, opts)
-  return request<T>(crossEstate, path, { ...opts, auth: false })
+  // ── WHICH ESTATE, PLUS WHERE UNDER IT — AND THEY ARE SEPARATE QUESTIONS ────────────────────
+  //
+  // `viewedApiOrigin()` answers the first and ONLY the first: it is an ORIGIN by construction
+  // (`networkOrigin` ends in `new URL(url).origin`), because which estate a reader is looking at
+  // is a fact about a host and nothing else. `BASE` answers the second.
+  //
+  // Composing them here rather than teaching `viewedApiOrigin` about the mount is deliberate,
+  // and it is the whole of what the registry row was parked on. The first draft of wave 3c made
+  // agora's equivalent function return origin-plus-mount, which is TRUTHY — so the "am I reading
+  // the other estate?" test above stopped being consulted and the network switcher silently went
+  // on reading mainnet. Keeping the two apart is what makes that impossible here.
+  //
+  // The sibling serves this surface from the SAME folder — both estates run the same bundle at
+  // the same mount — so one `BASE` is correct for either direction.
+  //
+  // Still anonymous: `auth: false` is unchanged and unchanged in meaning. This page's bearer
+  // means nothing at the other estate, and an authorization header would force a CORS preflight
+  // on a request that fails anyway.
+  return request<T>(`${crossEstate}${BASE}`, path, { ...opts, auth: false })
 }
 
 /** Nimbus, which is cross-origin from everywhere. */

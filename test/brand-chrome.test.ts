@@ -35,6 +35,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
+import { BASE } from '../src/lib/routes.ts'
 
 const at = (p: string) => fileURLToPath(new URL(`../${p}`, import.meta.url))
 const HTML = readFileSync(at('index.html'), 'utf8')
@@ -63,7 +64,10 @@ test('index.html links every icon it ships, and ships every icon it links', () =
     assert.ok(HTML.includes(f), `index.html does not link /${f}`)
   }
   for (const m of HTML.matchAll(/href="\/(favicon[^"]*)"/g)) {
-    assert.ok(existsSync(at(`public/${m[1]}`)), `index.html links /${m[1]}, which is not in public/`)
+    // vite DOES rewrite `href` against `base`, so these carry the mount in the built artefact;
+    // `public/` is the unmounted tree either way.
+    const rel = `/${m[1]}`.startsWith(`${BASE}/`) ? `/${m[1]}`.slice(BASE.length + 1) : (m[1] as string)
+    assert.ok(existsSync(at(`public/${rel}`)), `index.html links /${m[1]}, which is not in public/`)
   }
 })
 
@@ -132,7 +136,14 @@ test('the og:image is a RELATIVE path, so the card resolves against whichever or
   const m = /property="og:image"\s+content="([^"]+)"/.exec(HTML)
   assert.ok(m, 'no og:image content')
   assert.ok(m[1]?.startsWith('/'), `og:image is ${m[1]}, which is not a relative path`)
-  assert.ok(existsSync(at(`public${m[1]}`)), `og:image points at ${m[1]}, which is not in public/`)
+  // The mount comes off before the disk: index.html names the PUBLIC address because vite does
+  // not rewrite `content` against `base`, while the FILE is at `public/og-1200x630.png` — that
+  // folder is created by the Dockerfile's COPY, not by this tree.
+  const onDisk = (m[1] as string).startsWith(`${BASE}/`) ? (m[1] as string).slice(BASE.length) : (m[1] as string)
+  assert.ok(
+    existsSync(at(`public${onDisk}`)),
+    `og:image points at ${m[1]}, not in public/ (looked for public${onDisk})`,
+  )
 })
 
 test('the og metadata is declared ONCE', () => {
@@ -167,7 +178,14 @@ test('index.html does NOT tell crawlers to stay away', () => {
 test('public/ holds no stray brand asset that nothing links', () => {
   // A file nobody links is dead weight that looks like it is working, and this is how an old
   // product's mark survives a rebrand in one repository.
-  const linked = new Set([...HTML.matchAll(/(?:href|content)="\/([^"]+\.png)"/g)].map((m) => m[1]))
+  // The mount comes off each linked address for the same reason as the og:image above: these are
+  // PUBLIC paths and `public/` is the unmounted tree.
+  const linked = new Set(
+    [...HTML.matchAll(/(?:href|content)="(\/[^"]+\.png)"/g)]
+      .map((m) => m[1] as string)
+      .map((p) => (p.startsWith(`${BASE}/`) ? p.slice(BASE.length) : p))
+      .map((p) => p.replace(/^\//, '')),
+  )
   const stray = readdirSync(at('public')).filter((f) => f.endsWith('.png') && !linked.has(f))
   assert.deepEqual(stray, [], `public/ holds ${stray.join(', ')}, which index.html does not link`)
 })
@@ -210,7 +228,11 @@ test('the accent selector this page names really exists, and "explorer" would NO
   // 1600, not 400: the registry entry gained a long comment explaining why its devPort names the
   // indexer's port rather than this bundle's own, and the accent fell outside the window. The
   // window is how far the search looks, not what it asserts — the equality below is unchanged.
-  const entry = /key: 'explorer',[\s\S]{0,1600}?accent: '(#[0-9a-fA-F]{6})'/.exec(
+  // The window widened from 1600 to 4000 when wave 3h added the consolidation note to this row.
+  // It is how far the search LOOKS, not what it asserts — the equality below is unchanged — but a
+  // window too small fails with "the entry has gone from the registry", which is the opposite of
+  // what happened and sends the next reader looking in the wrong file.
+  const entry = /key: 'explorer',[\s\S]{0,4000}?accent: '(#[0-9a-fA-F]{6})'/.exec(
     readFileSync(surfaces, 'utf8'),
   )
   assert.ok(entry, 'the explorer entry has gone from the surface registry')

@@ -40,8 +40,14 @@ import { networkForHost, siblingExplorerOrigin } from '../src/lib/network.ts'
 const at = (p: string) => fileURLToPath(new URL(`../${p}`, import.meta.url))
 
 /** The two addresses this bundle is really served from. Written out, never matched. */
-const MAINNET_HOST = 'explorer.cloudsforge.online'
-const TESTNET_HOST = 'explorer-testnet.cloudsforge.online'
+// ── THE TWO HOSTNAMES ARE APEXES NOW — WAVE 3h ───────────────────────────────────────────────
+//
+// This surface is `<apex>/explorer` on both estates, so what tells the deployments apart is the
+// apex itself. `explorer.` and `explorer-testnet.` still resolve — the retired forms are read
+// deliberately, and `the older forms still resolve` below pins that — but they are no longer what
+// the estate serves, so they are no longer what these constants name.
+const MAINNET_HOST = 'cloudsforge.online'
+const TESTNET_HOST = 'testnet.cloudsforge.online'
 
 /**
  * One status per chain, with only `ember` served on whichever network was asked for.
@@ -104,8 +110,10 @@ describe('the network is derived from the hostname', () => {
   })
 
   it('the sibling explorer is composed the one way the estate serves, or not at all', () => {
-    assert.equal(siblingExplorerOrigin(MAINNET_HOST, 'testnet'), `https://${TESTNET_HOST}`)
-    assert.equal(siblingExplorerOrigin(TESTNET_HOST, 'mainnet'), `https://${MAINNET_HOST}`)
+    // Apex PLUS THE MOUNT: the sibling serves this bundle from the same folder, so an origin
+    // alone would offer a reader an address that lands on micro-site's home page.
+    assert.equal(siblingExplorerOrigin(MAINNET_HOST, 'testnet'), `https://${TESTNET_HOST}/explorer`)
+    assert.equal(siblingExplorerOrigin(TESTNET_HOST, 'mainnet'), `https://${MAINNET_HOST}/explorer`)
     // Null rather than an invented hostname. An offered address a reader trusts and which resolves
     // to nothing is worse than no address: that is exactly what `explorer.testnet.…` was.
     assert.equal(siblingExplorerOrigin('localhost', 'mainnet'), null)
@@ -206,7 +214,7 @@ describe('the same bundle, mounted on both real hostnames', () => {
         const link = s.byRole('link', 'Open it on the testnet explorer')
         assert.equal(
           link.getAttribute('href'),
-          `https://${TESTNET_HOST}/tx/ember/testnet/${fx.HASH}`,
+          `https://${TESTNET_HOST}/explorer/tx/ember/testnet/${fx.HASH}`,
           'the escape hatch does not point at the deployment that can answer',
         )
         // Document order: the warning has to precede the denial, or it is an explanation of a

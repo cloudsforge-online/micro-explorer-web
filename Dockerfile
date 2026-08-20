@@ -69,7 +69,10 @@ RUN sed -i "s|name=\"cf-release\" content=\"dev\"|name=\"cf-release\" content=\"
 FROM nginxinc/nginx-unprivileged:1.27-alpine AS runtime
 
 COPY nginx.conf /etc/nginx/conf.d/default.conf
-COPY --from=build /app/dist /usr/share/nginx/html
+# The bundle lives in a FOLDER, not at the document root — wave 3h. nginx's `root` stays
+# `/usr/share/nginx/html`, so `/explorer/assets/x.js` resolves here and `/` resolves to nothing,
+# which is correct: on the apex that address belongs to micro-site.
+COPY --from=build /app/dist /usr/share/nginx/html/explorer
 
 EXPOSE 8080
 

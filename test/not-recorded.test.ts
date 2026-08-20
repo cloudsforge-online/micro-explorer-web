@@ -65,7 +65,7 @@ import {
 } from '../src/lib/indexer.ts'
 
 /** The testnet hostname, so the origin and the scope agree — see `test/journeys.test.ts`. */
-const ORIGIN = 'https://explorer-testnet.cloudsforge.online'
+const ORIGIN = 'https://testnet.cloudsforge.online/explorer'
 const SCOPE = 'ember/testnet'
 
 const app = (path: string, routes: Routes, body: Parameters<typeof withScreen>[2]) =>
