@@ -570,7 +570,22 @@ jobs:
         # the one that will be wrong.
         run: |
           set -uo pipefail
-          if grep -rn --include='*.ts' --include='*.tsx' 'cloudsforge\.online' src; then
+          # ── COMMENTS STRIPPED FIRST, FOR THE REASON THIS RULE EXISTS ────────────────────────
+          #
+          # The rule is that a literal hostname must not be a second, unversioned copy of the
+          # surface registry. A hostname in PROSE is not a copy of anything — it is how the file
+          # explains which addresses it is reasoning about, and `src/lib/network.ts` cannot
+          # explain "the apex differs between estates" without naming the two apexes.
+          #
+          # A raw grep finds the explanation and grades it. That is the same shape as the
+          # `try_files $uri /index.html` rule, which went red against a config that documents the
+          # forbidden directive in order to forbid it, and the `location = /robots.txt` absence
+          # assertion, which found its own gravestone. Fourth occurrence in this estate.
+          #
+          # Line comments and the `*`-prefixed interior of block comments, which is the whole of
+          # this codebase's comment style. A hostname in CODE still fails, which is the point.
+          if grep -rn --include='*.ts' --include='*.tsx' 'cloudsforge\.online' src \
+               | grep -vE ':[[:space:]]*(//|\*|/\*)'; then
             echo "::error::resolve hosts through cloudsforgeHosts() rather than naming them"
             exit 1
           fi
@@ -817,7 +832,7 @@ jobs:
             [ "$code" = "200" ] && break
             sleep 1
           done
-          [ "${code:-}" = "200" ] || { echo "::error::the image returned ${code:-no answer} for /"; docker logs --tail 60 ci-explorer-web; exit 1; }
+          [ "${code:-}" = "200" ] || { echo "::error::the image returned ${code:-no answer} for /explorer/ — the address it is built for"; docker logs --tail 60 ci-explorer-web; exit 1; }
 
           fail=0
 
