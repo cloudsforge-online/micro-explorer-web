@@ -847,8 +847,12 @@ jobs:
 
           # And each of the other two record routes, because each is a separate nginx alternation.
           for owned in /chains /chains/ember/testnet /address/ember/testnet/0x0000000000000000000000000000000000000000 /tokens/ember/testnet/0x0000000000000000000000000000000000000000; do
-            got=$(curl -s -m 5 -o /dev/null -w '%{http_code}' "http://127.0.0.1:8080$owned" || true)
-            [ "$got" = "200" ] || { echo "::error::$owned returned $got"; fail=1; }
+            # `$owned` is a ROUTER path and the container serves PUBLIC ones, so the mount goes on
+            # here. The addresses in the list above stay router paths deliberately: they are the
+            # same strings `src/lib/routes.ts` declares, and a list that carried the mount would be
+            # a second place the mount is written down.
+            got=$(curl -s -m 5 -o /dev/null -w '%{http_code}' "http://127.0.0.1:8080/explorer$owned" || true)
+            [ "$got" = "200" ] || { echo "::error::/explorer$owned returned $got"; fail=1; }
           done
 
           # A route it does NOT own must answer 404 while still serving the shell, so the reader
