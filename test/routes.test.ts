@@ -20,7 +20,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { describe, it } from 'node:test'
-import { DEEP_LINK_PATH, NAV, NON_INDEX_PATHS, ROUTES, guessKind, linkTo } from '../src/lib/routes.ts'
+import { BASE, DEEP_LINK_PATH, NAV, NON_INDEX_PATHS, ROUTES, guessKind, linkTo } from '../src/lib/routes.ts'
 
 const read = (file: string): string => readFileSync(new URL(`../${file}`, import.meta.url), 'utf8')
 
@@ -49,7 +49,10 @@ const rendered = (source: string): string =>
 
 /** The alternation inside nginx's enumerated `location ~ ^/(…)` block. */
 function nginxPaths(): string[] {
-  const match = /location\s+~\s+\^\/\(([^)]+)\)/.exec(directives)
+  // The enumerated block is mounted since wave 3h — `^<BASE>/(chains|blocks|…)`. The alternation
+  // inside it is still ROUTER paths, which is what this function returns and what the route table
+  // holds; only the prefix in front of the group moved.
+  const match = new RegExp(`location\\s+~\\s+\\^${BASE}/\\(([^)]+)\\)`).exec(directives)
   assert.ok(match, 'nginx.conf has no enumerated route block')
   return (match[1] ?? '').split('|').map((p) => p.trim())
 }
@@ -229,7 +232,7 @@ describe('nginx serves exactly the routes that exist', () => {
   })
 
   it('serves the index', () => {
-    assert.match(directives, /location = \/\s*\{/)
+    assert.match(directives, /location = \/explorer\s*\{/)
   })
 
   it('does NOT use the SPA 200-fallback', () => {
@@ -238,12 +241,12 @@ describe('nginx serves exactly the routes that exist', () => {
   })
 
   it('keeps the honest 404 through error_page', () => {
-    assert.match(directives, /error_page 404 \/index\.html/)
+    assert.match(directives, /error_page 404 \/explorer\/index\.html/)
   })
 
   it('404s a missing asset rather than serving the shell for it', () => {
     // A JavaScript request answered with HTML fails with a syntax error naming the wrong file.
-    assert.match(directives, /location \/assets\/\s*\{\s*try_files \$uri =404/)
+    assert.match(directives, /location \/explorer\/assets\/\s*\{\s*try_files \$uri =404/)
   })
 
   it('sets the three security headers at the server level', () => {
@@ -286,12 +289,12 @@ describe('nginx serves exactly the routes that exist', () => {
   })
 
   it('never caches the shell', () => {
-    const root = /location = \/\s*\{([^}]*)\}/.exec(directives)?.[1] ?? ''
+    const root = /location = \/explorer\s*\{([^}]*)\}/.exec(directives)?.[1] ?? ''
     assert.match(root, /Cache-Control "no-store"/)
   })
 
   it('caches hashed assets immutably', () => {
-    const assets = /location \/assets\/\s*\{([^}]*)\}/.exec(directives)?.[1] ?? ''
+    const assets = /location \/explorer\/assets\/\s*\{([^}]*)\}/.exec(directives)?.[1] ?? ''
     assert.match(assets, /immutable/)
   })
 })

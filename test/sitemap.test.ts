@@ -42,10 +42,16 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { describe, it } from 'node:test'
 import { ENV_LABELS } from '@cloudsforge/ui'
-import { robotsTxt } from '@cloudsforge/ui/sitemap'
-import { NAV, NON_INDEX_PATHS, ROUTES } from '../src/lib/routes.ts'
+import { BASE, NAV, NON_INDEX_PATHS, ROUTES } from '../src/lib/routes.ts'
 
 const nginx = readFileSync(new URL('../nginx.conf', import.meta.url), 'utf8')
+
+/** nginx.conf with its comments removed, so an absence assertion cannot read a gravestone. */
+const directivesOf = (conf: string): string =>
+  conf
+    .split('\n')
+    .filter((line) => !/^\s*#/.test(line))
+    .join('\n')
 
 /**
  * Every address of this surface a crawler should be handed, derived rather than restated.
@@ -63,6 +69,8 @@ const PUBLIC_PATHS: readonly string[] = NAV.map((entry) => entry.to)
 
 /** The single-quoted body of a `return 200 '…';` inside an exact-match location. */
 function servedBody(path: string): string {
+  // The caller names a PUBLIC path (`${BASE}/sitemap.xml`) since wave 3h — nginx's locations
+  // carry the mount, and this is the function that reads them.
   const block = new RegExp(`location = ${path.replace('.', '\\.')} \\{([\\s\\S]*?)\\n    \\}`).exec(
     nginx,
   )
@@ -83,7 +91,7 @@ describe('the sitemap nginx serves', () => {
      * on the testnet estate and on a preview deployment, silently, in the one document a crawler
      * treats as authoritative — and on this surface the two estates are the whole point.
      */
-    const xml = servedBody('/sitemap.xml')
+    const xml = servedBody(`${BASE}/sitemap.xml`)
     assert.ok(!xml.includes('cloudsforge.online'), 'the sitemap names the production apex')
     assert.ok(!xml.includes('localhost'), 'the sitemap names localhost')
     const locs = [...xml.matchAll(/<loc>([^<]*)<\/loc>/g)].map((m) => m[1] ?? '')
@@ -95,7 +103,7 @@ describe('the sitemap nginx serves', () => {
   })
 
   it('lists every route this surface offers, so a crawler is not left to guess', () => {
-    const xml = servedBody('/sitemap.xml')
+    const xml = servedBody(`${BASE}/sitemap.xml`)
     for (const path of PUBLIC_PATHS) {
       const address = path === '/' ? '$scheme://$host' : `$scheme://$host${path}`
       assert.ok(xml.includes(`<loc>${address}</loc>`), `${path} is missing from the sitemap`)
@@ -106,7 +114,7 @@ describe('the sitemap nginx serves', () => {
     // The other direction, and the one that matters most on this surface. A sitemap that named a
     // single `/tx/…` would be promising a crawler that one transaction is a page of this site
     // worth revisiting, out of a set that grows for as long as the chain runs.
-    const xml = servedBody('/sitemap.xml')
+    const xml = servedBody(`${BASE}/sitemap.xml`)
     const listed = [...xml.matchAll(/<loc>\$scheme:\/\/\$host([^<]*)<\/loc>/g)].map((m) =>
       m[1] === '' ? '/' : (m[1] ?? ''),
     )
@@ -121,12 +129,12 @@ describe('the sitemap nginx serves', () => {
     // different one: `src/pages/chains.tsx` measures the offer from the index's own `/status`
     // rather than assuming it from a constant, because the two estates index one scope each.
     // Enumerating scopes here would put that assumption back, in the document a crawler trusts.
-    const xml = servedBody('/sitemap.xml')
+    const xml = servedBody(`${BASE}/sitemap.xml`)
     assert.ok(!/\$host\/chains\/[^<]/.test(xml), 'the sitemap names an individual chain scope')
   })
 
   it('is a well-formed urlset in the only schema crawlers implement', () => {
-    const xml = servedBody('/sitemap.xml')
+    const xml = servedBody(`${BASE}/sitemap.xml`)
     assert.match(xml, /^<\?xml version="1\.0" encoding="UTF-8"\?>\n/)
     assert.match(xml, /<urlset xmlns="http:\/\/www\.sitemaps\.org\/schemas\/sitemap\/0\.9">/)
     assert.match(xml, /<\/urlset>$/)
@@ -138,7 +146,7 @@ describe('the sitemap nginx serves', () => {
     // applies.
     assert.match(
       nginx,
-      /location = \/sitemap\.xml \{[\s\S]*?types \{ \}[\s\S]*?default_type application\/xml;/,
+      /location = \/explorer\/sitemap\.xml \{[\s\S]*?types \{ \}[\s\S]*?default_type application\/xml;/,
     )
   })
 
@@ -192,8 +200,17 @@ describe('an environment that is not mainnet', () => {
   it('refuses every crawler and serves no sitemap', () => {
     // Both halves matter and neither is sufficient: robots.txt stops the fetch, and a sitemap that
     // still answered would be an invitation contradicting the instruction beside it.
-    assert.match(nginx, /if \(\$cf_env\) \{ return 200 'User-agent: \*\\nDisallow: \/\\n'; \}/)
-    assert.match(nginx, /location = \/sitemap\.xml \{[\s\S]*?if \(\$cf_env\) \{ return 404; \}/)
+    // ── THE robots.txt HALF IS GONE, AND ITS ABSENCE IS THE ASSERTION NOW ────────────────────
+    //
+    // A crawler reads robots.txt at the ORIGIN ROOT and nowhere else, so a folder has none:
+    // `/explorer/robots.txt` is a file nothing fetches, and `/robots.txt` on this origin belongs
+    // to micro-site, whose copy decides whether this surface is indexed. Serving one here would
+    // be a SECOND document at an address another container already owns.
+    //
+    // Read against DIRECTIVES, not the raw file: the comment recording the removal names the
+    // directive it removed, and a raw grep finds its own gravestone.
+    assert.doesNotMatch(directivesOf(nginx), /location\s*=\s*\/robots\.txt/)
+    assert.match(nginx, /location = \/explorer\/sitemap\.xml \{[\s\S]*?if \(\$cf_env\) \{ return 404; \}/)
   })
 
   it('matches a suffixed subdomain as well as a bare environment apex', () => {
@@ -208,20 +225,20 @@ describe('an environment that is not mainnet', () => {
 })
 
 describe('robots.txt', () => {
-  it('is exactly what the design system generates', () => {
-    // Compared with its trailing newline intact: robots.txt is a line-oriented format and a parser
-    // that reads the last line only when it is terminated is a parser that silently loses the
-    // Sitemap directive.
-    assert.equal(
-      servedBody('/robots.txt'),
-      robotsTxt({ indexable: true, sitemapUrl: '$scheme://$host/sitemap.xml' }),
-    )
-  })
-
-  it('points at the sitemap with an absolute address, composed rather than typed', () => {
-    // A relative `Sitemap:` line is invalid per the standard and is ignored; a literal one bakes in
-    // a hostname. `$scheme://$host` is the only form that is both valid and environment-free.
-    assert.match(servedBody('/robots.txt'), /^Sitemap: \$scheme:\/\/\$host\/sitemap\.xml$/m)
+  // ── THESE TWO TESTS WERE ABOUT A DOCUMENT THIS SURFACE NO LONGER SERVES ───────────────────
+  //
+  // Both asserted the SHAPE of a robots.txt emitted from this container: that it was byte-equal
+  // to what `robotsTxt()` generates, and that its `Sitemap:` line was absolute. Since wave 3h
+  // there is no robots.txt here to have a shape. A crawler reads it at the ORIGIN ROOT and
+  // nowhere else, so a folder has none, and `/robots.txt` on this origin is micro-site's.
+  //
+  // Replaced by one assertion rather than deleted, because "this surface serves no robots.txt"
+  // is the fact worth holding — the day somebody adds the block back, believing a folder needs
+  // its own, this goes red. The shape of the apex's copy is asserted in micro-site, which is the
+  // repository that owns it, and the announcement of THIS surface's sitemap lives there too.
+  it('serves no robots.txt of its own, because a folder has none', () => {
+    assert.doesNotMatch(directivesOf(nginx), /location\s*=\s*\/robots\.txt/)
+    assert.doesNotMatch(directivesOf(nginx), /User-agent:/)
   })
 
   it('is not a static file, which an exact-match location would have shadowed', () => {
@@ -246,7 +263,10 @@ describe('the security headers on the documents this file adds', () => {
   it('are repeated in both new locations, because add_header does not accumulate', () => {
     // A location that declares ANY add_header inherits NONE from the server level. Both blocks set
     // Cache-Control, so both have to restate the three security headers or ship without them.
-    for (const path of ['/sitemap.xml', '/robots.txt']) {
+    // ONE DOCUMENT, NOT TWO. `/robots.txt` was in this list and its location no longer exists:
+    // a crawler reads robots.txt at the ORIGIN ROOT and nowhere else, so a folder has none and
+    // micro-site's is the copy that decides whether this surface is indexed.
+    for (const path of [`${BASE}/sitemap.xml`]) {
       const block = new RegExp(
         `location = ${path.replace('.', '\\.')} \\{([\\s\\S]*?)\\n    \\}`,
       ).exec(nginx)
@@ -259,8 +279,8 @@ describe('the security headers on the documents this file adds', () => {
   })
 
   it('are repeated in /assets/ too, which is the location that serves the code', () => {
-    const block = /location \/assets\/ \{([\s\S]*?)\n    \}/.exec(nginx)
-    assert.ok(block, 'no /assets/ location')
+    const block = new RegExp(`location ${BASE}/assets/ \\{([\\s\\S]*?)\\n    \\}`).exec(nginx)
+    assert.ok(block, `no ${BASE}/assets/ location`)
     assert.match(block[1] ?? '', /X-Content-Type-Options "nosniff"/)
   })
 })

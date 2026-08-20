@@ -42,7 +42,7 @@ const at = (p: string) => fileURLToPath(new URL(`../${p}`, import.meta.url))
 
 /** The production host table, as `cloudsforgeHosts()` derives it from an apex hostname. */
 function production(): CloudsForgeHosts {
-  installWindow('https://explorer.cloudsforge.online/')
+  installWindow('https://cloudsforge.online/explorer/')
   const hosts = cloudsforgeHosts()
   removeWindow()
   return hosts
@@ -53,11 +53,14 @@ describe('the surface this app is', () => {
     assert.equal(PRODUCT, 'explorer')
   })
 
-  it('is registered as a service, out of the switcher, with its own subdomain and NO MARK', () => {
+  it('is registered as a service, out of the switcher, mounted on the apex and with NO MARK', () => {
     const surface = SURFACES.find((s) => s.key === PRODUCT)
     assert.ok(surface, 'explorer is not in the surface registry')
     assert.equal(surface.kind, 'service')
-    assert.equal(surface.subdomain, 'explorer')
+    // NO subdomain since wave 3h: `''` plus a basePath. The kind, name and switcher facts below
+    // are untouched by that — a mount is a fact about an address, not about what a surface IS.
+    assert.equal(surface.subdomain, '')
+    assert.equal(surface.basePath, '/explorer')
     assert.equal(surface.name, 'Network Explorer')
     // Out of the switcher on purpose: an explorer is reached from Forge Network, not chosen from a
     // product list.
@@ -86,7 +89,11 @@ describe('the API base is an origin comparison, never a flag', () => {
 
   it('is relative when the page and the API share an origin', () => {
     // Production: nginx serves this bundle and micro-indexer serves /v1 behind explorer.<apex>.
-    assert.equal(resolveApiBase('https://explorer.cloudsforge.online', hosts, PRODUCT), '')
+    // The page's ORIGIN, which never carries the mount — and the answer is now the MOUNT rather
+    // than the empty string. `''` meant "issue a relative request, we are already here", which
+    // was complete while this surface had a hostname to itself. On the apex a relative `/v1/…`
+    // resolves at the ROOT — micro-site's — so the mount is what makes it resolve here.
+    assert.equal(resolveApiBase('https://cloudsforge.online', hosts, PRODUCT), '/explorer')
   })
 
   it('is absolute when they do not', () => {
@@ -98,8 +105,11 @@ describe('the API base is an origin comparison, never a flag', () => {
   })
 
   it('resolves from the window on every call, so one image serves every environment', () => {
-    installWindow('https://explorer.cloudsforge.online/chains/ember/testnet')
-    assert.equal(apiBase(), '')
+    installWindow('https://cloudsforge.online/explorer/chains/ember/testnet')
+    // The MOUNT, not the empty string — a relative `/v1/…` from a page at `/explorer/blocks`
+    // would resolve at the apex root, which is micro-site's. Still relative, still no hostname
+    // baked in: one image serves every environment, which is what this test is for.
+    assert.equal(apiBase(), '/explorer')
     removeWindow()
 
     installWindow('http://localhost:5189/chains/ember/testnet')
@@ -234,11 +244,10 @@ describe('the placement warning', () => {
 
   it('accepts this surface’s own origin', () => {
     assert.equal(
-      isRegisteredPlacement(
-        'https://explorer.cloudsforge.online',
-        'explorer.cloudsforge.online',
-        hosts,
-      ),
+      // The page ORIGIN and the page HOSTNAME, both of which are now the apex's. The old pair
+      // named `explorer.cloudsforge.online`, a hostname that 301s since wave 3h and is no longer
+      // a subdomain the registry strips — so it would be read as an apex of its own.
+      isRegisteredPlacement('https://cloudsforge.online', 'cloudsforge.online', hosts),
       true,
     )
   })

@@ -109,7 +109,34 @@ export function resolveApiBase(
   if (!pageOrigin) return own
   // A surface may carry a basePath (the wallet is a path inside Hub), so compare ORIGINS rather
   // than whole URLs — otherwise every such surface would look cross-origin to itself.
-  return new URL(own).origin === pageOrigin ? '' : own
+  //
+  // ── AND WHEN IT IS THE SAME ORIGIN, THE ANSWER IS THE MOUNT, NOT THE EMPTY STRING ──────────
+  //
+  // This returned `''` — "we are already here, issue a relative request" — which was complete
+  // while every surface had a hostname to itself. Since wave 3h this bundle is `<apex>/explorer`
+  // and micro-indexer is behind `<apex>/explorer/v1`, so a relative `/v1/chains` from a page at
+  // `/explorer/blocks` resolves at the APEX ROOT: micro-site's, which answers its SPA shell with
+  // a 200 and an HTML body where JSON was expected. That is decision 4's failure exactly.
+  //
+  // The mount comes from the REGISTRY entry rather than from a constant here, so a surface that
+  // has none still gets `''` and nothing about the unmounted case changes.
+  const parsed = new URL(own)
+  if (parsed.origin !== pageOrigin) {
+    // ── A DEV STACK HAS NO GATEWAY TO STRIP THE MOUNT ────────────────────────────────────────
+    //
+    // Cross-origin is the normal production answer for an unmounted surface, and under `pnpm dev`
+    // it is how this bundle reaches micro-indexer: a different port on localhost. But the
+    // registry composes a dev URL as `http://localhost:4008` PLUS the basePath, and micro-indexer
+    // binds that port directly — nothing in front of it takes `/explorer` back off, so every read
+    // would 404. The mount is a production routing fact; on localhost the origin is the whole
+    // answer.
+    //
+    // Branching on the RESOLVED HOST rather than on a flag, because a flag is a build-time
+    // constant and this repository has none by rule.
+    return isLocal(parsed.hostname) ? parsed.origin : own
+  }
+  const mount = parsed.pathname.replace(/\/+$/, '')
+  return mount === '' ? '' : mount
 }
 
 /** The same four names `cloudsforgeHosts()` treats as development. Kept in step by test. */

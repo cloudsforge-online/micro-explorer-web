@@ -13,6 +13,16 @@ import { defineConfig } from 'vite'
  * so deleting the test does not delete the rule.
  */
 export default defineConfig({
+  // ── THE MOUNT, AND IT NEEDS THE TRAILING SLASH ──────────────────────────────────────────────
+  //
+  // `/explorer/`, wave 3h. This is what rewrites every `src` and `href` in index.html and every
+  // asset URL in the bundle, so without it the built shell asks for `/assets/…` at the APEX ROOT
+  // — micro-site's — and the application never loads at all.
+  //
+  // It does NOT rewrite `content`, which is why the og:image carries the mount by hand.
+  //
+  // Same string as `BASE` in `src/lib/routes.ts`; `check-base-paths-agree.py` holds them equal.
+  base: '/explorer/',
   plugins: [react()],
   resolve: {
     // @cloudsforge/ui is a `link:` dependency, so its own node_modules holds a second copy of

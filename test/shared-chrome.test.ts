@@ -155,7 +155,7 @@ test('ProductSwitcher and AccountMenu also render standing alone', async () => {
  * know, the shell raises its unregistered notice and `hosts().hub` resolves one level too deep.
  * `test/journeys.test.ts` runs on the same hostname and gives the longer reason.
  */
-const ORIGIN = 'https://explorer-testnet.cloudsforge.online'
+const ORIGIN = 'https://testnet.cloudsforge.online/explorer'
 
 /** The index asks which chains this deployment serves before it offers any; nothing else. */
 const chainOffers: Routes = {

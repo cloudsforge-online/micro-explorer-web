@@ -26,6 +26,24 @@
  * does not have to boot a browser to find out what the routes are.
  */
 
+/**
+ * The folder this bundle is mounted at — wave 3h of the apex consolidation.
+ *
+ * `/explorer`, and it is a router `basename`: react-router STRIPS it before `useLocation()` sees
+ * anything, so every path in the table below stays exactly what it was. The mount appears in
+ * three other places and nowhere else — `vite.config.ts`'s `base`, the Dockerfile's COPY target,
+ * and `nginx.conf` — and `deploy/scripts/check-base-paths-agree.py` asserts all five statements
+ * are the same string.
+ */
+export const BASE = '/explorer'
+
+/** A router path as a PUBLIC one. No trailing slash: the explorer is `/explorer`. */
+export function publicPath(path: string): string {
+  const rooted = path.startsWith('/') ? path : `/${path}`
+  return rooted === '/' ? BASE : `${BASE}${rooted}`
+}
+
+
 export interface AppRoute {
   /** The top-level path segment, without a leading slash. `''` is the index route. */
   readonly path: string

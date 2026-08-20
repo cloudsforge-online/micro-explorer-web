@@ -32,7 +32,7 @@ import * as fx from './fixtures.ts'
 import { App } from '../src/app.tsx'
 import { CHAIN_IDS, isServed, type ChainId } from '../src/lib/indexer.ts'
 
-const HOST = 'https://explorer.cloudsforge.online'
+const HOST = 'https://cloudsforge.online/explorer'
 
 /**
  * `/status` answering for every chain, with `served` the ones this pretend deployment indexes.

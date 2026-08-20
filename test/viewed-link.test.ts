@@ -42,19 +42,24 @@ afterEach(() => {
 
 describe('the network a link arrived carrying', () => {
   it('is what the reader is viewing, and the reads follow it', async () => {
-    const m = await loadAt('https://explorer.cloudsforge.online/block/128?net=testnet')
+    const m = await loadAt('https://cloudsforge.online/explorer/block/128?net=testnet')
     assert.equal(m.viewedNetwork(), 'testnet')
-    assert.equal(m.viewedApiOrigin(), 'https://explorer-testnet.cloudsforge.online')
+    // An ORIGIN, deliberately, and it did NOT gain the mount in wave 3h. `viewedApiOrigin`
+    // answers WHICH ESTATE and only that; `api.ts` composes `BASE` onto it at the one call site
+    // that reads across estates. The first draft of wave 3c made agora's equivalent return
+    // origin-plus-mount, which is TRUTHY — so the "am I reading the other estate?" test stopped
+    // being consulted and the switcher silently went on reading mainnet.
+    assert.equal(m.viewedApiOrigin(), 'https://testnet.cloudsforge.online')
   })
 
   it('works in the other direction too', async () => {
-    const m = await loadAt('https://explorer-testnet.cloudsforge.online/?net=mainnet')
+    const m = await loadAt('https://testnet.cloudsforge.online/explorer/?net=mainnet')
     assert.equal(m.viewedNetwork(), 'mainnet')
-    assert.equal(m.viewedApiOrigin(), 'https://explorer.cloudsforge.online')
+    assert.equal(m.viewedApiOrigin(), 'https://cloudsforge.online')
   })
 
   it('is ignored when it agrees with the hostname, so reads stay relative', async () => {
-    const m = await loadAt('https://explorer.cloudsforge.online/?net=mainnet')
+    const m = await loadAt('https://cloudsforge.online/explorer/?net=mainnet')
     assert.equal(m.viewedNetwork(), 'mainnet')
     assert.equal(m.viewedApiOrigin(), '')
   })
@@ -63,7 +68,7 @@ describe('the network a link arrived carrying', () => {
     // A malformed link must not change which chain a pasted hash is looked up on. That is the
     // original defect, arriving by a different road.
     for (const search of ['', '?q=0xabc', '?net=', '?net=maiinet', '?net=MAINNET']) {
-      const m = await loadAt(`https://explorer.cloudsforge.online/${search}`)
+      const m = await loadAt(`https://cloudsforge.online/explorer/${search}`)
       assert.equal(m.viewedNetwork(), 'mainnet', search)
       assert.equal(m.viewedApiOrigin(), '', search)
     }
@@ -75,14 +80,14 @@ describe('the network a link arrived carrying', () => {
   })
 
   it('is a starting point, not a lock — the switcher still wins', async () => {
-    const m = await loadAt('https://explorer.cloudsforge.online/?net=testnet')
+    const m = await loadAt('https://cloudsforge.online/explorer/?net=testnet')
     m.setViewedNetwork('mainnet')
     assert.equal(m.viewedNetwork(), 'mainnet')
     assert.equal(m.viewedApiOrigin(), '')
   })
 
   it('is read, never written back — nothing about it persists', async () => {
-    const browser = installWindow('https://explorer.cloudsforge.online/?net=testnet')
+    const browser = installWindow('https://cloudsforge.online/explorer/?net=testnet')
     seq += 1
     await import(`../src/lib/viewed.ts?case=${seq}`)
     assert.deepEqual(browser.replaced, [])
@@ -151,25 +156,25 @@ describe('the shell seeds the bar from the viewed network', () => {
  */
 describe('the viewed network survives a reload', () => {
   it('is written into the address bar when the reader switches', async () => {
-    const browser = installWindow('https://explorer.cloudsforge.online/block/128')
+    const browser = installWindow('https://cloudsforge.online/explorer/block/128')
     seq += 1
     const m = (await import(`../src/lib/viewed.ts?case=${seq}`)) as typeof import('../src/lib/viewed.ts')
     m.setViewedNetwork('testnet')
-    assert.deepEqual(browser.replaced, ['/block/128?net=testnet'])
+    assert.deepEqual(browser.replaced, ['/explorer/block/128?net=testnet'])
   })
 
   it('and a fresh load at that address is viewing testnet — the reload, end to end', async () => {
-    const m = await loadAt('https://explorer.cloudsforge.online/block/128?net=testnet')
+    const m = await loadAt('https://cloudsforge.online/explorer/block/128?net=testnet')
     assert.equal(m.viewedNetwork(), 'testnet')
-    assert.equal(m.viewedApiOrigin(), 'https://explorer-testnet.cloudsforge.online')
+    assert.equal(m.viewedApiOrigin(), 'https://testnet.cloudsforge.online')
   })
 
   it('and switching back leaves the URL as it was found', async () => {
-    const browser = installWindow('https://explorer.cloudsforge.online/block/128')
+    const browser = installWindow('https://cloudsforge.online/explorer/block/128')
     seq += 1
     const m = (await import(`../src/lib/viewed.ts?case=${seq}`)) as typeof import('../src/lib/viewed.ts')
     m.setViewedNetwork('testnet')
     m.setViewedNetwork('mainnet')
-    assert.deepEqual(browser.replaced, ['/block/128?net=testnet', '/block/128'])
+    assert.deepEqual(browser.replaced, ['/explorer/block/128?net=testnet', '/explorer/block/128'])
   })
 })

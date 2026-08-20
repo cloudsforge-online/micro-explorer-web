@@ -46,6 +46,7 @@
 import { KNOWN_SUBS, splitEnvLabel } from '@cloudsforge/ui'
 import { PRODUCT, isLocal } from './hosts.ts'
 import type { Network } from './indexer.ts'
+import { BASE } from './routes.ts'
 
 /**
  * Which network each environment label means.
@@ -100,12 +101,23 @@ function apexOf(hostname: string): string {
 export function networkForHost(hostname: string): Network {
   if (isLocal(hostname)) return 'testnet'
   const parts = hostname.split('.')
-  // `parts.length > 2` for the same reason `cloudsforgeHosts()` requires it: a two-label hostname
-  // IS an apex and has no first label to spend on an environment.
   if (parts.length <= 2) return 'mainnet'
   const first = parts[0] ?? ''
 
-  // The single-label scheme, which is what the estate serves: `explorer-testnet.<apex>`.
+  // ── THE ENVIRONMENT IS THE APEX'S NOW, NOT THIS SURFACE'S — WAVE 3h ─────────────────────────
+  //
+  // This surface used to be served from `explorer.<apex>` and `explorer-testnet.<apex>`, so its
+  // own first label carried the environment. Since the mount it is `<apex>/explorer` on both
+  // estates and the ONLY thing that differs between them is the apex: `cloudsforge.online`
+  // against `testnet.cloudsforge.online`. So the bare environment label is read first.
+  //
+  // This is checked BEFORE the surface-labelled forms below, not instead of them: the old
+  // hostnames still resolve — the tombstone 301s a browser, but a request that arrives before
+  // the redirect is followed must not be read as mainnet. Reading a testnet-shaped address as
+  // mainnet is the dangerous direction, because it shows a reader the network holding real money.
+  if (first in NETWORK_FOR_ENV) return NETWORK_FOR_ENV[first] ?? 'mainnet'
+
+  // The single-label scheme this surface used to be served on: `explorer-testnet.<apex>`.
   const env = splitEnvLabel(first)
   if (env) return NETWORK_FOR_ENV[env.env] ?? 'mainnet'
 
@@ -115,7 +127,11 @@ export function networkForHost(hostname: string): Network {
   // It matters more here than there. That host answers nothing today — Universal SSL's wildcard
   // covers one label — but reading it as MAINNET would be the dangerous direction: a reader who
   // reached a testnet-shaped address would be shown the network holding real money.
-  if (KNOWN_SUBS.has(first) && parts.length > 3) {
+  // `KNOWN_SUBS` no longer contains `explorer` — the registry row has no subdomain since wave 3h
+  // — so this branch stopped firing and `explorer.testnet.<apex>` began reading as MAINNET. That
+  // is the dangerous direction this block exists to prevent, so the surface's own retired label
+  // is named explicitly rather than looked up in a set that has correctly forgotten it.
+  if ((KNOWN_SUBS.has(first) || first === PRODUCT) && parts.length > 3) {
     const second = parts[1] ?? ''
     if (second in NETWORK_FOR_ENV) return NETWORK_FOR_ENV[second] ?? 'mainnet'
   }
@@ -147,14 +163,39 @@ export function deploymentNetwork(): Network {
 export function siblingExplorerOrigin(hostname: string, network: Network): string | null {
   if (isLocal(hostname)) return null
   const parts = hostname.split('.')
-  if (parts.length <= 2) return null
+  // A BARE APEX IS NOW A VALID HOST FOR THIS SURFACE, and `parts.length <= 2` used to reject it.
+  // That guard was right while the bundle always had a first label of its own to inspect; since
+  // the mount, `cloudsforge.online/explorer` is the mainnet address and its hostname has exactly
+  // two labels. Rejecting it returned null and the cross-network escape hatch silently vanished.
+  if (parts.length < 2) return null
   const first = parts[0] ?? ''
+
+  // ── THE SIBLING IS AN APEX PLUS THE MOUNT — WAVE 3h ────────────────────────────────────────
+  //
+  // This composed `explorer-testnet.<apex>`, a per-surface hostname that no longer serves a page:
+  // since the mount both estates run this bundle at `<apex>/explorer`, and the only thing that
+  // changes between them is which apex is in front of it.
+  //
+  // The comment below still applies and is the reason this returns null rather than guessing —
+  // an offered address a reader trusts and which resolves to nothing is worse than no address,
+  // which is exactly what `explorer.testnet.…` was. It is now enforced by requiring the hostname
+  // to be one this deployment recognises: a bare environment apex, or one of the retired
+  // surface-labelled forms.
   const split = splitEnvLabel(first)
-  const subdomain = split ? split.subdomain : first
-  if (subdomain !== PRODUCT) return null
-  const apex = apexOf(hostname)
-  const label = network === 'mainnet' ? PRODUCT : `${PRODUCT}-testnet`
-  return `https://${label}.${apex}`
+  // Three shapes are recognised, and nothing else: the bare apex this surface is served from,
+  // an ENVIRONMENT apex (`testnet.<apex>`), and the retired surface-labelled forms. A hostname
+  // outside that set gets null rather than an invented address — a preview deployment or a
+  // tunnel has no sibling, and offering one a reader trusts that resolves to nothing is worse
+  // than offering none.
+  const isEnvApex = first in NETWORK_FOR_ENV
+  const isRetiredLabel = (split ? split.subdomain : first) === PRODUCT
+  const isBareApex = parts.length === 2
+  if (!isEnvApex && !isRetiredLabel && !isBareApex) return null
+
+  // The apex WITHOUT any environment label, so it can be re-composed for the target network.
+  const bare = isEnvApex ? parts.slice(1).join('.') : isBareApex ? hostname : apexOf(hostname)
+  const apex = network === 'mainnet' ? bare : `testnet.${bare}`
+  return `https://${apex}${BASE}`
 }
 
 /** The sibling explorer for the network this page is NOT, resolved now. */

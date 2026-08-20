@@ -48,7 +48,7 @@ import { ROUTES } from '../src/lib/routes.ts'
  * makes `ember/testnet` the right scope for them; `test/network.test.ts` is where both hostnames
  * are driven and required to disagree.
  */
-const ORIGIN = 'https://explorer-testnet.cloudsforge.online'
+const ORIGIN = 'https://testnet.cloudsforge.online/explorer'
 const at = (p: string) => fileURLToPath(new URL(`../${p}`, import.meta.url))
 const SCOPE = 'ember/testnet'
 
@@ -676,7 +676,7 @@ describe('BJ-EXPLORER-404 — an unowned address answers 404', () => {
     .join('\n')
 
   it('BJ-EXPLORER-404 T2: nginx serves the shell through error_page 404, never try_files', () => {
-    assert.match(directives, /error_page\s+404\s+\/index\.html/)
+    assert.match(directives, /error_page\s+404\s+\/explorer\/index\.html/)
     assert.doesNotMatch(directives, /try_files\s+\$uri\s+(\$uri\/\s+)?\/index\.html/)
   })
 
